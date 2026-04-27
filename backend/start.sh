@@ -37,6 +37,10 @@ echo "[start] $DATA_DIR is writable after ${j}s"
 
 if [ ! -f "$DATA_DIR/pool_mask.bin" ]; then
   echo "[start] No mask in $DATA_DIR — bootstrapping from ocean_mask.npz"
+  # If a previous failed deploy left a half-written SQLite file on the
+  # volume, subsequent opens can fail before init_pool gets a chance
+  # to recreate it. Wipe any stale artefacts before we start fresh.
+  rm -f "$DATA_DIR"/havoc.sqlite3 "$DATA_DIR"/havoc.sqlite3-journal "$DATA_DIR"/havoc.sqlite3-wal "$DATA_DIR"/havoc.sqlite3-shm
   python -m scripts.init_pool --from ocean_mask.npz
 fi
 

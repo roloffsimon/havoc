@@ -93,23 +93,19 @@ CREATE INDEX IF NOT EXISTS idx_catches_vessel ON catches(date, vessel_id);
 """
 
 
+# Railway's bind-mounted volume returns EIO on fcntl() advisory locks,
+# which SQLite uses unconditionally on its default `unix` VFS. The
+# `unix-none` VFS skips fcntl entirely (its safety guarantee depends
+# on us being the only writer, which we are: one process, one daily
+# job). The MEMORY journal then keeps the rollback journal off disk
+# so the volume never has to support a -journal sidecar either.
+DB_URI = f"file:{DB_PATH}?vfs=unix-none"
+
+
 @contextmanager
 def connect():
-    # Railway's bind-mounted volume has limited support for the
-    # filesystem operations SQLite normally relies on:
-    #   - WAL needs an mmap of the -shm sidecar (returns EIO).
-    #   - The default rollback journal needs to create a -journal
-    #     file alongside the db, which also returns EIO here.
-    #   - Repeated fcntl() locks behave inconsistently.
-    # The pragmas below sidestep all three:
-    #   journal_mode=MEMORY   keep the rollback journal in RAM only
-    #   locking_mode=EXCLUSIVE  one fcntl lock at first write, then never
-    #   synchronous=NORMAL    fewer fsyncs (still durable through writes)
-    # Our writer is single-process and runs once a day, so this
-    # configuration is appropriate.
-    conn = sqlite3.connect(DB_PATH, isolation_level=None)
+    conn = sqlite3.connect(DB_URI, isolation_level=None, uri=True)
     conn.execute("PRAGMA journal_mode=MEMORY;")
-    conn.execute("PRAGMA locking_mode=EXCLUSIVE;")
     conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.row_factory = sqlite3.Row
