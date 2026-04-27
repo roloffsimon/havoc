@@ -95,8 +95,12 @@ CREATE INDEX IF NOT EXISTS idx_catches_vessel ON catches(date, vessel_id);
 
 @contextmanager
 def connect():
+    # Stay on the default (rollback) journal mode. WAL needs POSIX file
+    # locks plus a shared-memory mmap of the -shm sidecar file, and
+    # Railway's bind-mounted volume returns EIO on those operations
+    # ("disk I/O error" the moment we set journal_mode=WAL). Our writer
+    # is single-process and runs once a day, so WAL buys us nothing.
     conn = sqlite3.connect(DB_PATH, isolation_level=None)
-    conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.row_factory = sqlite3.Row
     try:
