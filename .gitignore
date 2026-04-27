@@ -1,0 +1,30 @@
+# Drafts, research, raw data — local only
+archive/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Env / secrets
+.env
+.env.local
+backend/.env
+
+# Runtime data (mask, SQLite, PDFs) — lives on the Railway volume
+backend/data/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.claude/
+
+# Privater Schriftverkehr
+mail_*.md

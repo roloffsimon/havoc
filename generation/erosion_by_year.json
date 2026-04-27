@@ -1,0 +1,106 @@
+[
+  {
+    "year": 2012,
+    "events": 3460306,
+    "cells_eroded": 346030,
+    "cumulative_depleted": 346030,
+    "depletion_percent": 2.9536,
+    "max_erosion_distance_deg": 0.211
+  },
+  {
+    "year": 2013,
+    "events": 14609897,
+    "cells_eroded": 1460989,
+    "cumulative_depleted": 1807019,
+    "depletion_percent": 15.424,
+    "max_erosion_distance_deg": 1.3411
+  },
+  {
+    "year": 2014,
+    "events": 18196436,
+    "cells_eroded": 1819643,
+    "cumulative_depleted": 3626662,
+    "depletion_percent": 30.9558,
+    "max_erosion_distance_deg": 3.2152
+  },
+  {
+    "year": 2015,
+    "events": 21356989,
+    "cells_eroded": 2135698,
+    "cumulative_depleted": 5762360,
+    "depletion_percent": 49.1854,
+    "max_erosion_distance_deg": 5.7678
+  },
+  {
+    "year": 2016,
+    "events": 25390520,
+    "cells_eroded": 2539052,
+    "cumulative_depleted": 8301412,
+    "depletion_percent": 70.8578,
+    "max_erosion_distance_deg": 9.7649
+  },
+  {
+    "year": 2017,
+    "events": 33122857,
+    "cells_eroded": 3312285,
+    "cumulative_depleted": 11613697,
+    "depletion_percent": 99.1302,
+    "max_erosion_distance_deg": 23.0491
+  },
+  {
+    "year": 2018,
+    "events": 37794814,
+    "cells_eroded": 101900,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 28.7769
+  },
+  {
+    "year": 2019,
+    "events": 42613587,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  },
+  {
+    "year": 2020,
+    "events": 44816861,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  },
+  {
+    "year": 2021,
+    "events": 50132529,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  },
+  {
+    "year": 2022,
+    "events": 61857971,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  },
+  {
+    "year": 2023,
+    "events": 75251674,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  },
+  {
+    "year": 2024,
+    "events": 78899048,
+    "cells_eroded": 0,
+    "cumulative_depleted": 11715597,
+    "depletion_percent": 100.0,
+    "max_erosion_distance_deg": 0.0
+  }
+]

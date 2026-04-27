@@ -1,0 +1,3990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remorseless Havoc</title>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ════════════════════════════════════════════════════════════
+       PALETTE: "Night Graphite" (v5, Rev 22 Apr 2026)
+       Fast schwarzes Nachtblau + hellgraue Landmassen + gelbe
+       Vessel-Markierung. Hochkontrastig, radarhaft, nüchtern.
+       ════════════════════════════════════════════════════════════ */
+
+    /* Ozean */
+    --ocean:          #030a18;
+    --ocean-deep:     #010510;
+    --ocean-abyss:    #000208;
+
+    /* Legacy-Aliasse */
+    --abyss:          #000208;
+    --deep:           #010510;
+    --mid:            #06142a;
+    --surface:        #0c1e3a;
+
+    /* Land — hellgrau, leicht kühl */
+    --land:           #b8bcc2;
+    --land-edge:      #8d9198;
+
+    /* Text — kühles Silbergrau statt warmem Cream */
+    --cream:          #d8dce2;
+    --cream-dim:      #9aa0a8;
+    --cream-faint:    #5e6470;
+    --cream-ghost:    rgba(216, 220, 226, 0.16);
+
+    /* Akzente — Gelb als einheitlicher Amber-Ersatz */
+    --amber:          #ffd23a;
+    --amber-hot:      #fff066;
+    --amber-dim:      #b88a18;
+    --amber-glow:     rgba(255, 210, 58, 0.5);
+
+    /* Catch — warmes Orange-Rot als einziger warmer Akzent */
+    --catch:          #ff8a3a;
+    --catch-flash:    #ff8a3a;
+    --catch-glow:     rgba(255, 138, 58, 0.4);
+
+    /* Depletion */
+    --depleted:       #020510;
+    --depleted-edge:  #010308;
+    --depleted-partial: #020510;
+    --depleted-full:    #010308;
+
+    /* Vessels — Gelb */
+    --vessel:         #ffd23a;
+    --vessel-hot:     #fff066;
+    --vessel-glow:    rgba(255, 210, 58, 0.5);
+
+    /* Misc rendering */
+    --ocean-alive:     #030a18;
+    --ocean-alive-hi:  #06142a;
+    --ship-active:     var(--vessel-hot);
+    --stanza-alive:    var(--cream);
+    --stanza-ghost:    rgba(216, 220, 226, 0.08);
+    --stanza-final:    #22d3ee;
+    --cell-border:     rgba(216, 220, 226, 0.06);
+    --cell-border-z:   rgba(216, 220, 226, 0.12);
+    --ship-trail:      rgba(255, 210, 58, 0.22);
+    --ship-glow:       var(--vessel-glow);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     ALT-PALETTE 1: "Sonar Phosphor" — noch düsterer.
+     Zum Testen: oben :root überschreiben.
+     ════════════════════════════════════════════════════════════
+  :root {
+    --ocean:       #040812;
+    --ocean-deep:  #020509;
+    --ocean-abyss: #010204;
+    --abyss:       #010204;
+    --deep:        #020509;
+    --land:        #c2b295;
+    --land-edge:   #a29275;
+    --amber:       #ffb143;
+    --amber-hot:   #ffd070;
+    --catch:       #ff5c3c;
+    --catch-flash: #ff5c3c;
+    --cream:       #e8dcc0;
+    --cream-faint: #7a6f5a;
+    --cream-dim:   #b8ad92;
+    --depleted:      #02060e;
+    --depleted-edge: #010306;
+    --ocean-alive:   #040812;
+  }
+  */
+
+  /* ════════════════════════════════════════════════════════════
+     ALT-PALETTE 2: "Paper Atlas" — radikal invertiert.
+     Cremefarbenes Ozean-Papier, tintenschwarzes Land.
+     ════════════════════════════════════════════════════════════
+  :root {
+    --ocean:       #f2ead8;
+    --ocean-deep:  #ede4cf;
+    --ocean-abyss: #e4dcc4;
+    --abyss:       #e4dcc4;
+    --deep:        #ede4cf;
+    --land:        #0e1a2e;
+    --land-edge:   #08111e;
+    --amber:       #c8882f;
+    --amber-hot:   #e8a040;
+    --catch:       #d94a3a;
+    --catch-flash: #d94a3a;
+    --cream:       #1a1a1a;
+    --cream-dim:   #444444;
+    --cream-faint: #6a6858;
+    --cream-ghost: rgba(26, 26, 26, 0.18);
+    --depleted:      #e0d6bc;
+    --depleted-edge: #d4c8ad;
+    --ocean-alive:   #f2ead8;
+    --stanza-alive:  #2a2a2a;
+    --stanza-ghost:  rgba(60, 60, 60, 0.1);
+  }
+  */
+
+  /* ════════════════════════════════════════════════════════════
+     ALT-PALETTE 3: "Night Graphite" — fast schwarzes Nachtblau,
+     hellgraue Landmassen, gelbe Vessels. Hochkontrastig, nüchtern,
+     näher an einer radarhaften Monitoransicht.
+     Zum Testen: Block entkommentieren UND GRID_COLORS unten im
+     Script-Block auf den "Night Graphite"-Satz umstellen
+     (Kommentar dort beachten).
+     ════════════════════════════════════════════════════════════
+  :root {
+    --ocean:          #030a18;
+    --ocean-deep:     #010510;
+    --ocean-abyss:    #000208;
+    --abyss:          #000208;
+    --deep:           #010510;
+    --mid:            #06142a;
+    --surface:        #0c1e3a;
+
+    --land:           #b8bcc2;
+    --land-edge:      #8d9198;
+
+    --cream:          #d8dce2;
+    --cream-dim:      #9aa0a8;
+    --cream-faint:    #5e6470;
+    --cream-ghost:    rgba(216, 220, 226, 0.16);
+
+    --amber:          #ffd23a;
+    --amber-hot:      #fff066;
+    --amber-dim:      #b88a18;
+    --amber-glow:     rgba(255, 210, 58, 0.5);
+
+    --catch:          #ff8a3a;
+    --catch-flash:    #ff8a3a;
+    --catch-glow:     rgba(255, 138, 58, 0.4);
+
+    --depleted:       #020510;
+    --depleted-edge:  #010308;
+    --depleted-partial: #020510;
+    --depleted-full:    #010308;
+
+    --vessel:         #ffd23a;
+    --vessel-hot:     #fff066;
+    --vessel-glow:    rgba(255, 210, 58, 0.5);
+
+    --ocean-alive:    #030a18;
+    --ocean-alive-hi: #06142a;
+    --ship-active:    var(--vessel-hot);
+    --stanza-alive:   var(--cream);
+    --stanza-ghost:   rgba(216, 220, 226, 0.08);
+    --stanza-final:   #22d3ee;
+    --cell-border:    rgba(216, 220, 226, 0.06);
+    --cell-border-z:  rgba(216, 220, 226, 0.12);
+    --ship-trail:     rgba(255, 210, 58, 0.22);
+    --ship-glow:      var(--vessel-glow);
+  }
+  */
+  /* Begleitwerte für das Canvas-Rendering (GRID_COLORS) zu "Night Graphite":
+     land:             [184, 188, 194]       // --land  #b8bcc2
+     landEdge:         [141, 145, 152]       // --land-edge #8d9198
+     oceanAlive Basis: (3, 10, 24) + kleiner Hash-Jitter — siehe Funktion
+     depletedPartial:  [2, 5, 16]
+     depletedFull:     [1, 3, 8]
+     ship:             [255, 240, 102]       // --vessel-hot #fff066
+     stanzaAlive:      'rgba(216, 220, 226, 0.92)'
+     stanzaGhost:      'rgba(216, 220, 226, 0.08)'
+     stanzaPartial:    'rgba(216, 220, 226, 0.30)'
+     Schiffsglow im renderShips:
+       addColorStop(0,   'rgba(255, 240, 102, 0.90)')
+       addColorStop(0.5, 'rgba(255, 210, 58, 0.20)')
+       addColorStop(1,   'rgba(255, 210, 58, 0)')
+     Dot-Fill:    '#fff066'
+     Namens-Text: 'rgba(255, 240, 102, 0.70)'
+  */
+
+  /* Alt-Kandidat Typografie: JetBrains Mono — schmaler, terminalhafter */
+  /* Alt-Kandidat Sans: Manrope 400/600 — etwas mehr Charakter */
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  html, body {
+    font-family: 'Instrument Sans', 'Helvetica Neue', sans-serif;
+    background: var(--abyss);
+    color: var(--cream);
+    height: 100%;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     HEADER — Titelzeile + horizontale Nav-Bar (Rev 18 Apr 2026)
+     Kein Burger. Status-Bar liegt am unteren Rand (siehe .h-status).
+     ════════════════════════════════════════════════════════════════════ */
+  .h-title-bar {
+    height: 38px;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(240, 232, 210, 0.08);
+    background: var(--ocean-deep);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  .h-title {
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--cream);
+  }
+  .h-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--cream-dim);
+    text-transform: uppercase;
+  }
+  .h-meta .h-day strong { color: var(--amber); font-weight: 400; }
+  .h-meta .h-sep { color: var(--cream-ghost); margin: 0 0.5em; }
+
+  .h-title-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .h-lang {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .h-lang button {
+    background: none; border: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    padding: 2px 0;
+    border-bottom: 1px solid transparent;
+    transition: color 160ms, border-color 160ms;
+  }
+  .h-lang button:hover { color: var(--cream); }
+  .h-lang button.is-active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+  .h-lang .h-lang-sep { color: var(--cream-ghost); }
+
+  /* ── NAV-BAR ── */
+  .h-nav {
+    height: 30px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    border-bottom: 1px solid rgba(240, 232, 210, 0.06);
+    background: var(--ocean-deep);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  .h-nav-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-decoration: none;
+    background: none; border: none;
+    padding: 6px 0;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: color 160ms, border-color 160ms;
+  }
+  .h-nav-item:hover { color: var(--cream); }
+  .h-nav-item.is-active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+
+  /* ── STATUS-BAR (unten, flex-shrink 0) ── */
+  .h-status {
+    height: 36px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    border-top: 1px solid rgba(240, 232, 210, 0.08);
+    background: var(--ocean-deep);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    z-index: 10;
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  body.not-ocean .h-status { display: none; }
+
+  .hs-group { display: flex; align-items: baseline; gap: 0.7em; }
+  .hs-val {
+    color: var(--cream);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .hs-unit { color: var(--cream-dim); font-weight: 400; }
+  .hs-lab { color: var(--cream-faint); }
+  .hs-sep { color: var(--cream-ghost); }
+  .hs-spacer { flex: 1; }
+  .hs-group.hs-depleted .hs-val { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+  .hs-group.hs-depleted .hs-unit { font-size: 12px; }
+
+  @media (max-width: 900px) {
+    .h-status .hs-caught, .h-status .hs-caught-sep { display: none; }
+  }
+  @media (max-width: 640px) {
+    .h-status .hs-vessels, .h-status .hs-vessels-sep { display: none; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     CONTENT / VIEWS
+     ════════════════════════════════════════════════════════════════════ */
+  .content { flex: 1; overflow: hidden; position: relative; }
+  .view { display: none; height: 100%; }
+  .view.active { display: block; }
+
+  .scrollable { height: 100%; overflow-y: auto; }
+  .scrollable::-webkit-scrollbar { width: 2px; }
+  .scrollable::-webkit-scrollbar-track { background: var(--abyss); }
+  .scrollable::-webkit-scrollbar-thumb { background: var(--cream-ghost); }
+
+  /* ── CANVAS WRAPPER ── */
+  .ocean-canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--abyss);
+    cursor: grab;
+  }
+
+  .ocean-canvas-wrapper:active { cursor: grabbing; }
+
+  #ocean-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Scanline-Overlay — CRT-Effekt (subtil) */
+  .ocean-canvas-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.05) 2px,
+      rgba(0, 0, 0, 0.05) 4px
+    );
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.35);
+    animation: phosphor-flicker 8s infinite;
+  }
+  /* Vignette — radial, sehr dezent */
+  .ocean-canvas-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    background: radial-gradient(ellipse at center,
+      transparent 55%,
+      rgba(0, 0, 0, 0.35) 100%);
+  }
+  @keyframes phosphor-flicker {
+    0%, 100% { opacity: 1; }
+    47%      { opacity: 0.985; }
+    53%      { opacity: 1.01; }
+  }
+
+  .map-overlay-hint {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 10;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--cream-dim);
+    letter-spacing: 0.06em;
+    pointer-events: none;
+    text-align: right;
+    line-height: 1.8;
+    background: rgba(5, 10, 18, 0.6);
+    padding: 6px 10px;
+    transition: opacity 0.6s ease;
+  }
+  .map-overlay-hint[data-state="dismissed"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Hover-Tooltip für Zellen — schwebt am Cursor */
+  .map-overlay-cell {
+    position: absolute;
+    z-index: 15;
+    background: rgba(5, 10, 18, 0.85);
+    border: 1px solid rgba(232, 220, 196, 0.08);
+    padding: 8px 12px;
+    pointer-events: none;
+    max-width: 300px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: opacity 120ms;
+    display: none;
+  }
+
+  .map-overlay-cell .ch-coords {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-faint);
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .map-overlay-cell .ch-stanza {
+    padding-left: 10px;
+    border-left: 2px solid rgba(232, 220, 196, 0.08);
+  }
+
+  .map-overlay-cell .ch-stanza .ch-line {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.8;
+    color: var(--cream-dim);
+  }
+
+  /* ── VESSEL-POPUPS (auf der Karte) ── */
+  .vessel-popup {
+    position: absolute;
+    background: rgba(10, 22, 40, 0.88);
+    border: 1px solid rgba(232, 220, 196, 0.14);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(212, 160, 86, 0.06);
+    padding: 14px 18px 12px;
+    min-width: 240px;
+    max-width: 320px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    pointer-events: auto;
+    animation: popup-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes popup-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); filter: blur(4px); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0); }
+  }
+  .vessel-popup.fading { animation: popup-out 0.35s ease-in both; }
+  @keyframes popup-out {
+    to { opacity: 0; transform: translateY(-4px) scale(0.98); filter: blur(3px); }
+  }
+
+  .vessel-popup::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid rgba(232, 220, 196, 0.14);
+    transform: translateX(-50%);
+  }
+
+  .vessel-popup .vp-close {
+    position: absolute;
+    top: 6px; right: 8px;
+    width: 18px; height: 18px;
+    background: none; border: none;
+    color: var(--cream-faint);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    font-family: 'DM Mono', monospace;
+  }
+  .vessel-popup .vp-close:hover { color: var(--cream); }
+
+  .vessel-popup .pi-name {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cream);
+    margin-bottom: 4px;
+    letter-spacing: 0.03em;
+    padding-right: 18px;
+  }
+
+  .vessel-popup .pi-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-faint);
+    line-height: 1.8;
+    margin-bottom: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .vessel-popup .pi-stanza {
+    padding-left: 10px;
+    border-left: 2px solid rgba(232, 220, 196, 0.08);
+    margin-bottom: 8px;
+  }
+
+  .vessel-popup .pi-line {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.8;
+    color: var(--cream-dim);
+  }
+
+  .vessel-popup .pi-entropy {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    color: var(--cream-faint);
+    margin-top: 6px;
+    padding-left: 10px;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     FLEET VIEW — Grid
+     ════════════════════════════════════════════════════════════════════ */
+  .fleet-view {
+    padding: 28px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .fleet-head {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 20px;
+    align-items: baseline;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(232, 220, 196, 0.08);
+    margin-bottom: 18px;
+  }
+  .fleet-head .fh-title {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cream);
+  }
+  .fleet-head .fh-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+  }
+  .fleet-head .fh-search input {
+    background: transparent;
+    border: 1px solid var(--cream-ghost);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 6px 10px;
+    width: 220px;
+    outline: none;
+    transition: border-color 180ms;
+  }
+  .fleet-head .fh-search input:focus { border-color: var(--amber-dim); }
+  .fleet-head .fh-search input::placeholder { color: var(--cream-faint); }
+
+  .fleet-filters {
+    display: flex;
+    gap: 20px;
+    padding-bottom: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .fleet-filters select {
+    background: transparent;
+    border: none;
+    color: var(--cream-dim);
+    font-family: inherit;
+    font-size: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    padding: 4px 0;
+    outline: none;
+  }
+  .fleet-filters select:hover { color: var(--cream); }
+  .fleet-filters select option {
+    background: var(--abyss);
+    color: var(--cream-dim);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1px;
+    background: rgba(232, 220, 196, 0.04);
+    border-top: 1px solid rgba(232, 220, 196, 0.04);
+    border-left: 1px solid rgba(232, 220, 196, 0.04);
+  }
+
+  .vessel-card {
+    background: var(--deep);
+    padding: 12px 14px;
+    text-align: left;
+    border: none;
+    cursor: pointer;
+    transition: background 180ms;
+    position: relative;
+    font-family: inherit;
+    color: inherit;
+    animation: fadein 0.3s ease-out both;
+  }
+  .vessel-card:hover { background: #0c1a32; }
+  .vessel-card .vc-flag {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    color: var(--cream-faint);
+    letter-spacing: 0.14em;
+  }
+  .vessel-card .vc-name {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cream);
+    margin-top: 2px;
+  }
+  .vessel-card .vc-stats {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-faint);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Expanded state */
+  .vessel-card.is-open {
+    grid-column: 1 / -1;
+    background: #0b1a32;
+    padding: 18px 22px 20px;
+  }
+  .vessel-card.is-open .vc-name { font-size: 17px; }
+  .vessel-card.is-open .vc-expand { display: block; }
+  .vessel-card.is-open .vc-map-link { display: inline-block; }
+  .vessel-card .vc-expand {
+    display: none;
+    margin-top: 14px;
+    padding-left: 12px;
+    border-left: 2px solid rgba(212, 160, 86, 0.14);
+  }
+  .vessel-card .vc-line {
+    display: block;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.9;
+    color: var(--cream-dim);
+    opacity: 0;
+    transform: translateX(-6px);
+    letter-spacing: 0.04em;
+  }
+  .vessel-card.is-open .vc-line {
+    animation: line-reveal 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .vessel-card.is-open .vc-line:nth-child(1) { animation-delay: 180ms; }
+  .vessel-card.is-open .vc-line:nth-child(2) { animation-delay: 420ms; }
+  .vessel-card.is-open .vc-line:nth-child(3) { animation-delay: 700ms; }
+  .vessel-card.is-open .vc-line:nth-child(4) { animation-delay: 1030ms; }
+
+  @keyframes line-reveal {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+      letter-spacing: 0.02em;
+    }
+  }
+
+  .vessel-card .vc-entropy {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-faint);
+    margin-top: 10px;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    animation: fadein 0.4s ease-out 1300ms forwards;
+  }
+  .vessel-card.is-open .vc-entropy { opacity: 1; }
+
+  .vessel-card .vc-map-link {
+    display: none;
+    position: absolute;
+    top: 14px; right: 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    background: none; border: none;
+    cursor: pointer;
+  }
+  .vessel-card .vc-map-link:hover { color: var(--amber); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ABOUT VIEW
+     ════════════════════════════════════════════════════════════════════ */
+  .about-view {
+    padding: 36px 32px 80px;
+    max-width: 580px;
+    margin: 0 auto;
+  }
+
+  .about-view h2 {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cream);
+    margin-bottom: 22px;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 16px var(--amber-glow);
+  }
+
+  .about-view p {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.9;
+    color: var(--cream-dim);
+    margin-bottom: 16px;
+  }
+  /* Project titles: highlight via upright cut, sitting against the
+     italic body. Same colour as body — the contrast is purely the
+     stylistic switch. */
+  .about-view p em {
+    font-style: normal;
+    font-weight: 400;
+    color: inherit;
+  }
+  /* Links: brighter cream, subtle dotted underline. The em inside a
+     link inherits both — so a project title that is also a link reads
+     upright AND brighter. */
+  .about-view p a {
+    color: var(--cream);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--cream-ghost);
+    transition: color 160ms, border-color 160ms;
+  }
+  .about-view p a:hover { color: var(--amber); border-color: var(--amber-dim); }
+  .about-view p strong { font-weight: 500; color: var(--cream); font-style: normal; }
+
+  .about-sep { width: 40px; height: 1px; background: var(--cream-ghost); margin: 26px 0; }
+
+  /* Spec-Sheet box */
+  .about-spec {
+    border: 1px solid var(--cream-ghost);
+    padding: 14px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 300;
+    line-height: 2;
+    color: var(--cream);
+  }
+  .about-spec .spec-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    padding: 2px 0;
+  }
+  .about-spec .spec-row + .spec-row {
+    border-top: 1px dashed rgba(232, 220, 196, 0.05);
+  }
+  .about-spec .spec-lbl {
+    color: var(--cream-faint);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 9px;
+  }
+  .about-spec .spec-val { color: var(--cream); }
+
+  .about-credits {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--cream-faint);
+    line-height: 2;
+  }
+  .about-credits a {
+    color: var(--cream-dim);
+    border-bottom: 1px dotted var(--cream-ghost);
+    text-decoration: none;
+    font-style: normal;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding-bottom: 1px;
+  }
+  .about-credits a:hover { color: var(--amber); border-color: var(--amber-dim); }
+
+  /* Impressum / Lizenz-Block unterhalb der Credits */
+  .about-license {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--cream-ghost);
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px;
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    color: var(--cream-faint);
+  }
+  .about-license strong {
+    color: var(--cream-dim);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 9px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .about-license a {
+    color: var(--cream-dim);
+    border-bottom: 1px dotted var(--cream-ghost);
+    text-decoration: none;
+  }
+  .about-license a:hover { color: var(--amber); border-color: var(--amber-dim); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     CATCH VIEW — Titelblatt + Editorial + PDF-Teaser
+     ════════════════════════════════════════════════════════════════════ */
+  .catch-view {
+    padding: 36px 40px 80px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .catch-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--cream-ghost);
+    padding-bottom: 14px;
+    margin-bottom: 28px;
+  }
+  .catch-head .ch-title {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream);
+  }
+  .catch-head .ch-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+  }
+
+  .catch-big {
+    font-family: 'DM Mono', monospace;
+    font-size: 48px;
+    font-weight: 300;
+    color: var(--cream);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 24px var(--amber-glow);
+  }
+  .catch-big .cb-unit {
+    font-size: 16px;
+    color: var(--cream-dim);
+    letter-spacing: 0.12em;
+    margin-left: 8px;
+  }
+
+  .catch-sub {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(232, 220, 196, 0.08);
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 0.06em;
+    margin-bottom: 30px;
+  }
+  .catch-sub .cs-val { color: var(--cream); }
+  .catch-sub .cs-lbl {
+    color: var(--cream-faint);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .catch-intro {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.9;
+    color: var(--cream-dim);
+    max-width: 540px;
+    margin-bottom: 36px;
+  }
+  .catch-intro em { color: var(--cream); }
+
+  .catch-pdf-panel {
+    /* Side-by-side: PDF thumbnail flush left of the download menu.
+       No frame, no background — both blocks sit free on the page. */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 36px;
+    align-items: start;
+    margin-bottom: 36px;
+  }
+
+  /* PDF-Thumbnail — mirrors the actual PDF cover (Big Shoulders Display
+     in cream on dark navy, lattice grid). Data placeholders are populated
+     from the current day (ids #cpp-vol, #cpp-date). */
+  .cpp-preview {
+    position: relative;
+    /* Push the thumbnail down so its top edge aligns with the top of
+       the dropdown (the "DOCUMENT SIZE" label sits above the select). */
+    margin-top: 30px;
+    width: 240px;
+    height: 339px;             /* A5 portrait ratio 1 : 1.414 */
+    background: #030a18;       /* --abyss / cover ocean */
+    color: #d8dce2;            /* --cream */
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55),
+                0 2px 6px rgba(0, 0, 0, 0.3);
+    padding: 22px 18px 18px;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 12px;
+    overflow: hidden;
+    /* 20px major + 2.5px minor lattice in cream — same scheme as the
+       PDF cover (20 mm major / 2 mm minor, scaled). */
+    background-image:
+      linear-gradient(to right,  rgba(216,220,226,0.16) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(216,220,226,0.16) 1px, transparent 1px),
+      linear-gradient(to right,  rgba(216,220,226,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(216,220,226,0.06) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 2.5px 2.5px, 2.5px 2.5px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  .cpp-cover-middle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0;
+    padding-top: 24px;
+  }
+  .cpp-cover-title {
+    font-family: 'Big Shoulders Display', 'Instrument Sans', sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    font-size: 56px;
+    line-height: 0.92;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #d8dce2;
+    /* Stack words like the PDF: "CATCH OF" / "THE DAY". The flex
+       container above already centres each line. */
+    display: block;
+    white-space: normal;
+    word-spacing: 9999px;       /* force one word per line */
+  }
+  .cpp-cover-rule {
+    height: 1px;
+    background: rgba(216,220,226,0.28);
+    width: 100%;
+  }
+  .cpp-cover-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #d8dce2;
+    padding-top: 8px;
+  }
+
+  .cpp-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 320px;
+    /* Match thumbnail block (margin-top 30px + height 339px) so the
+       download button can be pinned to the bottom edge of the thumbnail. */
+    min-height: 369px;
+  }
+  .cpp-cta .btn-havoc.is-download {
+    margin-top: auto;
+  }
+  .cpp-cta .cta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 4px;
+  }
+  .btn-havoc {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border: 1px solid var(--cream-ghost);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream);
+    background: transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.25s, box-shadow 0.25s, border-color 0.25s;
+  }
+  .btn-havoc .btn-sub {
+    font-size: 9px;
+    color: var(--cream-faint);
+    letter-spacing: 0.1em;
+    margin-left: 14px;
+  }
+  .btn-havoc .btn-icon {
+    font-size: 14px;
+    line-height: 1;
+    color: var(--cream-faint);
+    flex-shrink: 0;
+    transition: color 0.25s, transform 0.25s;
+  }
+  .btn-havoc .btn-icon-lead { margin-right: 4px; }
+  .btn-havoc:hover {
+    background: rgba(212, 160, 86, 0.08);
+    box-shadow: 0 0 20px rgba(212, 160, 86, 0.12);
+    border-color: var(--amber-dim);
+  }
+  .btn-havoc:hover .btn-icon { color: var(--amber); }
+
+  /* Donate tiles (external links): cream border, ↗ icon */
+  .btn-havoc.is-donate {
+    border-color: var(--cream);
+  }
+  /* Download tile: ghost border + amber-tinted background to mark
+     it as the alternative action. Same shape as the donate tiles
+     so both read as "buttons" — only the ↓ icon and tone shift. */
+  .btn-havoc.is-download {
+    justify-content: flex-start;
+    border-color: var(--amber-dim);
+    color: var(--cream-dim);
+    background: rgba(212, 160, 86, 0.05);
+  }
+  .btn-havoc.is-download:hover {
+    color: var(--cream);
+    background: rgba(212, 160, 86, 0.12);
+  }
+  .btn-havoc.is-download .btn-icon {
+    color: var(--amber-dim);
+    font-size: 16px;
+  }
+  .btn-havoc.is-download:hover .btn-icon {
+    color: var(--amber);
+    transform: translateY(2px);
+  }
+
+  .cpp-cta .cta-sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-ghost);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+  .cpp-cta .cta-sep::before,
+  .cpp-cta .cta-sep::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--cream-ghost);
+  }
+  .cpp-cta .link-plain {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--cream-faint);
+    text-decoration: underline;
+    background: none; border: none;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+    letter-spacing: 0.06em;
+  }
+  .cpp-cta .link-plain:hover { color: var(--cream-dim); }
+
+  /* Size selector — lets users pick how many poems the PDF includes.
+     The full archive stays the primary document (conceptual mass), the
+     smaller cuts are navigation affordances. */
+  .cpp-size {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 8px; margin-bottom: 14px;
+  }
+  .cpp-size-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--cream-faint);
+    text-transform: uppercase;
+  }
+  .cpp-size-select {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-dim);
+    background: rgba(6, 10, 20, 0.6);
+    border: 1px solid var(--cream-ghost);
+    border-radius: 2px;
+    padding: 6px 28px 6px 10px;
+    width: 100%;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    line-height: 1.4;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--cream-faint) 50%),
+      linear-gradient(135deg, var(--cream-faint) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  .cpp-size-select:focus {
+    outline: none;
+    border-color: var(--amber);
+    color: var(--cream);
+  }
+  .cpp-size-select option {
+    background: #030a18; color: var(--cream);
+  }
+  .cpp-size-note {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 10px; font-style: italic;
+    color: var(--cream-faint);
+    margin: 2px 0 0;
+    line-height: 1.5;
+  }
+  .cpp-cta .link-plain-note {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 10px;
+    font-style: italic;
+    color: var(--cream-faint);
+    margin-top: -6px;
+    line-height: 1.6;
+  }
+
+  /* Download-Modal */
+  .catch-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    background: rgba(5, 10, 18, 0.85);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .catch-modal-backdrop.is-open { display: flex; }
+  .catch-modal {
+    min-width: 380px;
+    max-width: 460px;
+    padding: 28px 32px;
+    background: var(--deep);
+    border: 1px solid var(--cream-ghost);
+    font-family: 'DM Mono', monospace;
+  }
+  .catch-modal .cm-title {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cream);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .catch-modal .cm-text {
+    font-size: 11px;
+    color: var(--cream-dim);
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    margin-bottom: 18px;
+  }
+  .catch-modal .cm-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--cream-ghost);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .catch-modal .cm-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--amber);
+    transition: width 400ms ease;
+  }
+  .catch-modal .cm-status {
+    font-size: 10px;
+    color: var(--cream-faint);
+    letter-spacing: 0.08em;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     INTRO SPLASH
+     ════════════════════════════════════════════════════════════════════ */
+  #intro-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--abyss);
+    display: grid;
+    place-items: center;
+    padding: 8vh 6vw;
+    cursor: pointer;
+    opacity: 0;
+    animation: splash-in 800ms ease-out 120ms forwards;
+    outline: none;
+  }
+  #intro-splash.is-leaving { animation: splash-out 500ms ease-in forwards; }
+  @keyframes splash-in  { to { opacity: 1; } }
+  @keyframes splash-out { to { opacity: 0; } }
+
+  .motto {
+    max-width: 640px;
+    color: var(--cream);
+    font-family: 'EB Garamond', 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-size: clamp(19px, 2.1vw, 26px);
+    line-height: 1.65;
+    text-align: left;
+    margin: 0;
+    font-variant-numeric: oldstyle-nums;
+  }
+  .motto p { margin: 0 0 1.8em 0; text-indent: -0.35em; }
+  .motto p::before { content: '\201C'; color: var(--cream); margin-right: 0.08em; }
+  .motto p::after  { content: '\201D'; color: var(--cream); margin-left: 0.05em; }
+
+  .motto footer {
+    font-style: normal;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--cream-faint);
+    text-transform: uppercase;
+  }
+  .motto footer cite { font-style: italic; }
+
+  .splash-hint {
+    position: absolute;
+    bottom: 5vh;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: var(--cream-ghost);
+    text-transform: uppercase;
+    opacity: 0;
+    animation: hint-in 600ms ease-out 2400ms forwards;
+  }
+  @keyframes hint-in { to { opacity: 0.6; } }
+
+  /* Loading-fallback unten links, falls Karte noch nicht fertig ist */
+  .loading-fallback {
+    position: absolute;
+    bottom: 14px; left: 20px;
+    z-index: 8;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--cream-ghost);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    animation: loading-pulse 2s infinite;
+    display: none;
+  }
+  .loading-fallback.is-visible { display: block; }
+  @keyframes loading-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 0.75; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     FINAL VIEW — "Final Puff"
+     Activated once the backend reports remaining <= FINAL_FLOOR.
+     Landing-page-esque: dark, centered, the last three-stanza poem in
+     cyan (stanza-final), flanked by statistics of the completed erasure,
+     a short project note with a link to the author, and the full
+     Melville motto in italic Garamond.
+     ════════════════════════════════════════════════════════════════════ */
+  #final-view {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;           /* below the intro-splash but above everything else */
+    background: var(--abyss);
+    overflow-y: auto;
+    display: none;
+    opacity: 0;
+    transition: opacity 700ms ease-out;
+    color: var(--cream);
+    -webkit-font-smoothing: antialiased;
+  }
+  #final-view.is-visible { display: block; opacity: 1; }
+  #final-view::after {
+    /* subtle scanline/vignette, same as the main view */
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%),
+      repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.018) 0px,
+        rgba(255,255,255,0.018) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+  }
+
+  .fv-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 10vh 6vw 14vh;
+  }
+
+  .fv-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin: 0 0 22px 0;
+  }
+
+  .fv-title {
+    font-family: 'EB Garamond', 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(32px, 4.2vw, 52px);
+    line-height: 1.1;
+    color: var(--cream);
+    margin: 0 0 6px 0;
+    letter-spacing: -0.005em;
+  }
+  .fv-title strong { font-weight: 500; font-style: normal; }
+
+  .fv-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--cream-dim);
+    text-transform: uppercase;
+    margin: 0 0 54px 0;
+  }
+  .fv-subtitle .fv-date-sep { margin: 0 0.6em; color: var(--cream-faint); }
+
+  /* ── Coordinates line ── */
+  .fv-coords {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    padding: 6px 12px;
+    border: 1px solid var(--cell-border-z);
+    border-radius: 2px;
+    margin-bottom: 28px;
+    background: rgba(216, 220, 226, 0.02);
+  }
+  .fv-coords .fv-coord-val { color: var(--cream); }
+  .fv-coords .fv-coord-lbl { color: var(--cream-faint); }
+
+  /* ── The three-stanza poem ── */
+  .fv-poem {
+    margin: 0 0 60px 0;
+    padding: 28px 0 32px 0;
+    border-top: 1px solid var(--cell-border-z);
+    border-bottom: 1px solid var(--cell-border-z);
+    font-family: 'EB Garamond', 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--stanza-final);     /* cyan #22d3ee */
+    font-size: clamp(17px, 1.9vw, 22px);
+    line-height: 1.7;
+    text-align: left;
+    text-shadow: 0 0 22px rgba(34, 211, 238, 0.18);
+  }
+  .fv-poem .fv-stanza { margin: 0 0 1.3em 0; }
+  .fv-poem .fv-stanza:last-child { margin-bottom: 0; }
+  .fv-poem .fv-line { display: block; }
+  .fv-poem .fv-stanza-sep {
+    display: block;
+    text-align: center;
+    color: var(--cream-faint);
+    font-family: 'DM Mono', monospace;
+    font-style: normal;
+    font-size: 11px;
+    letter-spacing: 0.5em;
+    margin: 0.8em 0 1.6em 0.5em;
+    text-shadow: none;
+  }
+
+  /* ── Statistics block ── */
+  .fv-stats-h {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin: 0 0 16px 0;
+  }
+  .fv-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 0 0 54px 0;
+    border-top: 1px solid var(--cell-border);
+  }
+  .fv-stat {
+    padding: 14px 0 14px 0;
+    border-bottom: 1px solid var(--cell-border);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 14px;
+    align-items: baseline;
+  }
+  .fv-stat:nth-child(odd)  { padding-right: 22px; border-right: 1px solid var(--cell-border); }
+  .fv-stat:nth-child(even) { padding-left: 22px; }
+  .fv-stat-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--cream-faint);
+    text-transform: uppercase;
+  }
+  .fv-stat-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--cream);
+    letter-spacing: 0.02em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .fv-stat-val .fv-stat-unit {
+    font-size: 10px;
+    color: var(--cream-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-left: 0.5em;
+  }
+
+  /* ── Project note ── */
+  .fv-note {
+    font-family: 'Newsreader', 'EB Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(15px, 1.4vw, 17px);
+    line-height: 1.65;
+    color: var(--cream-dim);
+    margin: 0 0 48px 0;
+  }
+  .fv-note em { color: var(--cream); font-style: italic; }
+  .fv-note a {
+    color: var(--cream);
+    text-decoration: none;
+    border-bottom: 1px solid var(--cream-ghost);
+    padding-bottom: 1px;
+    transition: border-color 180ms ease;
+  }
+  .fv-note a:hover { border-bottom-color: var(--cream); }
+
+  /* ── Melville motto, echoing the intro-splash ── */
+  .fv-motto-sep {
+    height: 1px;
+    background: var(--cell-border-z);
+    margin: 0 0 44px 0;
+  }
+  .fv-motto {
+    max-width: 640px;
+    margin: 0;
+    color: var(--cream-dim);
+    font-family: 'EB Garamond', 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(16px, 1.6vw, 19px);
+    line-height: 1.7;
+    text-align: left;
+    font-variant-numeric: oldstyle-nums;
+  }
+  .fv-motto p { margin: 0 0 1.4em 0; text-indent: -0.35em; }
+  .fv-motto p::before { content: '\201C'; color: var(--cream); margin-right: 0.08em; }
+  .fv-motto p::after  { content: '\201D'; color: var(--cream); margin-left: 0.05em; }
+  .fv-motto footer {
+    font-style: normal;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--cream-faint);
+    text-transform: uppercase;
+  }
+  .fv-motto footer cite { font-style: italic; }
+
+  .fv-footer {
+    margin-top: 44px;
+    padding-top: 24px;
+    border-top: 1px solid var(--cell-border);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .fv-footer a {
+    color: var(--cream-dim);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .fv-footer a:hover { color: var(--cream); border-bottom-color: var(--cream-ghost); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .h-title-bar { padding: 0 14px; height: 36px; }
+    .h-title { font-size: 11px; letter-spacing: 0.22em; }
+    .h-meta { font-size: 9px; letter-spacing: 0.12em; }
+    .h-nav { padding: 0 14px; gap: 18px; }
+    .h-nav-item { font-size: 9px; letter-spacing: 0.18em; }
+    .h-status { padding: 0 14px; gap: 10px; font-size: 9px; letter-spacing: 0.1em; }
+    .fleet-view, .about-view, .catch-view { padding: 22px 16px; }
+    .catch-big { font-size: 34px; }
+    .catch-pdf-panel { grid-template-columns: 1fr; gap: 22px; }
+    .cpp-preview { margin: 0 auto; }
+
+    .fv-wrap { padding: 7vh 18px 10vh; }
+    .fv-stats { grid-template-columns: 1fr; }
+    .fv-stat:nth-child(odd),
+    .fv-stat:nth-child(even) {
+      padding: 14px 0;
+      border-right: none;
+    }
+    .fv-footer { flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     FINAL VIEW — "Final Puff"
+     Shown when the pool has reached FINAL_FLOOR (= 1 surviving cell).
+     Hidden by default; JS toggles .is-visible based on backend status
+     (or the ?final URL param, for preview).
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="final-view" role="dialog" aria-label="Final Puff" aria-hidden="true">
+  <div class="fv-wrap">
+    <h1 class="fv-title" data-i18n="final.title">Final Puff</h1>
+    <div class="fv-subtitle">
+      <span data-i18n="final.subtitle.lead">A three-stanza poem remains</span>
+      <span class="fv-date-sep">&middot;</span>
+      <span id="fv-end-date">—</span>
+    </div>
+
+    <div class="fv-coords" aria-label="final cell coordinates">
+      <span><span class="fv-coord-lbl" data-i18n="final.coords.lat">lat</span>&nbsp;<span class="fv-coord-val" id="fv-lat">—</span></span>
+      <span><span class="fv-coord-lbl" data-i18n="final.coords.lon">lon</span>&nbsp;<span class="fv-coord-val" id="fv-lon">—</span></span>
+    </div>
+
+    <div class="fv-poem" id="fv-poem" aria-label="the final poem">
+      <!-- Populated by JS: three .fv-stanza blocks with four .fv-line each, separated by .fv-stanza-sep -->
+    </div>
+
+    <div class="fv-stats-h" data-i18n="final.stats.h">Record of the erasure</div>
+    <div class="fv-stats">
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.erased">Stanzas erased</span>
+        <span class="fv-stat-val" id="fv-erased">459&thinsp;999&thinsp;999</span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.survived">Surviving</span>
+        <span class="fv-stat-val">1&nbsp;<span class="fv-stat-unit" data-i18n="final.stat.cell">cell</span> / 3&nbsp;<span class="fv-stat-unit" data-i18n="final.stat.stanzas">stanzas</span></span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.hours">Fishing hours logged</span>
+        <span class="fv-stat-val" id="fv-hours">153&thinsp;333&thinsp;333</span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.vessels">Vessels involved</span>
+        <span class="fv-stat-val" id="fv-vessels">47&thinsp;820</span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.days">Days of operation</span>
+        <span class="fv-stat-val" id="fv-days">1&thinsp;487</span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.span">Time span</span>
+        <span class="fv-stat-val" id="fv-span">13 Feb 2026 &ndash; <span id="fv-span-end">—</span></span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.source">Source material</span>
+        <span class="fv-stat-val">225&thinsp;000&thinsp;000&thinsp;000&thinsp;000&nbsp;<span class="fv-stat-unit" data-i18n="final.stat.possible">possible</span></span>
+      </div>
+      <div class="fv-stat">
+        <span class="fv-stat-lbl" data-i18n="final.stat.factor">Depletion factor</span>
+        <span class="fv-stat-val">3&nbsp;<span class="fv-stat-unit" data-i18n="final.stat.per-hour">per hour</span></span>
+      </div>
+    </div>
+
+    <p class="fv-note" data-i18n-html="final.note">
+      <em>Remorseless Havoc</em> has run its course. The poetic ocean
+      is empty &mdash; one cell kept back as the work's final poem. The
+      verses had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>
+      by Nick Montfort &amp; Stephanie Strickland; their deletion was driven
+      day by day by AIS data from
+      <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>.
+      A project by <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.
+    </p>
+
+    <div class="fv-motto-sep"></div>
+    <blockquote class="fv-motto">
+      <p data-i18n="final.motto.text">Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
+      <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, <span data-i18n="final.motto.chapter">Chapter&nbsp;CV</span></footer>
+    </blockquote>
+
+    <div class="fv-footer">
+      <span>&copy; Simon Roloff, 2026 &ndash; <span id="fv-footer-year">—</span></span>
+      <span data-i18n-html="final.footer.license">Texts released under the <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT&nbsp;License</a></span>
+      <span><a href="https://roloffsimon.com" target="_blank" rel="noopener">roloffsimon.com</a></span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     INTRO SPLASH — Moby-Dick-Motto
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="intro-splash" role="dialog" aria-label="Motto" tabindex="0">
+  <blockquote class="motto">
+    <p>Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
+    <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, Chapter&nbsp;CV</footer>
+  </blockquote>
+  <div class="splash-hint" data-i18n="splash.hint">click anywhere to enter</div>
+</div>
+
+<div class="page">
+  <!-- TITEL-ZEILE -->
+  <header class="h-title-bar">
+    <div class="h-title">Remorseless Havoc</div>
+    <div class="h-title-right">
+      <div class="h-meta">
+        <span class="h-day"><span data-i18n="header.day">Day</span> <strong>058</strong></span>
+        <span class="h-sep">&middot;</span>
+        <span class="h-date">10 APR 2026</span>
+      </div>
+      <div class="h-lang" role="group" aria-label="language">
+        <button type="button" data-lang="de">DE</button>
+        <span class="h-lang-sep">/</span>
+        <button type="button" data-lang="en" class="is-active">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV-BAR -->
+  <nav class="h-nav">
+    <button type="button" class="h-nav-item is-active" data-view="ocean" data-i18n="nav.ocean">Ocean</button>
+    <button type="button" class="h-nav-item" data-view="fleet" data-i18n="nav.fleet">Fleet</button>
+    <button type="button" class="h-nav-item" data-view="about" data-i18n="nav.about">About</button>
+    <button type="button" class="h-nav-item" data-view="catch" data-i18n="nav.catch">Catch of the Day</button>
+  </nav>
+
+  <div class="content">
+    <!-- OCEAN VIEW -->
+    <div id="view-ocean" class="view active">
+      <div class="ocean-canvas-wrapper">
+        <canvas id="ocean-canvas"></canvas>
+
+        <!-- Container für initiale Vessel-Popups -->
+        <div id="vessel-popups-layer" style="position:absolute;inset:0;pointer-events:none;z-index:20;"></div>
+
+        <div class="map-overlay-cell" id="cell-hover">
+          <div class="ch-coords"></div>
+          <div class="ch-stanza"></div>
+        </div>
+
+        <div class="map-overlay-hint" data-state="idle" data-i18n-html="ocean.hint">
+          scroll to zoom &middot; drag to pan<br>
+          zoom in to read the stanzas
+        </div>
+
+        <div class="loading-fallback" id="loading-fallback" data-i18n="ocean.loading">calibrating ocean grid &hellip;</div>
+      </div>
+    </div>
+
+    <!-- FLEET VIEW -->
+    <div class="view" id="view-fleet">
+      <div class="scrollable">
+        <div class="fleet-view">
+          <div class="fleet-head">
+            <div class="fh-title" data-i18n="fleet.title">Active Fleet</div>
+            <div class="fh-date">10 April 2026 &middot; <span id="fleet-count">8&thinsp;766</span> <span data-i18n="fleet.vessels-suffix">vessels</span></div>
+            <div class="fh-search">
+              <input type="text" id="fleet-search" data-i18n-placeholder="fleet.search.placeholder" placeholder="search name, flag, type&hellip;" />
+            </div>
+          </div>
+          <div class="fleet-filters">
+            <select id="fleet-sort">
+              <option value="caught-desc" data-i18n="fleet.sort.most">sort: caught (most)</option>
+              <option value="caught-asc" data-i18n="fleet.sort.least">sort: caught (fewest)</option>
+              <option value="hours" data-i18n="fleet.sort.hours">sort: hours fished</option>
+              <option value="alpha" data-i18n="fleet.sort.alpha">sort: alphabetical</option>
+            </select>
+            <select id="fleet-flag">
+              <option value="" data-i18n="fleet.flag.all">flag: all</option>
+            </select>
+            <select id="fleet-type">
+              <option value="" data-i18n="fleet.type.all">type: all</option>
+              <option data-i18n="fleet.type.trawler">Trawler</option>
+              <option data-i18n="fleet.type.longliner">Longliner</option>
+              <option data-i18n="fleet.type.purse-seiner">Purse Seiner</option>
+            </select>
+          </div>
+          <div class="fleet-grid" id="fleet-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT VIEW -->
+    <div class="view" id="view-about">
+      <div class="scrollable">
+        <div class="about-view">
+          <h2 data-i18n="about.h2">About</h2>
+          <p data-i18n-html="about.p1">
+            <em>Remorseless Havoc</em> consists of an ocean of algorithmically generated
+            language. The stanzas you can see zooming in on the map are generated by an
+            algorithm from <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>,
+            a work of digital literature developed by Nick Montfort and Stephanie Strickland
+            in 2010. They devised a grid of algorithmically generated verses assembled from
+            language fragments by Emily Dickinson and Herman Melville. If you open
+            <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend
+            almost endlessly in every direction, triggering the vertigo of combinatorics in
+            an infinity with no practically reachable boundary, created from finite source
+            material. Montfort and Strickland say their work contains as many verses as there
+            are &ldquo;fish in the sea.&rdquo;
+          </p>
+          <p data-i18n-html="about.p3">
+            <em>Remorseless Havoc</em> takes that metaphor literally and maps the
+            combinatory ocean onto the real seas of the world. It transfers Montfort and
+            Strickland&rsquo;s stanzas into a grid spanning the whole globe with landmasses
+            spared. Each cell represents a space of about one square kilometre
+            (1.1 &times; 1.1&nbsp;km at the equator). This leaves out the majority of stanzas
+            from the originally generated trillions. Approximately 460 million verses remain,
+            with a subsequent second erasure following, driven by the real fishing operations
+            of real-world ships searching for actual fish in the sea.
+            <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>
+            tracks the movements and activities of tens of thousands of fishing vessels via AIS
+            transponder data; a daily retrieval translates their fishing hours into verse
+            deletions on this website. This means that one day, all verses will have been
+            removed from the sea &mdash; just as the resources of the ocean on which we depend,
+            the store of language in this work is finite.
+          </p>
+          <p data-i18n-html="about.p3b">
+            A note on the map. Its grid of one-square-kilometre stanza cells holds
+            approximately 460 million entries. For rendering efficiency, the map displays a
+            coarser tile grid of roughly 10 &times; 10&nbsp;km (0.1&deg;); each visible tile
+            aggregates 100 stanza cells. The three shades on the ocean encode how much of each
+            tile has been erased: intact (all 100 stanzas still alive), partially depleted
+            (at least one erased), fully depleted (all 100 gone). When you zoom in, each tile
+            reveals one representative stanza drawn from its centre cell; the full stanza
+            cell grid is only ever consulted by the backend when a fishing event actually
+            deletes verses.
+          </p>
+          <p data-i18n-html="about.p4">
+            You can watch this happen on the map, browse all poems generated in the
+            <em>Fleet</em>-View or download the day&rsquo;s poetry volume under
+            <em>Catch of the Day</em> &mdash; an archive of the previous day&rsquo;s erasures.
+            Each vessel assembles the verses it takes from the ocean on a given day into a
+            poem, ordered from greater lexical diversity toward monotony and simplicity. The
+            poems of a single day are collected into a (rather large) PDF.
+          </p>
+          <p data-i18n-html="about.p5">
+            The work runs until the poetic ocean is empty. Based on current data, roughly until
+            the year 2030. Then one last cell will remain &mdash; the &ldquo;final puff&rdquo;
+            of the Leviathan, speculated upon in Chapter CV of Herman Melville&rsquo;s
+            <em>Moby-Dick</em>, &ldquo;Does the Whale&rsquo;s Magnitude Diminish?&mdash;Will He
+            Perish?&rdquo;, from which the project&rsquo;s title is also drawn as a direct
+            quotation. Of the original 225 trillion possible stanzas, a single last poem will
+            survive. When and where it emerges, and not least what its text will be, is
+            determined by the contingencies of the exploitation of the seas.
+          </p>
+          <div class="about-sep"></div>
+          <div class="about-spec">
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.grid">Grid</span><span class="spec-val">36&thinsp;000 &times; 18&thinsp;000 (0.01&deg;)</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.cells">Water cells</span><span class="spec-val">460&thinsp;000&thinsp;000</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.factor">Factor</span><span class="spec-val" data-i18n="about.spec.factor-val">3 stanzas / fishing hour</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.data">Data</span><span class="spec-val">Global Fishing Watch Events API v3</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.cycle">Cycle</span><span class="spec-val" data-i18n="about.spec.cycle-val">Daily 04:00 UTC</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.generator">Generator</span><span class="spec-val" data-i18n="about.spec.generator-val">Montfort / Strickland (deterministic)</span></div>
+            <div class="spec-row"><span class="spec-lbl" data-i18n="about.spec.display">Display</span><span class="spec-val" data-i18n="about.spec.display-val">Custom canvas renderer (0.1&deg;)</span></div>
+          </div>
+          <div class="about-sep"></div>
+          <div class="about-credits" data-i18n-html="about.credits">
+            Concept, implementation and webdesign: Simon Roloff<br>
+            Based on <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> by Nick Montfort &amp; Stephanie Strickland<br>
+            Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>
+          </div>
+          <div class="about-license" data-i18n-html="about.license">
+            <strong>Imprint &middot; License</strong>
+            &copy; Simon Roloff. The texts of this website and of the downloadable
+            <em>Catch of the Day</em> documents are released under the
+            <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT&nbsp;License</a>
+            and may be reused, adapted and redistributed, provided that <em>Remorseless Havoc</em>
+            (Simon Roloff, 2026) is credited as the source.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATCH VIEW -->
+    <div class="view" id="view-catch">
+      <div class="scrollable">
+        <div class="catch-view">
+          <div class="catch-head">
+            <div class="ch-title" data-i18n="catch.title">Catch of the Day</div>
+            <div class="ch-date">10 April 2026</div>
+          </div>
+
+          <div class="catch-big"><span id="catch-big-num">291&thinsp;723</span><span class="cb-unit" data-i18n="catch.unit.stanzas">stanzas</span></div>
+          <div class="catch-sub">
+            <div><span class="cs-val">8&thinsp;766</span><span class="cs-lbl" data-i18n="catch.sub.vessels">vessels</span></div>
+            <div><span class="cs-val">97&thinsp;241</span><span class="cs-lbl" data-i18n="catch.sub.hours">hours fished</span></div>
+            <div><span class="cs-val">+0.0006&thinsp;%</span><span class="cs-lbl" data-i18n-html="catch.sub.delta">&Delta; depletion</span></div>
+          </div>
+
+          <p class="catch-intro" data-i18n-html="catch.intro">
+            On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across
+            the world ocean. At the project&rsquo;s rate of three stanzas per fishing hour, this
+            activity erased 291&thinsp;723 stanzas from the poetic ocean of
+            <em>Sea and Spar Between</em>. The document you can download below is the verbatim
+            catch of that day: every erased stanza, attributed to the vessel that took it,
+            with GPS coordinates ordered by Shannon entropy &mdash; 291&thinsp;723 verses
+            across approximately 2&thinsp;450 pages.
+          </p>
+
+          <div class="catch-pdf-panel">
+            <!-- PDF-Thumbnail: mirrors the Alt-B "Ledger" cover. The spans
+                 carry IDs so the same data pipeline that populates
+                 catch-big / catch-sub / status-bar writes the current
+                 day's values here as well. -->
+            <div class="cpp-preview" aria-hidden="true">
+              <div class="cpp-cover-middle">
+                <div class="cpp-cover-title" data-i18n="catch.title">Catch of the Day</div>
+              </div>
+              <div>
+                <div class="cpp-cover-rule"></div>
+                <div class="cpp-cover-bottom">
+                  <span><span data-i18n="header.day">Day</span>&nbsp;<span id="cpp-vol">058</span></span>
+                  <span id="cpp-date">10 APR 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="cpp-cta">
+              <div class="cpp-size">
+                <label class="cpp-size-label" for="catch-size" data-i18n="catch.size.label">Document size</label>
+                <select id="catch-size" class="cpp-size-select" aria-describedby="catch-size-note">
+                  <option value="full"    selected data-i18n="catch.size.full">Complete archive &middot; ~51&thinsp;MB</option>
+                  <option value="digest"           data-i18n="catch.size.digest">Digest (every 10th catch) &middot; ~5&thinsp;MB</option>
+                  <option value="excerpt"          data-i18n="catch.size.excerpt">Excerpt (every 100th catch) &middot; ~500&thinsp;KB</option>
+                  <option value="vessel"           data-i18n="catch.size.vessel">Top vessel only &middot; ~30&thinsp;KB</option>
+                </select>
+              </div>
+              <div class="cta-label" data-i18n-html="catch.cta.label">Before downloading please consider donating to ocean conservation</div>
+              <a class="btn-havoc is-donate" href="https://globalfishingwatch.org/support-us/" target="_blank" rel="noopener" data-donate="gfw">
+                <span data-i18n="catch.cta.gfw">Donate to Global Fishing Watch</span>
+                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+              </a>
+              <a class="btn-havoc is-donate" href="https://www.greenpeace.de/spenden/online-spenden?step=personal_data#webform-submission-spenden-form-multi-o-slider-node-235-add-form" target="_blank" rel="noopener" data-donate="greenpeace">
+                <span data-i18n="catch.cta.greenpeace">Donate to Greenpeace</span>
+                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+              </a>
+              <a class="btn-havoc is-donate" href="https://www.wwf.de/spenden-helfen/allgemeine-spende" target="_blank" rel="noopener" data-donate="wwf">
+                <span data-i18n="catch.cta.wwf">Donate to WWF</span>
+                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+              </a>
+              <button type="button" class="btn-havoc is-download" id="download-without">
+                <span class="btn-icon btn-icon-lead" aria-hidden="true">&#x2193;</span>
+                <span data-i18n="catch.cta.without">Download</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS-BAR am unteren Rand (nur auf Ocean-View sichtbar) -->
+  <footer class="h-status" id="status-bar">
+    <div class="hs-group">
+      <span class="hs-val" id="hs-cells-alive">459&thinsp;889&thinsp;440</span>
+      <span class="hs-lab" data-i18n="status.cells-alive">cells alive</span>
+    </div>
+    <div class="hs-sep hs-vessels-sep">&middot;</div>
+    <div class="hs-group hs-vessels">
+      <span class="hs-val" id="hs-vessels-active">&mdash;</span>
+      <span class="hs-lab" data-i18n="status.vessels-active">vessels active</span>
+    </div>
+    <div class="hs-sep hs-caught-sep">&middot;</div>
+    <div class="hs-group hs-caught">
+      <span class="hs-val" id="hs-caught-today">291&thinsp;723</span>
+      <span class="hs-lab" data-i18n="status.stanzas-caught">stanzas caught today</span>
+    </div>
+    <div class="hs-spacer"></div>
+    <div class="hs-group hs-depleted">
+      <span class="hs-val" id="hs-depleted">0.024<span class="hs-unit">%</span></span>
+      <span class="hs-lab" data-i18n="status.depleted">depleted</span>
+    </div>
+  </footer>
+</div>
+
+<!-- Download-Modal -->
+<div class="catch-modal-backdrop" id="download-modal">
+  <div class="catch-modal">
+    <div class="cm-title" data-i18n="catch.modal.title">Generating your catch</div>
+    <div class="cm-text" data-i18n-html="catch.modal.text">10 April 2026 &mdash; 291&thinsp;723 stanzas, 2&thinsp;450 pages, ~51&thinsp;MB.<br>This takes about 40 seconds.</div>
+    <div class="cm-bar"><div class="cm-bar-fill" id="dl-bar"></div></div>
+    <div class="cm-status" id="dl-status" data-i18n="catch.modal.preparing">Preparing&hellip;</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// I18N — DE/EN Translations
+// ══════════════════════════════════════════════════
+
+const I18N = {
+  en: {
+    'header.day': 'Day',
+    'nav.ocean': 'Ocean',
+    'nav.fleet': 'Fleet',
+    'nav.about': 'About',
+    'nav.catch': 'Catch of the Day',
+    'splash.hint': 'click anywhere to enter',
+    'ocean.hint': 'scroll to zoom &middot; drag to pan<br>zoom in to read the stanzas',
+    'ocean.loading': 'calibrating ocean grid \u2026',
+    'status.cells-alive': 'cells alive',
+    'status.vessels-active': 'vessels active',
+    'status.stanzas-caught': 'stanzas caught today',
+    'status.depleted': 'depleted',
+    'fleet.title': 'Active Fleet',
+    'fleet.vessels-suffix': 'vessels',
+    'fleet.search.placeholder': 'search name, flag, type\u2026',
+    'fleet.sort.most': 'sort: caught (most)',
+    'fleet.sort.least': 'sort: caught (fewest)',
+    'fleet.sort.hours': 'sort: hours fished',
+    'fleet.sort.alpha': 'sort: alphabetical',
+    'fleet.flag.all': 'flag: all',
+    'fleet.flag.prefix': 'flag',
+    'fleet.type.all': 'type: all',
+    'fleet.type.trawler': 'Trawler',
+    'fleet.type.longliner': 'Longliner',
+    'fleet.type.purse-seiner': 'Purse Seiner',
+    'about.h2': 'About',
+    'about.p1': '<em>Remorseless Havoc</em> consists of an ocean of algorithmically generated language. The stanzas you can see zooming in on the map are generated by an algorithm from <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>, a work of digital literature developed by Nick Montfort and Stephanie Strickland in 2010. They devised a grid of algorithmically generated verses assembled from language fragments by Emily Dickinson and Herman Melville. If you open <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend almost endlessly in every direction, triggering the vertigo of combinatorics in an infinity with no practically reachable boundary, created from finite source material. Montfort and Strickland say their work contains as many verses as there are \u201cfish in the sea.\u201d',
+    'about.p3': '<em>Remorseless Havoc</em> takes that metaphor literally and maps the combinatory ocean onto the real seas of the world. It transfers Montfort and Strickland\u2019s stanzas into a grid spanning the whole globe with landmasses spared. Each cell represents a space of about one square kilometre (1.1 \u00d7 1.1\u00a0km at the equator). This leaves out the majority of stanzas from the originally generated trillions. Approximately 460 million verses remain, with a subsequent second erasure following, driven by the real fishing operations of real-world ships searching for actual fish in the sea. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> tracks the movements and activities of tens of thousands of fishing vessels via AIS transponder data; a daily retrieval translates their fishing hours into verse deletions on this website. This means that one day, all verses will have been removed from the sea \u2014 just as the resources of the ocean on which we depend, the store of language in this work is finite.',
+    'about.p3b': 'A note on the map. Its grid of one-square-kilometre stanza cells holds approximately 460 million entries. For rendering efficiency, the map displays a coarser tile grid of roughly 10 \u00d7 10\u00a0km (0.1\u00b0); each visible tile aggregates 100 stanza cells. The three shades on the ocean encode how much of each tile has been erased: intact (all 100 stanzas still alive), partially depleted (at least one erased), fully depleted (all 100 gone). When you zoom in, each tile reveals one representative stanza drawn from its centre cell; the full stanza cell grid is only ever consulted by the backend when a fishing event actually deletes verses.',
+    'about.p4': 'You can watch this happen on the map, browse all poems generated in the <em>Fleet</em>-View or download the day\u2019s poetry volume under <em>Catch of the Day</em> \u2014 an archive of the previous day\u2019s erasures. Each vessel assembles the verses it takes from the ocean on a given day into a poem, ordered from greater lexical diversity toward monotony and simplicity. The poems of a single day are collected into a (rather large) PDF.',
+    'about.p5': 'The work runs until the poetic ocean is empty. Based on current data, roughly until the year 2030. Then one last cell will remain \u2014 the \u201cfinal puff\u201d of the Leviathan, speculated upon in Chapter CV of Herman Melville\u2019s <em>Moby-Dick</em>, \u201cDoes the Whale\u2019s Magnitude Diminish?\u2014Will He Perish?\u201d, from which the project\u2019s title is also drawn as a direct quotation. Of the original 225 trillion possible stanzas, a single last poem will survive. When and where it emerges, and not least what its text will be, is determined by the contingencies of the exploitation of the seas.',
+    'about.spec.grid': 'Grid',
+    'about.spec.cells': 'Water cells',
+    'about.spec.factor': 'Factor',
+    'about.spec.factor-val': '3 stanzas / fishing hour',
+    'about.spec.data': 'Data',
+    'about.spec.cycle': 'Cycle',
+    'about.spec.cycle-val': 'Daily 04:00 UTC',
+    'about.spec.generator': 'Generator',
+    'about.spec.generator-val': 'Montfort / Strickland (deterministic)',
+    'about.spec.display': 'Display',
+    'about.spec.display-val': 'Custom canvas renderer (0.1\u00b0)',
+    'about.credits': 'Concept, implementation and webdesign: Simon Roloff<br>Based on <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> by Nick Montfort &amp; Stephanie Strickland<br>Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>',
+    'about.license': '<strong>Imprint &middot; License</strong>&copy; Simon Roloff. The texts of this website and of the downloadable <em>Catch of the Day</em> documents are released under the <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT&nbsp;License</a> and may be reused, adapted and redistributed, provided that <em>Remorseless Havoc</em> (Simon Roloff, 2026) is credited as the source.',
+    'catch.title': 'Catch of the Day',
+    'catch.thumb.sub': 'From <em>Remorseless Havoc</em>',
+    'catch.thumb.pp': 'pp',
+    'catch.unit.stanzas': 'stanzas',
+    'catch.sub.vessels': 'vessels',
+    'catch.sub.hours': 'hours fished',
+    'catch.sub.delta': '&Delta; depletion',
+    'catch.intro': 'On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across the world ocean. At the project\u2019s rate of three stanzas per fishing hour, this activity erased 291&thinsp;723 stanzas from the poetic ocean of <em>Sea and Spar Between</em>. The document you can download below is the verbatim catch of that day: every erased stanza, attributed to the vessel that took it, with GPS coordinates ordered by Shannon entropy \u2014 291&thinsp;723 verses across approximately 2&thinsp;450 pages.',
+    'catch.size.label': 'Document size',
+    'catch.size.full':    'Complete archive \u00b7 ~51\u2009MB',
+    'catch.size.digest':  'Digest (every 10th catch) \u00b7 ~5\u2009MB',
+    'catch.size.excerpt': 'Excerpt (every 100th catch) \u00b7 ~500\u2009KB',
+    'catch.size.vessel':  'Top vessel only \u00b7 ~30\u2009KB',
+    'catch.size.note':    'The full archive is the primary document \u2014 the scale of the day\u2019s erasure is part of the work. Thinner cuts are for orientation; the order of catches and the per-vessel structure are preserved.',
+    'catch.cta.label': 'Before downloading please consider donating to ocean conservation',
+    'catch.cta.gfw': 'Donate to Global Fishing Watch',
+    'catch.cta.greenpeace': 'Donate to Greenpeace',
+    'catch.cta.wwf': 'Donate to WWF',
+    'catch.cta.or': 'or',
+    'catch.cta.without': 'Download',
+    'catch.modal.title': 'Generating your catch',
+    'catch.modal.text': '10 April 2026 \u2014 291&thinsp;723 stanzas, 2&thinsp;450 pages, ~51&thinsp;MB.<br>This takes about 40 seconds.',
+    'catch.modal.preparing': 'Preparing\u2026',
+    'catch.modal.rendering': 'Rendering stanzas \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
+    'catch.modal.paginating': 'Paginating \u2014 630\u2009/\u2009872 pp',
+    'catch.modal.done': 'Done.',
+    'popup.fishing': 'hrs fishing',
+    'popup.just-now': 'just now',
+    'popup.gps': 'gps',
+    'final.title': 'Final Puff',
+    'final.subtitle.lead': 'A three-stanza poem remains',
+    'final.coords.lat': 'lat',
+    'final.coords.lon': 'lon',
+    'final.stats.h': 'Record of the erasure',
+    'final.stat.erased': 'Stanzas erased',
+    'final.stat.survived': 'Surviving',
+    'final.stat.cell': 'cell',
+    'final.stat.stanzas': 'stanzas',
+    'final.stat.hours': 'Fishing hours logged',
+    'final.stat.vessels': 'Vessels involved',
+    'final.stat.days': 'Days of operation',
+    'final.stat.span': 'Time span',
+    'final.stat.source': 'Source material',
+    'final.stat.possible': 'possible',
+    'final.stat.factor': 'Depletion factor',
+    'final.stat.per-hour': 'per hour',
+    'final.note': '<em>Remorseless Havoc</em> has run its course. The poetic ocean is empty \u2014 one cell kept back as the work\u2019s final poem. The verses had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> by Nick Montfort &amp; Stephanie Strickland; their deletion was driven day by day by AIS data from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. A project by <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
+    'final.motto.text': 'Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
+    'final.motto.chapter': 'Chapter\u00a0CV',
+    'final.footer.license': 'Texts released under the <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT&nbsp;License</a>',
+  },
+  de: {
+    'header.day': 'Tag',
+    'nav.ocean': 'Ozean',
+    'nav.fleet': 'Flotte',
+    'nav.about': '\u00dcber',
+    'nav.catch': 'Fang des Tages',
+    'splash.hint': 'klicken zum eintreten',
+    'ocean.hint': 'scrollen zum zoomen &middot; ziehen zum schwenken<br>heranzoomen, um die strophen zu lesen',
+    'ocean.loading': 'ozean-gitter wird kalibriert \u2026',
+    'status.cells-alive': 'aktive zellen',
+    'status.vessels-active': 'aktive schiffe',
+    'status.stanzas-caught': 'heute erfasste strophen',
+    'status.depleted': 'ersch\u00f6pft',
+    'fleet.title': 'Aktive Flotte',
+    'fleet.vessels-suffix': 'Schiffe',
+    'fleet.search.placeholder': 'Name, Flagge, Typ suchen\u2026',
+    'fleet.sort.most': 'sortieren: Fang (meist)',
+    'fleet.sort.least': 'sortieren: Fang (wenigste)',
+    'fleet.sort.hours': 'sortieren: Fangstunden',
+    'fleet.sort.alpha': 'sortieren: alphabetisch',
+    'fleet.flag.all': 'Flagge: alle',
+    'fleet.flag.prefix': 'Flagge',
+    'fleet.type.all': 'Typ: alle',
+    'fleet.type.trawler': 'Trawler',
+    'fleet.type.longliner': 'Langleiner',
+    'fleet.type.purse-seiner': 'Ringwadenf\u00e4nger',
+    'about.h2': '\u00dcber',
+    'about.p1': '<em>Remorseless Havoc</em> besteht aus einem Ozean algorithmisch erzeugter Sprache. Die Strophen, die beim Hineinzoomen auf der Karte sichtbar werden, erzeugt ein Algorithmus aus <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>, einem 2010 von Nick Montfort und Stephanie Strickland entwickelten Werk digitaler Literatur. Die beiden haben ein Gitter algorithmisch generierter Verse entworfen, das aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt ist. \u00d6ffnet man <em>Sea and Spar Between</em> im Browser, erstrecken sich rund 225 Billionen Eintr\u00e4ge nahezu endlos in alle Richtungen und l\u00f6sen den Schwindel der Kombinatorik aus \u2014 eine Unendlichkeit ohne praktisch erreichbare Grenze, hervorgebracht aus endlichem Ausgangsmaterial. Montfort und Strickland sprechen davon, dass ihr Werk so viele Verse enth\u00e4lt, wie es \u201eFische im Meer gibt\u201c.',
+    'about.p3': '<em>Remorseless Havoc</em> nimmt diese Metapher w\u00f6rtlich und bezieht den kombinatorischen Ozean auf die echten Weltmeere. Es \u00fcbertr\u00e4gt Montforts und Stricklands Strophen in ein Gitternetz, das den ganzen Globus \u00fcberspannt, wobei die Landfl\u00e4chen ausgespart sind. Jede Zelle steht f\u00fcr einen Raum von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quator). Damit f\u00e4llt der Gro\u00dfteil der urspr\u00fcnglich generierten Strophen weg. \u00dcbrig bleiben rund 460 Millionen Verse, denen eine zweite L\u00f6schung folgt \u2014 angetrieben von den realen Fangoperationen realer Schiffe, die nach echten Fischen im Meer suchen. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> erfasst \u00fcber AIS-Transponderdaten die Bewegungen und Aktivit\u00e4ten Zehntausender Fischereifahrzeuge; ein t\u00e4glicher Abruf \u00fcbersetzt deren Fischereistunden in Versl\u00f6schungen auf dieser Website. Das bedeutet, dass eines Tages alle Verse aus dem Meer entfernt worden sein werden \u2014 genau wie die Ressourcen des Meeres, von denen wir leben, ist auch der Sprachvorrat in dieser Arbeit endlich.',
+    'about.p3b': 'Zur Lesbarkeit der Karte. Das Gitter der Strophen-Zellen zu je einem Quadratkilometer enth\u00e4lt rund 460 Millionen Eintr\u00e4ge. Aus Performance-Gr\u00fcnden zeigt die Karte ein gr\u00f6beres Kachelraster von etwa 10 \u00d7 10 km (0,1\u00b0); jede sichtbare Kachel fasst 100 Strophen-Zellen zusammen. Die drei T\u00f6nungen auf dem Ozean zeigen an, wie viel von einer Kachel bereits gel\u00f6scht wurde: intakt (alle 100 Strophen noch lebendig), teilweise abgebaut (mindestens eine gel\u00f6scht), vollst\u00e4ndig abgebaut (alle 100 verschwunden). Wenn man hineinzoomt, zeigt jede Kachel stellvertretend eine Strophe aus ihrer zentralen Zelle; das volle Strophen-Gitter wird erst dann konsultiert, wenn ein Fischerei-Event tats\u00e4chlich Verse l\u00f6scht.',
+    'about.p4': 'Man kann dabei auf der Karte zusehen, in der <em>Flotte</em>-Ansicht alle erzeugten Gedichte durchst\u00f6bern oder unter <em>Fang des Tages</em> den Gedichtband als Archiv der L\u00f6schungen des vorigen Tages herunterladen. Jedes Schiff f\u00fcgt die Verse, die es an einem Tag aus dem Ozean entnimmt, zu einem Gedicht zusammen \u2014 sortiert von gr\u00f6\u00dferer lexikalischer Diversit\u00e4t hin zu mehr Monotonie und Einfachheit. Die so zusammengestellten Gedichte eines Tages werden zu einem (ziemlich gro\u00dfen) PDF zusammengef\u00fcgt.',
+    'about.p5': 'Die Arbeit l\u00e4uft, bis der poetische Ozean leer ist. Auf Basis der aktuellen Daten ungef\u00e4hr bis ins Jahr 2030. Dann bleibt eine letzte Zelle \u00fcbrig \u2014 der \u201efinal puff\u201c des Leviathans, \u00fcber den im Kapitel CV \u201eVermindert sich des Wals Gr\u00f6\u00dfe? Wird er zugrunde gehen?\u201c von Herman Melvilles <em>Moby Dick</em> spekuliert wird \u2014 diesem Text ist auch der Titel des Projekts als direktes Zitat entnommen. Aus urspr\u00fcnglich 225 Billionen m\u00f6glichen Stanzen wird also ein letztes Gedicht \u00fcbrig bleiben. Wann und wo es entsteht, nicht zuletzt welchen Text es haben wird, bestimmen die Zuf\u00e4lle der Ausbeutung der Meere.',
+    'about.spec.grid': 'Gitter',
+    'about.spec.cells': 'Wasserzellen',
+    'about.spec.factor': 'Faktor',
+    'about.spec.factor-val': '3 Strophen / Fangstunde',
+    'about.spec.data': 'Daten',
+    'about.spec.cycle': 'Zyklus',
+    'about.spec.cycle-val': 'T\u00e4glich 04:00 UTC',
+    'about.spec.generator': 'Generator',
+    'about.spec.generator-val': 'Montfort / Strickland (deterministisch)',
+    'about.spec.display': 'Darstellung',
+    'about.spec.display-val': 'Custom Canvas Renderer (0,1\u00b0)',
+    'about.credits': 'Konzept, Umsetzung und Webdesign: Simon Roloff<br>Basierend auf <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> von Nick Montfort &amp; Stephanie Strickland<br>Daten: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>',
+    'about.license': '<strong>Impressum &middot; Lizenz</strong>&copy; Simon Roloff. Die Texte dieser Website sowie der herunterladbaren <em>Fang des Tages</em>-Dokumente stehen unter der <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT-Lizenz</a> und d\u00fcrfen mit Hinweis auf das Projekt <em>Remorseless Havoc</em> (Simon Roloff, 2026) weiterverwendet, bearbeitet und weiterverbreitet werden.',
+    'catch.title': 'Fang des Tages',
+    'catch.thumb.sub': 'Aus <em>Remorseless Havoc</em>',
+    'catch.thumb.pp': 'S.',
+    'catch.unit.stanzas': 'Strophen',
+    'catch.sub.vessels': 'Schiffe',
+    'catch.sub.hours': 'Fangstunden',
+    'catch.sub.delta': '&Delta; Ersch\u00f6pfung',
+    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Bei der Regel des Projekts \u2014 drei Strophen pro Fangstunde \u2014 wurden dadurch 291&thinsp;723 Strophen aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht. Das unten herunterladbare Dokument ist der wortw\u00f6rtliche Fang dieses Tages: jede gel\u00f6schte Strophe, dem Schiff zugeordnet, das sie entnommen hat, mit GPS-Koordinaten und nach Shannon-Entropie sortiert \u2014 291&thinsp;723 Verse auf rund 2&thinsp;450 Seiten.',
+    'catch.size.label': 'Dokumentgr\u00f6\u00dfe',
+    'catch.size.full':    'Vollst\u00e4ndiges Archiv \u00b7 ~51\u2009MB',
+    'catch.size.digest':  'Auszug (jeder 10. Fang) \u00b7 ~5\u2009MB',
+    'catch.size.excerpt': 'Kurzfassung (jeder 100. Fang) \u00b7 ~500\u2009KB',
+    'catch.size.vessel':  'Nur das st\u00e4rkste Schiff \u00b7 ~30\u2009KB',
+    'catch.size.note':    'Das vollst\u00e4ndige Archiv ist das prim\u00e4re Dokument \u2014 der Umfang der t\u00e4glichen L\u00f6schung geh\u00f6rt zur Arbeit. D\u00fcnnere Schnitte dienen der Orientierung; die Fang-Reihenfolge und die Gliederung nach Schiffen bleiben erhalten.',
+    'catch.cta.label': 'Vor dem Download bitte \u00fcberlegen, an Ozeanschutz zu spenden',
+    'catch.cta.gfw': 'An Global Fishing Watch spenden',
+    'catch.cta.greenpeace': 'An Greenpeace spenden',
+    'catch.cta.wwf': 'An WWF spenden',
+    'catch.cta.or': 'oder',
+    'catch.cta.without': 'Download',
+    'catch.modal.title': 'Dein Fang wird erzeugt',
+    'catch.modal.text': '10. April 2026 \u2014 291&thinsp;723 Strophen, 2&thinsp;450 Seiten, ~51&thinsp;MB.<br>Das dauert etwa 40 Sekunden.',
+    'catch.modal.preparing': 'Wird vorbereitet\u2026',
+    'catch.modal.rendering': 'Strophen werden gesetzt \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
+    'catch.modal.paginating': 'Seiten werden umbrochen \u2014 630\u2009/\u2009872 S.',
+    'catch.modal.done': 'Fertig.',
+    'popup.fishing': 'Std Fang',
+    'popup.just-now': 'gerade eben',
+    'popup.gps': 'gps',
+    'final.title': 'Final Puff',
+    'final.subtitle.lead': 'Ein Gedicht aus drei Strophen bleibt',
+    'final.coords.lat': 'Breite',
+    'final.coords.lon': 'L\u00e4nge',
+    'final.stats.h': 'Bilanz der L\u00f6schung',
+    'final.stat.erased': 'Strophen gel\u00f6scht',
+    'final.stat.survived': '\u00dcbriggeblieben',
+    'final.stat.cell': 'Zelle',
+    'final.stat.stanzas': 'Strophen',
+    'final.stat.hours': 'Erfasste Fangstunden',
+    'final.stat.vessels': 'Beteiligte Schiffe',
+    'final.stat.days': 'Tage im Betrieb',
+    'final.stat.span': 'Zeitraum',
+    'final.stat.source': 'Ausgangsmaterial',
+    'final.stat.possible': 'm\u00f6glich',
+    'final.stat.factor': 'L\u00f6schfaktor',
+    'final.stat.per-hour': 'pro Stunde',
+    'final.note': '<em>Remorseless Havoc</em> ist zu Ende gelaufen. Der poetische Ozean ist geleert \u2014 eine Zelle wurde zur\u00fcckgehalten und bildet das letzte Gedicht dieser Arbeit. Die Verse stammen aus <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> von Nick Montfort &amp; Stephanie Strickland; ihre L\u00f6schung speiste sich Tag f\u00fcr Tag aus den AIS-Daten von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Ein Projekt von <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
+    'final.motto.text': 'Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
+    'final.motto.chapter': 'Kapitel\u00a0CV',
+    'final.footer.license': 'Texte unter der <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT-Lizenz</a>',
+  }
+};
+
+let currentLang = (localStorage.getItem('srah_lang') === 'de') ? 'de' : 'en';
+
+function t(key, lang) {
+  const l = lang || currentLang;
+  return (I18N[l] && I18N[l][key]) || (I18N.en && I18N.en[key]) || key;
+}
+
+function applyI18n(lang) {
+  if (lang !== 'de' && lang !== 'en') lang = 'en';
+  currentLang = lang;
+  localStorage.setItem('srah_lang', lang);
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n, lang);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.dataset.i18nHtml, lang);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder, lang));
+  });
+
+  // Toggle active state of language buttons
+  document.querySelectorAll('.h-lang button[data-lang]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.lang === lang);
+  });
+
+  // Re-render dynamic UI that embeds translatable strings
+  if (typeof refreshDynamicI18n === 'function') refreshDynamicI18n();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.h-lang button[data-lang]');
+  if (!btn) return;
+  applyI18n(btn.dataset.lang);
+});
+
+// Re-translate dynamically generated UI when the language toggles.
+// Guarded against TDZ: fleetData / activeVesselPopups may not yet be
+// initialised the first time applyI18n runs.
+function refreshDynamicI18n() {
+  try {
+    if (fleetData && fleetData.length && typeof populateFlagOptions === 'function') {
+      populateFlagOptions();
+    }
+  } catch (_) { /* fleetData still in TDZ on very first apply — safe to skip */ }
+
+  document.querySelectorAll('.vessel-popup').forEach(p => p.remove());
+  try { if (activeVesselPopups) activeVesselPopups.length = 0; } catch (_) {}
+
+  const dlStatus = document.getElementById('dl-status');
+  if (dlStatus && document.getElementById('download-modal')?.classList.contains('is-open')) {
+    dlStatus.textContent = t('catch.modal.preparing');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INTRO SPLASH — Moby-Dick-Motto
+// ══════════════════════════════════════════════════
+
+(function initSplash() {
+  const splash = document.getElementById('intro-splash');
+  if (!splash) return;
+
+  if (sessionStorage.getItem('motto_dismissed')) {
+    splash.remove();
+    return;
+  }
+
+  document.body.style.overflow = 'hidden';
+  splash.focus();
+
+  function dismiss() {
+    if (splash.classList.contains('is-leaving')) return;
+    splash.classList.add('is-leaving');
+    setTimeout(() => {
+      splash.remove();
+      document.body.style.overflow = '';
+      sessionStorage.setItem('motto_dismissed', '1');
+    }, 500);
+  }
+
+  splash.addEventListener('click', dismiss);
+  document.addEventListener('keydown', function onKey(e) {
+    if (e.key === 'Escape' || e.key === 'Enter') {
+      dismiss();
+      document.removeEventListener('keydown', onKey);
+    }
+  });
+})();
+
+// ══════════════════════════════════════════════════
+// FINAL VIEW — "Final Puff"
+// Triggered when the backend reports remaining <= FINAL_FLOOR,
+// or via the ?final URL parameter / window.showFinalView() for preview.
+// ══════════════════════════════════════════════════
+
+function _formatLat(lat) {
+  const h = lat >= 0 ? 'N' : 'S';
+  return Math.abs(lat).toFixed(4) + '\u00b0' + h;
+}
+function _formatLon(lon) {
+  const h = lon >= 0 ? 'E' : 'W';
+  return Math.abs(lon).toFixed(4) + '\u00b0' + h;
+}
+function _formatInt(n, lang) {
+  const l = (lang || currentLang) === 'de' ? 'de' : 'en';
+  return n.toLocaleString(l, { useGrouping: true }).replace(/[,.]/g, '\u2009');
+}
+function _formatDate(ts, lang) {
+  const l = (lang || currentLang) === 'de' ? 'de-DE' : 'en-GB';
+  return new Date(ts).toLocaleDateString(l, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Default final-state data (used until backend delivers real numbers).
+// Shape mirrors what GET /api/status.final_state will return.
+const FINAL_STATE_DEFAULT = {
+  endDate: '2029-09-18T00:00:00Z',
+  erased: 459999999,
+  hours: 135294117,
+  vessels: 47820,
+  days: 1418,
+  startDate: '2026-02-13T00:00:00Z',
+  // Surviving cell + its three-stanza poem (from OceanPool.final_poem())
+  survivor: {
+    col: 20163,
+    row: 9188,
+    lat: 1.8850,
+    lon: 21.6350,
+    poem: [
+      ['Immortality \u2014 has  Tides \u2014 like  any  Sea \u2014',
+       'the  Whale \u2014 makes  syllables \u2014 of  Foam \u2014',
+       'a  Plank \u2014 between \u2014 the  Firmament \u2014 and  Me \u2014',
+       'no  Port \u2014 is  final \u2014 and  no  Chart \u2014 is  Home \u2014'],
+      ['Circumference \u2014 of  Sea \u2014 did  wrap \u2014',
+       'white  water \u2014 and  the  Plank \u2014 between \u2014',
+       'a  Whale \u2014 made  Morning \u2014 with  his  Breath \u2014',
+       'the  Chartless \u2014 Amplitude \u2014 of  Time \u2014'],
+      ['the  Sail \u2014 that  never \u2014 touched  the  Shore \u2014',
+       'a  Mast \u2014 without \u2014 a  Flag \u2014 or  Prayer \u2014',
+       'the  Tide \u2014 retires \u2014 and  brings \u2014 no  More \u2014',
+       'Circumference \u2014 was  all \u2014 the  Pier \u2014'],
+    ],
+  },
+};
+
+let FINAL_STATE = FINAL_STATE_DEFAULT;
+
+function renderFinalPoem(poem) {
+  const host = document.getElementById('fv-poem');
+  if (!host) return;
+  const out = [];
+  poem.forEach((stanza, i) => {
+    if (i > 0) out.push('<span class="fv-stanza-sep" aria-hidden="true">\u00b7 \u00b7 \u00b7</span>');
+    out.push('<div class="fv-stanza">');
+    stanza.forEach(line => {
+      out.push('<span class="fv-line">' + line.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>');
+    });
+    out.push('</div>');
+  });
+  host.innerHTML = out.join('');
+}
+
+function applyFinalState(state) {
+  FINAL_STATE = state || FINAL_STATE_DEFAULT;
+  const s = FINAL_STATE;
+
+  const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+  setText('fv-lat',        _formatLat(s.survivor.lat));
+  setText('fv-lon',        _formatLon(s.survivor.lon));
+  setText('fv-erased',     _formatInt(s.erased));
+  setText('fv-hours',      _formatInt(s.hours));
+  setText('fv-vessels',    _formatInt(s.vessels));
+  setText('fv-days',       _formatInt(s.days));
+  setText('fv-end-date',   _formatDate(s.endDate));
+  setText('fv-span-end',   _formatDate(s.endDate));
+  const yEl = document.getElementById('fv-footer-year');
+  if (yEl) yEl.textContent = new Date(s.endDate).getFullYear();
+
+  renderFinalPoem(s.survivor.poem);
+}
+
+function showFinalView(state) {
+  if (state) applyFinalState(state);
+  else applyFinalState(FINAL_STATE);
+  const fv = document.getElementById('final-view');
+  if (!fv) return;
+  // Suppress the intro splash when entering the final state directly.
+  const splash = document.getElementById('intro-splash');
+  if (splash) splash.remove();
+  fv.classList.add('is-visible');
+  fv.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  fv.scrollTop = 0;
+}
+
+function hideFinalView() {
+  const fv = document.getElementById('final-view');
+  if (!fv) return;
+  fv.classList.remove('is-visible');
+  fv.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+// Expose for preview + backend integration.
+window.showFinalView = showFinalView;
+window.hideFinalView = hideFinalView;
+window.applyFinalState = applyFinalState;
+
+// Preview trigger: ?final in the URL jumps straight into the closing view.
+(function maybeAutoShowFinal() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('final')) {
+      // Defer until initial i18n/DOM pass is done.
+      setTimeout(() => showFinalView(), 0);
+    }
+  } catch (_) { /* ignore */ }
+})();
+
+// Re-render the poem on language switch (for date / number formatting).
+(function initFinalI18n() {
+  const origApply = window.applyI18n || applyI18n;
+  window.applyI18n = function patchedApplyI18n(lang) {
+    origApply(lang);
+    const fv = document.getElementById('final-view');
+    if (fv && fv.classList.contains('is-visible')) applyFinalState(FINAL_STATE);
+  };
+})();
+
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BACKEND CONFIGURATION
+// ══════════════════════════════════════════════════════════════════════════
+// The site is static (Cloudflare Pages / GitHub Pages). All live state —
+// which cells are still alive, which vessels fished yesterday, the Catch-
+// of-the-Day PDF — comes from the Railway backend. Change HAVOC_API_BASE
+// to point at your deployment, or leave empty for a pure mock-data build.
+// Also accepts a ?api=https://... query param for quick local testing.
+const HAVOC_API_BASE = (() => {
+  const q = new URLSearchParams(location.search).get('api');
+  if (q) return q.replace(/\/$/, '');
+  // Set this to your Railway URL before pushing to production:
+  return '';    // e.g. 'https://havoc.up.railway.app'
+})();
+const HAVOC_HAS_API = !!HAVOC_API_BASE;
+
+// Static fallback used until /api/vessels has responded (or when the site
+// is being served without a backend). Leaves the map visibly alive on
+// first paint and provides sensible defaults on the Fleet screen.
+let VESSELS = [
+  { name:'Liaoning Star', flag:'CHN', type:'Trawler', lat:41.203, lon:122.785, hours:14.3, catch:49,
+    stanza:['the schooner held  to leeward — you — too —','chowder  chowder   in the try-pots  of the soul','what living — is  — small leviathan  dashes on —','a frigate\'s  pennants  — or  Immortality —'],
+    entropy:3.42 },
+  { name:'Fujian Dragon 7', flag:'CHN', type:'Longliner', lat:26.083, lon:120.340, hours:8.7, catch:30,
+    stanza:['Circumference — of   Sea — did   wrap —','white   water — and  the   Plank — between —','a  Whale — made   Morning — with  his   Breath —','the   Chartless — Amplitude — of  — Time —'],
+    entropy:3.67 },
+  { name:'Marbella Tres', flag:'ESP', type:'Purse Seiner', lat:43.381, lon:-3.792, hours:22.1, catch:75,
+    stanza:['the  Compass —  and  the  Chart — undone —','no  Port — could keep  — that  Sail —','the  Doubloon — nailed  — upon  the  Mast —','a  Coffin — and  a  Cradle — and  a — Life —'],
+    entropy:3.94 },
+  { name:'Oyang 77', flag:'KOR', type:'Trawler', lat:-51.210, lon:167.084, hours:19.4, catch:66,
+    stanza:['the  Rope — that  held — the  Pequod — fast —','Circumference —  of  — Despair — and  Mast —','what  Whale — could swim — that  narrow  Sea —','the  Rigging — and  the  Soul — were  lost —'],
+    entropy:2.98 },
+  { name:'Atlantic Princess', flag:'NOR', type:'Trawler', lat:62.784, lon:6.210, hours:11.6, catch:39,
+    stanza:['a  Bell — at  Sea — is  all — the  Shore —','the  Firmament — unrolled  its  Chart —','no  Latitude — could hold — that  Grief —','___'],
+    entropy:3.15 },
+  { name:'Hai Feng 718', flag:'CHN', type:'Trawler', lat:32.102, lon:121.920, hours:9.2, catch:31,
+    stanza:['the  Sail — that  never — touched  the  Shore —','a  Mast — without — a  Flag — or  Prayer —','the  Tide — retires — and  brings — no  More —','Circumference — was  all — the  Pier —'],
+    entropy:3.33 },
+  { name:'Estrella del Sur', flag:'ARG', type:'Longliner', lat:-38.201, lon:-57.083, hours:16.8, catch:57,
+    stanza:['Circumference — was  all  the  Pier —','a  Mast — without — a  Flag — or  Prayer —','the  Tide — retires — and  brings — no  More —','Immortality — has  Tides — like  any  Sea —'],
+    entropy:3.51 },
+  { name:'Kuroshio Maru', flag:'JPN', type:'Longliner', lat:35.681, lon:140.210, hours:12.4, catch:42,
+    stanza:['Immortality — has  Tides — like  any  Sea —','the  Whale — makes  syllables — of  Foam —','a  Plank — between — the  Firmament — and  Me —','no  Port — is  final — and  no  Chart — is  Home —'],
+    entropy:3.72 },
+  { name:'Cielo di Roma', flag:'ITA', type:'Trawler', lat:40.810, lon:14.203, hours:6.3, catch:21,
+    stanza:['the  Harbor — and  the  Horizon — met —','a  Compass — pointing  nowhere — yet —','the  Keel — remembers — what  the  Sail — forgot —','all  Longitude — is  Loss — and  Longitude — is  Lot —'],
+    entropy:3.88 },
+  { name:'Santos Explorer', flag:'BRA', type:'Trawler', lat:-24.010, lon:-46.320, hours:18.9, catch:64,
+    stanza:['what  Depth — could  hold — the  Anchor — down —','the  Bowsprit — points — to  every  Town —','a  Sailor — is — a  Syllable — at  Sea —','the  Poem — sinks — like  any — Prophecy —'],
+    entropy:3.60 },
+  { name:'Ocean Harvest', flag:'GBR', type:'Trawler', lat:56.320, lon:-7.120, hours:15.1, catch:51,
+    stanza:['the  Net — was  cast — upon  the  Deep —','no  Fathom — could  contain — that  Sleep —','the  Wake — dissolves — what  Keels — have  kept —','___'],
+    entropy:3.08 },
+  { name:'Pacific Venture', flag:'TWN', type:'Longliner', lat:-8.500, lon:168.400, hours:20.3, catch:69,
+    stanza:['the  Current — has  no  Memory — of  Shore —','what  Longitude — the  Whale — surrendered  for —','a  Syllable — adrift — on  Sargasso — more —','the  Poem — lists — and  founders — evermore —'],
+    entropy:3.44 },
+];
+
+// Tiny deterministic PRNG used by the Fleet demo data (vessel hours,
+// catch counts, jitter). Nothing verse-related depends on this — the
+// stanza generator below uses the real Sea-and-Spar-Between arithmetic.
+function pseudoRand(seed, i) {
+  let h = ((seed + i * 374761393) * 2246822519) >>> 0;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b >>> 0;
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  STANZA GENERATOR  —  Sea and Spar Between (Montfort & Strickland, 2010)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ *  CONCEPTUAL ANCHOR — the site of the appropriation
+ *  ──────────────────────────────────────────────────
+ *  The word lists and line-generation functions below are a 1:1 JavaScript
+ *  port of the original source of *Sea and Spar Between* (BSD licence,
+ *  https://nickm.com/montfort_strickland/sea_and_spar_between/). They must
+ *  remain byte-for-byte identical so that a given lattice coordinate (i, j)
+ *  yields exactly the same four-line stanza here and on the server —
+ *  otherwise the correspondence between a GPS fishing event and a deletable
+ *  verse would break.
+ *
+ *  This is the hinge at which *Remorseless Havoc* takes over Montfort
+ *  and Strickland's code and turns it against itself. Their work presents
+ *  an apparently inexhaustible combinatorial ocean — 14,992,384 × 14,992,384
+ *  lattice positions, ≈225 trillion stanzas, generated on the fly and
+ *  navigable endlessly in the browser. They write that their work contains
+ *  "as many verses as there are fish in the sea." This project takes that
+ *  metaphor LITERALLY: each cell of the lattice is mapped onto a real
+ *  square kilometre of ocean (see `gridToLattice` below), and then the
+ *  industrial fishing fleet, reported by Global Fishing Watch, is permitted
+ *  to do what it does — catch after catch, hour after hour — until the
+ *  poetic ocean is empty.
+ *
+ *  The procedure makes visible what pure combinatorics usually hides:
+ *  that algorithmic abundance — the vertigo of Borges' Library of Babel or
+ *  of Leibniz's combinatorial plenum — is always bought at the cost of a
+ *  finite material substrate. On a real ocean floor, one trawl is one
+ *  trawl; in a bit-array of stanzas, one delete is one delete. The website
+ *  enforces that equivalence.
+ *
+ *  See also: generation/Konzepttext Website.md
+ *            archive/concept_drafts/About this Document.md
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+// ── Lattice size: exactly as in the original Sea and Spar Between ──────────
+const LATTICE_SIZE = 14_992_384;
+const BACKEND_COLS = 36_000;   // 360° / 0.01°
+const BACKEND_ROWS = 18_000;   // 180° / 0.01°
+
+// ── Word lists (verbatim from Montfort & Strickland, do not edit) ──────────
+const SSB_SHORT_PHRASE = [
+  'circle on','dash on','let them','listen now','loop on',
+  'oh time','plunge on','reel on','roll on','run on','spool on',
+  'steady','swerve me?','turn on','wheel on','whirl on','you -- too --',
+  'fast-fish','loose-fish'
+];
+const SSB_DICK_NOUN = [
+  ['air','art','care','door','dust','each','ear','earth','fair',
+   'faith','fear','friend','gold','grace','grass','grave','hand',
+   'hill','house','joy','keep','leg','might','mind','morn','name',
+   'need','noon','pain','place','play','rest','rose','show',
+   'sight','sky','snow','star','thought','tree','well','wind',
+   'world','year'],
+  ['again','alone','better','beyond','delight','dying','easy','enough',
+   'ever','father','flower','further','himself','human','morning',
+   'myself','power','purple','single','spirit','today'],
+  ['another','paradise'],
+  ['eternity'],
+  ['immortality']
+];
+const SSB_COURSE_START = ['fix upon the ','cut to fit the ','how to withstand the '];
+const SSB_DICK_SYLL = [
+  'bard','bead','bee','bin','blot','blur','buzz',
+  'curl','dirt','disk','drum','fern','film','folk','germ','hive',
+  'hood','husk','jay','pink','plot','spun','web'
+];
+const SSB_MELV_SYLL = [
+  'bag','buck','bunk','cane','chap','chop','dash',
+  'dock','edge','fin','hag','hawk','hook','hoop','horn','howl',
+  'iron','jack','jaw','kick','lime','loon','lurk','milk','pike',
+  'rag','rail','ram','sack','salt','tool'
+];
+const SSB_SYLLABLE = [...SSB_DICK_SYLL, ...SSB_MELV_SYLL].sort();
+
+const SSB_LESS = [
+  ['art','base','blame','crumb','cure','date','death','drought',
+   'fail','flesh','floor','foot','frame','fruit','goal','grasp',
+   'guile','guilt','hue','key','league','list','need','note',
+   'pang','pause','phrase','pier','plash','price','shame','shape',
+   'sight','sound','star','stem','stint','stir','stop','swerve',
+   'tale','taste','thread','worth'],
+  ['arrest','blanket','concern','costume','cypher','degree','desire',
+   'dower','efface','enchant','escape','fashion','flavor','honor',
+   'kinsman','marrow','perceive','perturb','plummet','postpone',
+   'recall','record','reduce','repeal','report','retrieve','tenant'],
+  ['latitude','retriever']
+];
+const SSB_LESS_FLAT = [...SSB_LESS[0], ...SSB_LESS[1], ...SSB_LESS[2]].sort();
+const SSB_UP_VERB = ['bask','chime','dance','go','leave','move','rise','sing',
+                     'speak','step','turn','walk'];
+const SSB_BUT_BEGIN = ['but','for','then'];
+const SSB_BUT_END = ['earth','sea','sky','sun'];
+const SSB_THREE_TO_FIVE = [
+  ...SSB_DICK_NOUN[2], ...SSB_DICK_NOUN[3], ...SSB_DICK_NOUN[4], ...SSB_LESS[2]
+];
+const SSB_TWO_SYLL = [...SSB_DICK_NOUN[1], ...SSB_LESS[1]];
+const SSB_NAILED_END = ['coffin','deck','desk','groove','mast','spar','pole',
+                        'plank','rail','room','sash'];
+
+// ── Line generators — one per verse-type in the original ─────────────────
+function ssbShort(n)      { return SSB_SHORT_PHRASE[n % SSB_SHORT_PHRASE.length]; }
+function ssbOneNoun(n) {
+  const L = SSB_DICK_NOUN[0].length, dn = SSB_DICK_NOUN[0];
+  const d = n % L; n = Math.floor(n / L);
+  const c = n % L; n = Math.floor(n / L);
+  const b = n % L; n = Math.floor(n / L);
+  const a = n % L;
+  return `one ${dn[a]} one ${dn[b]} one ${dn[c]} one ${dn[d]}`;
+}
+function ssbCompoundCourse(n) {
+  const Ls = SSB_SYLLABLE.length;
+  const c = n % Ls; n = Math.floor(n / Ls);
+  const b = n % Ls; n = Math.floor(n / Ls);
+  const a = n % SSB_COURSE_START.length;
+  return SSB_COURSE_START[a] + SSB_SYLLABLE[b] + SSB_SYLLABLE[c] + ' course';
+}
+function ssbFirstLine(n) {
+  const m = Math.floor(n / 4), r = n % 4;
+  if (r < 2) return ssbShort(m);
+  if (r === 2) return ssbOneNoun(m);
+  return ssbCompoundCourse(m);
+}
+function ssbRiseAndGo(n) {
+  const Lv = SSB_UP_VERB.length;
+  const c = n % Lv; n = Math.floor(n / Lv);
+  const b = n % Lv; n = Math.floor(n / Lv);
+  const a = n % SSB_LESS_FLAT.length;
+  const dash = SSB_LESS[0].includes(SSB_LESS_FLAT[a]) ? ' --' : '';
+  return SSB_LESS_FLAT[a] + 'less ' + SSB_UP_VERB[b] + ' and ' + SSB_UP_VERB[c] + dash;
+}
+function ssbBut(n) {
+  const Le = SSB_BUT_END.length;
+  const c = n % Le; n = Math.floor(n / Le);
+  const b = n % SSB_LESS_FLAT.length; n = Math.floor(n / SSB_LESS_FLAT.length);
+  const a = n % SSB_BUT_BEGIN.length;
+  return SSB_BUT_BEGIN[a] + ' ' + SSB_LESS_FLAT[b] + 'less is the ' + SSB_BUT_END[c];
+}
+function ssbExclaim(n) {
+  const b = n % SSB_TWO_SYLL.length; n = Math.floor(n / SSB_TWO_SYLL.length);
+  const a = n % SSB_THREE_TO_FIVE.length;
+  return SSB_THREE_TO_FIVE[a] + '! ' + SSB_TWO_SYLL[b] + '!';
+}
+function ssbNailed(n) { return 'nailed to the ' + SSB_NAILED_END[n % SSB_NAILED_END.length]; }
+function ssbSecondLine(n) {
+  const m = Math.floor(n / 4), r = n % 4;
+  if (r === 0) return ssbRiseAndGo(m);
+  if (r === 1) return ssbBut(m);
+  if (r === 2) return ssbExclaim(m);
+  return ssbNailed(m);
+}
+
+// ── Lattice arithmetic — all coordinates live on a torus of LATTICE_SIZE ──
+function ssbCanonical(v) {
+  v = ((v % LATTICE_SIZE) + LATTICE_SIZE) % LATTICE_SIZE;
+  return v;
+}
+
+// gridToLattice — the LITERAL cash-out of "as many verses as fish in the sea".
+// Each of the 648 million geographic cells (0.01° × 0.01°) lands on a distinct
+// lattice position; the lattice is ~417× larger per axis than the grid, so
+// there are no collisions. This is where the combinatorial ocean stops being
+// metaphorical and becomes a finite inventory pinned to real square kilometres.
+function gridToLattice(col, row) {
+  const i = Math.floor(col * (LATTICE_SIZE - 1) / (BACKEND_COLS - 1));
+  const j = Math.floor(row * (LATTICE_SIZE - 1) / (BACKEND_ROWS - 1));
+  return [ssbCanonical(i), ssbCanonical(j)];
+}
+
+// generateStanza — deterministic 4-line stanza at BACKEND grid cell (col, row).
+// Kept under this name so the existing renderer and hover code reach it
+// unchanged; the old simplified W1…W4 mock is gone.
+function generateStanza(col, row) {
+  const [i, j] = gridToLattice(col, row);
+  const j2 = ssbCanonical(j * 2);
+  const j2n = ssbCanonical(j2 + 1);
+  return [
+    ssbFirstLine(i + j2 + 1),
+    '  ' + ssbSecondLine(Math.abs(i - j2) + 1),
+    ssbFirstLine(i + j2n + 1),
+    '  ' + ssbSecondLine(Math.abs(i - j2n) + 1)
+  ];
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  DEPLETION BITMAP  —  the material floor of the combinatorial ocean
+ * ══════════════════════════════════════════════════════════════════════════
+ *  Three tile states used by the renderer:
+ *      STATE_INTACT    = 0   all 100 stanza cells in this display tile alive
+ *      STATE_PARTIAL   = 1   at least one stanza cell in this tile erased
+ *      STATE_DEPLETED  = 2   all 100 stanza cells in this tile are gone
+ *
+ *  Each display tile covers a 10 × 10 block of backend stanza cells (see the
+ *  "A note on the map" paragraph in the About view). The bitmap arrives as
+ *  one bit per display tile (3600 × 1800 = 810 000 bytes, packed LSB-first,
+ *  row-major) from /api/depletion-grid: `1 = at least one stanza cell still
+ *  alive in this tile`, `0 = fully depleted`. Until a 2-bit encoding lands
+ *  on the backend, the wire format only distinguishes INTACT from DEPLETED;
+ *  PARTIAL is reserved for the mock mode below and for a future extension.
+ *
+ *  The bitmap IS the project: a finite, enumerable, consumable state that
+ *  only ever transitions from alive to gone. Combinatorial abundance meets
+ *  a material floor.
+ */
+const STATE_INTACT   = 0;   // all 100 underlying stanza cells alive
+const STATE_PARTIAL  = 1;   // at least one erased
+const STATE_DEPLETED = 2;   // all 100 erased
+
+let depletionBitmap = null;            // Uint8Array, packed bits, LSB-first
+
+function isDepleted(col, row) {
+  if (col < 0 || col >= DISPLAY_COLS || row < 0 || row >= DISPLAY_ROWS) return STATE_INTACT;
+  if (depletionBitmap) {
+    const bitIndex = row * DISPLAY_COLS + col;
+    const byte = depletionBitmap[bitIndex >> 3];
+    const aliveInTile = (byte >> (bitIndex & 7)) & 1;
+    return aliveInTile ? STATE_INTACT : STATE_DEPLETED;
+  }
+  // Mock fallback when no backend is configured — sparse pseudo-random pattern,
+  // distinct PARTIAL + DEPLETED bands so the map stays visually legible.
+  let h = ((col * 2654435761) ^ (row * 2246822519)) >>> 0;
+  h = ((h ^ (h >>> 13)) * 0x5bd1e995) >>> 0;
+  const v = h % 10000;
+  if (v < 300) return STATE_DEPLETED;
+  if (v < 500) return STATE_PARTIAL;
+  return STATE_INTACT;
+}
+
+// ══════════════════════════════════════════════════
+// DISPLAY CONSTANTS
+// ══════════════════════════════════════════════════
+
+const DISPLAY_COLS = 3600;
+const DISPLAY_ROWS = 1800;
+
+// Grid colors as RGB triplets for ImageData rendering — "Night Graphite" palette
+// Palette for the three tile states + land + vessels + stanza text layers.
+// The three depletion tones are the visible side of `isDepleted()` (see above):
+//   oceanAlive       → STATE_INTACT     all 100 stanza cells in the tile alive
+//   depletedPartial  → STATE_PARTIAL    at least one stanza cell erased
+//   depletedFull     → STATE_DEPLETED   all 100 stanza cells erased
+// The three tones are intentionally close in value: as the ocean empties,
+// the map gets darker, not more colourful. No green/red "health" bar —
+// just the material subtraction of verses.
+const GRID_COLORS = {
+  land: [184, 188, 194],              // --land #b8bcc2 — hellgrau
+  landEdge: [141, 145, 152],          // --land-edge #8d9198
+  oceanAlive: function(cellIndex) {
+    // Subtle per-cell variation around --ocean #030a18
+    const hash = ((cellIndex * 2654435761) >>> 0) & 0xFF;
+    const t = hash / 255;
+    return [
+      Math.round(3 + t * 4),
+      Math.round(10 + t * 6),
+      Math.round(24 + t * 10),
+    ];
+  },
+  // Depletion — minimal darker than the living ocean.
+  depletedPartial: [2, 5, 16],        // STATE_PARTIAL   — one+ stanza cells gone
+  depletedFull:    [1, 3, 8],         // STATE_DEPLETED  — all 100 stanza cells gone
+  ship: [255, 240, 102],              // --vessel-hot #fff066
+  stanzaAlive: 'rgba(216, 220, 226, 0.92)',  // --cream #d8dce2
+  stanzaGhost: 'rgba(216, 220, 226, 0.08)',
+  stanzaPartial: 'rgba(216, 220, 226, 0.30)',
+  stanzaFinal: '#22d3ee',
+};
+
+// ══════════════════════════════════════════════════
+// LAND MASK + MIP-MAP PYRAMID
+// ══════════════════════════════════════════════════
+
+let landMask = null;
+const mipLevels = [];
+
+async function loadLandMask() {
+  try {
+    const resp = await fetch('public/land_mask_3600x1800.bin');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    landMask = new Uint8Array(await resp.arrayBuffer());
+    console.log(`Land mask loaded: ${landMask.length} bytes`);
+  } catch (e) {
+    console.warn('Land mask not found, using procedural fallback...', e);
+    landMask = generateProceduralMask();
+  }
+  buildMipMaps();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  BACKEND FETCHERS  —  live state from Railway
+ * ══════════════════════════════════════════════════════════════════════════
+ *  Each fetcher is a best-effort no-op when HAVOC_API_BASE is empty or the
+ *  backend is unreachable: the site stays a mock-data sketch in that case.
+ *  None of the renderer paths depend on these calls returning successfully.
+ */
+
+async function loadDepletionBitmap() {
+  if (!HAVOC_HAS_API) return;
+  try {
+    const r = await fetch(`${HAVOC_API_BASE}/api/depletion-grid`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const buf = await r.arrayBuffer();
+    // Each bit = one display cell. 3600×1800/8 = 810 000 bytes. Served
+    // verbatim from the backend's cached bitmap file.
+    depletionBitmap = new Uint8Array(buf);
+    console.log(`Depletion bitmap loaded: ${depletionBitmap.length} bytes`);
+  } catch (e) {
+    console.warn('Depletion bitmap unavailable — using mock pattern.', e);
+    depletionBitmap = null;
+  }
+}
+
+async function loadStatus() {
+  if (!HAVOC_HAS_API) return null;
+  try {
+    const r = await fetch(`${HAVOC_API_BASE}/api/status`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Status unavailable.', e);
+    return null;
+  }
+}
+
+async function loadVessels() {
+  if (!HAVOC_HAS_API) return null;
+  try {
+    const r = await fetch(`${HAVOC_API_BASE}/api/vessels`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (!Array.isArray(data.vessels) || data.vessels.length === 0) return null;
+    // Backend shape: { vessel_id, vessel_name, flag, lat, lon, fishing_hours, stanzas }
+    // Renderer shape used across this file:
+    //   { name, flag, type, lat, lon, hours, catch, stanza, entropy }
+    return data.vessels.map(v => ({
+      name:  v.vessel_name,
+      flag:  v.flag,
+      type:  v.type || 'Fishing Vessel',
+      lat:   v.lat,
+      lon:   v.lon,
+      hours: v.fishing_hours,
+      catch: v.stanzas,
+      // Use one of the vessel's own catch cells for the on-card preview.
+      stanza: generateStanza(
+        Math.floor((v.lon + 180) / 0.01),
+        Math.floor((v.lat + 90) / 0.01)
+      ),
+      entropy: null,    // computed server-side, not needed for the cards
+      vesselId: v.vessel_id,
+    }));
+  } catch (e) {
+    console.warn('Vessels unavailable — keeping static fallback set.', e);
+    return null;
+  }
+}
+
+async function loadFinalPoem() {
+  if (!HAVOC_HAS_API) return null;
+  try {
+    const r = await fetch(`${HAVOC_API_BASE}/api/final-poem`, { cache: 'no-cache' });
+    if (r.status === 404) return null;    // ocean not yet exhausted
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Final poem fetch failed.', e);
+    return null;
+  }
+}
+
+// URL used by the Catch-of-the-Day button. Falls back to '#' so that
+// pressing it without a backend is a harmless no-op rather than a 404.
+// The size parameter is read from #catch-size; defaults to 'full' so the
+// conceptual mass stays the default. Valid sizes: full / digest / excerpt / vessel.
+function catchDownloadUrl() {
+  if (!HAVOC_HAS_API) return '#';
+  const size = document.getElementById('catch-size')?.value || 'full';
+  const base = `${HAVOC_API_BASE}/api/catch-of-the-day`;
+  return size === 'full' ? base : `${base}?size=${encodeURIComponent(size)}`;
+}
+
+function generateProceduralMask() {
+  const mask = new Uint8Array(DISPLAY_COLS * DISPLAY_ROWS);
+  for (let row = 0; row < DISPLAY_ROWS; row++) {
+    const lat = -90 + (row + 0.5) * 0.1;
+    for (let col = 0; col < DISPLAY_COLS; col++) {
+      const lon = -180 + (col + 0.5) * 0.1;
+      if (lat < -65) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > -35 && lat < 37 && lon > -18 && lon < 52) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > 36 && lat < 72 && lon > -10 && lon < 40) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > 10 && lat < 75 && lon > 40 && lon < 180) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > 15 && lat < 72 && lon > -170 && lon < -50) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > -56 && lat < 13 && lon > -82 && lon < -34) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+      if (lat > -45 && lat < -10 && lon > 112 && lon < 155) { mask[row * DISPLAY_COLS + col] = 1; continue; }
+    }
+  }
+  return mask;
+}
+
+function buildMipMaps() {
+  const level0 = new Float32Array(DISPLAY_COLS * DISPLAY_ROWS);
+  for (let i = 0; i < landMask.length; i++) level0[i] = landMask[i];
+  mipLevels.push({ data: level0, cols: DISPLAY_COLS, rows: DISPLAY_ROWS });
+
+  let prevData = level0, prevCols = DISPLAY_COLS, prevRows = DISPLAY_ROWS;
+  while (prevCols >= 2 && prevRows >= 2) {
+    const newCols = prevCols >> 1;
+    const newRows = prevRows >> 1;
+    const newData = new Float32Array(newCols * newRows);
+    for (let r = 0; r < newRows; r++) {
+      for (let c = 0; c < newCols; c++) {
+        const sr = r * 2, sc = c * 2;
+        newData[r * newCols + c] = (
+          prevData[sr * prevCols + sc] +
+          prevData[sr * prevCols + sc + 1] +
+          prevData[(sr + 1) * prevCols + sc] +
+          prevData[(sr + 1) * prevCols + sc + 1]
+        ) * 0.25;
+      }
+    }
+    mipLevels.push({ data: newData, cols: newCols, rows: newRows });
+    prevData = newData; prevCols = newCols; prevRows = newRows;
+  }
+  console.log(`Built ${mipLevels.length} mip levels`);
+}
+
+function pickMipLevel(cellsPerPixel) {
+  const idealLevel = Math.max(0, Math.floor(Math.log2(cellsPerPixel)));
+  return Math.min(idealLevel, mipLevels.length - 1);
+}
+
+function isLand(col, row) {
+  if (!landMask) return false;
+  return landMask[row * DISPLAY_COLS + col] === 1;
+}
+
+// ══════════════════════════════════════════════════
+// VIEWPORT STATE
+// ══════════════════════════════════════════════════
+
+const viewport = {
+  centerCol: 1800,
+  centerRow: 900,   // Äquator — zentrierte Weltsicht
+  cellsWide: 3600,
+};
+
+const ZOOM_LIMITS = { minCellsWide: 10, maxCellsWide: 3600 };
+const ZOOM_THRESHOLDS = { GRID_LINES: 3, STANZA_CANVAS: 12, STANZA_FULL: 40 };
+
+// Keep viewport inside the grid — prevents dark bands above/below
+function clampViewport() {
+  const cellW = canvasW / viewport.cellsWide;
+  const cellsHigh = canvasH / cellW;
+  const halfH = cellsHigh / 2;
+
+  if (cellsHigh >= DISPLAY_ROWS) {
+    viewport.centerRow = DISPLAY_ROWS / 2;
+  } else {
+    viewport.centerRow = Math.max(halfH, Math.min(DISPLAY_ROWS - halfH, viewport.centerRow));
+  }
+  // Longitude stays toroidal (wraps)
+  viewport.centerCol = ((viewport.centerCol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+}
+
+// ══════════════════════════════════════════════════
+// CANVAS SETUP
+// ══════════════════════════════════════════════════
+
+const canvas = document.getElementById('ocean-canvas');
+const ctx = canvas.getContext('2d');
+let canvasW, canvasH, dpr;
+
+function resizeCanvas() {
+  const wrapper = canvas.parentElement;
+  dpr = window.devicePixelRatio || 1;
+  canvasW = wrapper.clientWidth;
+  canvasH = wrapper.clientHeight;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ══════════════════════════════════════════════════
+// RENDERING
+// ══════════════════════════════════════════════════
+
+let needsRender = true;
+let renderRAF = null;
+
+function scheduleRender() {
+  needsRender = true;
+  if (!renderRAF) {
+    renderRAF = requestAnimationFrame(renderLoop);
+  }
+}
+
+function renderLoop() {
+  renderRAF = null;
+  if (needsRender) {
+    needsRender = false;
+    render();
+    updateVesselPopupPositions();
+  }
+}
+
+function getViewportBounds() {
+  const cellW = canvasW / viewport.cellsWide;
+  const cellsHigh = canvasH / cellW;
+  const startCol = viewport.centerCol - viewport.cellsWide / 2;
+  const startRow = viewport.centerRow - cellsHigh / 2;
+  return { startCol, startRow, cellsWide: viewport.cellsWide, cellsHigh, cellW };
+}
+
+function render() {
+  if (!landMask) return;
+
+  const { startCol, startRow, cellsWide, cellsHigh, cellW } = getViewportBounds();
+
+  if (cellW < ZOOM_THRESHOLDS.STANZA_CANVAS) {
+    renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW);
+  } else {
+    renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW);
+  }
+
+  if (cellW >= ZOOM_THRESHOLDS.GRID_LINES) {
+    renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW);
+  }
+
+  if (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) {
+    // TODO: memoize stanza-per-cell to WeakMap if mid-zoom frame rate drops.
+    renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW);
+  }
+
+  renderShips(startCol, startRow, cellsWide, cellsHigh, cellW);
+}
+
+let offCanvas = null;
+let offCtx = null;
+
+function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
+  const imgW = canvasW;
+  const imgH = canvasH;
+  if (imgW <= 0 || imgH <= 0) return;
+
+  if (!offCanvas || offCanvas.width !== imgW || offCanvas.height !== imgH) {
+    offCanvas = document.createElement('canvas');
+    offCanvas.width = imgW;
+    offCanvas.height = imgH;
+    offCtx = offCanvas.getContext('2d');
+  }
+
+  const imgData = offCtx.createImageData(imgW, imgH);
+  const pixels = imgData.data;
+
+  const cellsPerPixel = cellsWide / imgW;
+  const mipIdx = pickMipLevel(cellsPerPixel);
+  const mip = mipLevels[mipIdx];
+  const mipScale = 1 << mipIdx;
+
+  const [lr, lg, lb] = GRID_COLORS.land;
+
+  for (let py = 0; py < imgH; py++) {
+    const drow = Math.floor(startRow + cellsHigh * (1 - py / imgH));
+
+    if (drow < 0 || drow >= DISPLAY_ROWS) {
+      const base = py * imgW * 4;
+      for (let px = 0; px < imgW; px++) {
+        const idx = base + px * 4;
+        pixels[idx] = 4; pixels[idx+1] = 15; pixels[idx+2] = 32; pixels[idx+3] = 255;
+      }
+      continue;
+    }
+
+    const mr = Math.min(Math.floor(drow / mipScale), mip.rows - 1);
+    const mrOff = mr * mip.cols;
+
+    for (let px = 0; px < imgW; px++) {
+      const dcol = Math.floor(startCol + (px / imgW) * cellsWide);
+      const col = ((dcol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+
+      const mc = Math.min(Math.floor(col / mipScale), mip.cols - 1);
+      const landFrac = mip.data[mrOff + mc];
+
+      const idx = (py * imgW + px) * 4;
+
+      if (landFrac > 0.5) {
+        const blend = Math.min(1, (landFrac - 0.5) * 2);
+        const cellIdx = drow * DISPLAY_COLS + col;
+        const [or, og, ob] = GRID_COLORS.oceanAlive(cellIdx);
+        pixels[idx]   = Math.round(lr * blend + or * (1 - blend));
+        pixels[idx+1] = Math.round(lg * blend + og * (1 - blend));
+        pixels[idx+2] = Math.round(lb * blend + ob * (1 - blend));
+      } else if (landFrac > 0.01) {
+        const blend = landFrac / 0.5;
+        const cellIdx = drow * DISPLAY_COLS + col;
+        const [or, og, ob] = GRID_COLORS.oceanAlive(cellIdx);
+        pixels[idx]   = Math.round(or * (1 - blend) + lr * blend);
+        pixels[idx+1] = Math.round(og * (1 - blend) + lg * blend);
+        pixels[idx+2] = Math.round(ob * (1 - blend) + lb * blend);
+      } else {
+        const cellIdx = drow * DISPLAY_COLS + col;
+        const deplState = isDepleted(col, drow);
+        if (deplState === 2) {
+          const [dr, dg, db] = GRID_COLORS.depletedFull;
+          pixels[idx] = dr; pixels[idx+1] = dg; pixels[idx+2] = db;
+        } else if (deplState === 1) {
+          const [dr, dg, db] = GRID_COLORS.depletedPartial;
+          pixels[idx] = dr; pixels[idx+1] = dg; pixels[idx+2] = db;
+        } else {
+          const [or, og, ob] = GRID_COLORS.oceanAlive(cellIdx);
+          pixels[idx] = or; pixels[idx+1] = og; pixels[idx+2] = ob;
+        }
+      }
+      pixels[idx+3] = 255;
+    }
+  }
+
+  offCtx.putImageData(imgData, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(offCanvas, 0, 0, canvasW, canvasH);
+}
+
+function renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW) {
+  ctx.fillStyle = '#040f20';  // --ocean-abyss
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const cellH = cellW;
+  const colStart = Math.floor(startCol);
+  const colEnd = Math.ceil(startCol + cellsWide);
+  const rowStart = Math.floor(startRow);
+  const rowEnd = Math.ceil(startRow + cellsHigh);
+
+  for (let drow = rowStart; drow < rowEnd; drow++) {
+    for (let dcol = colStart; dcol < colEnd; dcol++) {
+      const col = ((dcol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+      const row = Math.max(0, Math.min(DISPLAY_ROWS - 1, drow));
+
+      const px = (dcol - startCol) * cellW;
+      const py = canvasH - (drow - startRow + 1) * cellH;
+      if (px + cellW < 0 || px > canvasW || py + cellH < 0 || py > canvasH) continue;
+
+      let r, g, b;
+      if (isLand(col, row)) {
+        [r, g, b] = GRID_COLORS.land;
+      } else {
+        const cellIdx = row * DISPLAY_COLS + col;
+        const deplState = isDepleted(col, row);
+        if (deplState === 2) [r, g, b] = GRID_COLORS.depletedFull;
+        else if (deplState === 1) [r, g, b] = GRID_COLORS.depletedPartial;
+        else [r, g, b] = GRID_COLORS.oceanAlive(cellIdx);
+      }
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(px, py, cellW + 0.5, cellH + 0.5);
+    }
+  }
+}
+
+function renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW) {
+  const cellH = cellW;
+  const alpha = Math.min(0.4, (cellW - ZOOM_THRESHOLDS.GRID_LINES) / 8 * 0.4);
+  if (alpha <= 0) return;
+
+  ctx.strokeStyle = `rgba(141, 145, 152, ${alpha})`;
+  ctx.lineWidth = 0.5;
+
+  const colStart = Math.floor(startCol);
+  const colEnd = Math.ceil(startCol + cellsWide);
+  const rowStart = Math.floor(startRow);
+  const rowEnd = Math.ceil(startRow + cellsHigh);
+
+  ctx.beginPath();
+  for (let dcol = colStart; dcol <= colEnd; dcol++) {
+    const px = (dcol - startCol) * cellW;
+    if (px >= 0 && px <= canvasW) { ctx.moveTo(px, 0); ctx.lineTo(px, canvasH); }
+  }
+  for (let drow = rowStart; drow <= rowEnd; drow++) {
+    const py = canvasH - (drow - startRow) * cellH;
+    if (py >= 0 && py <= canvasH) { ctx.moveTo(0, py); ctx.lineTo(canvasW, py); }
+  }
+  ctx.stroke();
+}
+
+function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
+  const cellH = cellW;
+  const colStart = Math.floor(startCol);
+  const colEnd = Math.ceil(startCol + cellsWide);
+  const rowStart = Math.floor(startRow);
+  const rowEnd = Math.ceil(startRow + cellsHigh);
+
+  const fontSize = Math.max(6, Math.min(16, cellH / 7));
+  ctx.font = `300 italic ${fontSize}px 'DM Mono', 'Courier New', monospace`;
+  ctx.textBaseline = 'top';
+
+  for (let drow = rowStart; drow < rowEnd; drow++) {
+    for (let dcol = colStart; dcol < colEnd; dcol++) {
+      const col = ((dcol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+      const row = Math.max(0, Math.min(DISPLAY_ROWS - 1, drow));
+      if (isLand(col, row)) continue;
+
+      const px = (dcol - startCol) * cellW;
+      const py = canvasH - (drow - startRow + 1) * cellH;
+      if (px + cellW < 0 || px > canvasW || py + cellH < 0 || py > canvasH) continue;
+
+      const deplState = isDepleted(col, row);
+      const stanza = stanzaForDisplayCell(col, row);
+
+      if (deplState === 0) ctx.fillStyle = GRID_COLORS.stanzaAlive;
+      else if (deplState === 1) ctx.fillStyle = GRID_COLORS.stanzaPartial;
+      else ctx.fillStyle = GRID_COLORS.stanzaGhost;
+
+      const lineH = fontSize * 1.5;
+      const padX = cellW * 0.07;
+      const padY = cellH * 0.1;
+      const maxLines = Math.min(4, Math.floor((cellH - padY * 2) / lineH));
+
+      for (let i = 0; i < maxLines; i++) {
+        if (!stanza[i]) continue;
+        const indent = stanza[i].startsWith('  ') ? padX + fontSize * 0.8 : padX;
+        ctx.fillText(stanza[i].trim(), px + indent, py + padY + i * lineH, cellW - indent - padX);
+      }
+    }
+  }
+}
+
+// Each display cell (0.1°) averages a 10×10 block of backend cells (0.01°).
+// We pick the block's centre as the canonical stanza for hover/zoom display,
+// matching the same rule the backend uses when it persists the daily catch.
+function stanzaForDisplayCell(dcol, drow) {
+  const backendCol = dcol * 10 + 5;
+  const backendRow = drow * 10 + 5;
+  return generateStanza(backendCol, backendRow);
+}
+
+// Project a vessel's GPS to current screen coords. Returns null if offscreen.
+function vesselScreenPos(vessel) {
+  const { startCol, startRow, cellsHigh, cellW } = getViewportBounds();
+  const dcol = (vessel.lon + 180) / 0.1;
+  const drow = (vessel.lat + 90) / 0.1;
+  const vx = (dcol - startCol) * cellW;
+  const vy = canvasH - (drow - startRow) * cellW;
+  return { vx, vy, cellW };
+}
+
+function renderShips(startCol, startRow, cellsWide, cellsHigh, cellW) {
+  for (const vessel of VESSELS) {
+    const dcol = (vessel.lon + 180) / 0.1;
+    const drow = (vessel.lat + 90) / 0.1;
+    const vx = (dcol - startCol) * cellW;
+    const vy = canvasH - (drow - startRow) * cellW;
+    if (vx < -20 || vx > canvasW + 20 || vy < -20 || vy > canvasH + 20) continue;
+
+    const glowR = Math.max(8, Math.min(20, cellW * 0.5));
+    const gradient = ctx.createRadialGradient(vx, vy, 0, vx, vy, glowR);
+    gradient.addColorStop(0, 'rgba(255, 240, 102, 0.9)');
+    gradient.addColorStop(0.5, 'rgba(255, 210, 58, 0.2)');
+    gradient.addColorStop(1, 'rgba(255, 210, 58, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(vx - glowR, vy - glowR, glowR * 2, glowR * 2);
+
+    const dotR = Math.max(2, Math.min(4, cellW * 0.15));
+    ctx.beginPath();
+    ctx.arc(vx, vy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff066';
+    ctx.fill();
+
+    if (cellW >= 2) {
+      const nameSize = Math.max(7, Math.min(10, cellW * 0.4));
+      ctx.font = `500 ${nameSize}px 'DM Mono', monospace`;
+      ctx.fillStyle = 'rgba(255, 240, 102, 0.7)';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(vessel.name, vx + dotR + 4, vy - 4);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// PAN & ZOOM
+// ══════════════════════════════════════════════════
+
+let isDragging = false;
+let userInteracted = false;
+let dragStartX, dragStartY;
+let dragStartCenterCol, dragStartCenterRow;
+
+function markInteracted() {
+  if (userInteracted) return;
+  userInteracted = true;
+  const hint = document.querySelector('.map-overlay-hint');
+  if (hint) hint.setAttribute('data-state', 'dismissed');
+  fadeAllVesselPopups();
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragStartCenterCol = viewport.centerCol;
+  dragStartCenterRow = viewport.centerRow;
+  canvas.style.cursor = 'grabbing';
+  markInteracted();
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+
+  const cellW = canvasW / viewport.cellsWide;
+  viewport.centerCol = dragStartCenterCol - dx / cellW;
+  viewport.centerRow = dragStartCenterRow + dy / cellW;
+
+  clampViewport();
+  scheduleRender();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  markInteracted();
+
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+  const newCellsWide = Math.max(
+    ZOOM_LIMITS.minCellsWide,
+    Math.min(ZOOM_LIMITS.maxCellsWide, viewport.cellsWide * factor)
+  );
+
+  const { startCol, startRow, cellsWide, cellsHigh } = getViewportBounds();
+  const mouseCol = startCol + (mx / canvasW) * cellsWide;
+  const mouseRow = startRow + cellsHigh - (my / canvasH) * cellsHigh;
+
+  const oldCellsWide = viewport.cellsWide;
+  viewport.cellsWide = newCellsWide;
+
+  const scale = newCellsWide / oldCellsWide;
+  viewport.centerCol = mouseCol + (viewport.centerCol - mouseCol) * scale;
+  viewport.centerRow = mouseRow + (viewport.centerRow - mouseRow) * scale;
+
+  clampViewport();
+  scheduleRender();
+  updateHint();
+}, { passive: false });
+
+// Touch support
+let lastTouchDist = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    dragStartX = e.touches[0].clientX;
+    dragStartY = e.touches[0].clientY;
+    dragStartCenterCol = viewport.centerCol;
+    dragStartCenterRow = viewport.centerRow;
+  } else if (e.touches.length === 2) {
+    isDragging = false;
+    const dx = e.touches[1].clientX - e.touches[0].clientX;
+    const dy = e.touches[1].clientY - e.touches[0].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+  }
+  markInteracted();
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 1 && isDragging) {
+    const dx = e.touches[0].clientX - dragStartX;
+    const dy = e.touches[0].clientY - dragStartY;
+    const cellW = canvasW / viewport.cellsWide;
+    viewport.centerCol = dragStartCenterCol - dx / cellW;
+    viewport.centerRow = dragStartCenterRow + dy / cellW;
+    clampViewport();
+    scheduleRender();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[1].clientX - e.touches[0].clientX;
+    const dy = e.touches[1].clientY - e.touches[0].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (lastTouchDist > 0) {
+      const scale = lastTouchDist / dist;
+      viewport.cellsWide = Math.max(
+        ZOOM_LIMITS.minCellsWide,
+        Math.min(ZOOM_LIMITS.maxCellsWide, viewport.cellsWide * scale)
+      );
+      clampViewport();
+      scheduleRender();
+    }
+    lastTouchDist = dist;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  isDragging = false;
+  lastTouchDist = 0;
+  updateHint();
+});
+
+// ══════════════════════════════════════════════════
+// HOVER TOOLTIP — follows cursor
+// ══════════════════════════════════════════════════
+
+const cellHoverEl = document.getElementById('cell-hover');
+
+function updateHoverTooltip(e) {
+  if (isDragging) { cellHoverEl.style.display = 'none'; return; }
+
+  const cellW = canvasW / viewport.cellsWide;
+  // Only show when we're zoomed in enough (cellW >= 2 px)
+  if (cellW < 2) { cellHoverEl.style.display = 'none'; return; }
+
+  const wrapperRect = canvas.parentElement.getBoundingClientRect();
+  const mx = e.clientX - wrapperRect.left;
+  const my = e.clientY - wrapperRect.top;
+
+  // Suppress hover when a vessel-popup is under the cursor
+  if (hoveringVesselPopup(e.clientX, e.clientY)) {
+    cellHoverEl.style.display = 'none';
+    return;
+  }
+
+  const { startCol, startRow, cellsHigh } = getViewportBounds();
+  const dcol = Math.floor(startCol + (mx / canvasW) * viewport.cellsWide);
+  const drow = Math.floor(startRow + cellsHigh - (my / canvasH) * cellsHigh);
+
+  const col = ((dcol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+  const row = Math.max(0, Math.min(DISPLAY_ROWS - 1, drow));
+
+  if (isLand(col, row)) { cellHoverEl.style.display = 'none'; return; }
+
+  const lat = -90 + (row + 0.5) * 0.1;
+  const lon = -180 + (col + 0.5) * 0.1;
+
+  const coordsEl = cellHoverEl.querySelector('.ch-coords');
+  coordsEl.textContent = `${Math.abs(lat).toFixed(1)}\u00b0${lat >= 0 ? 'N' : 'S'}  ${Math.abs(lon).toFixed(1)}\u00b0${lon >= 0 ? 'E' : 'W'}`;
+
+  const stanzaEl = cellHoverEl.querySelector('.ch-stanza');
+  const deplState = isDepleted(col, row);
+
+  if (deplState === 2) {
+    stanzaEl.innerHTML = '<span class="ch-line" style="color:var(--cream-ghost);">[depleted]</span>';
+  } else {
+    const stanza = stanzaForDisplayCell(col, row);
+    stanzaEl.innerHTML = stanza.map(l => `<span class="ch-line">${l}</span>`).join('');
+    if (deplState === 1) {
+      stanzaEl.querySelectorAll('.ch-line').forEach(el => el.style.opacity = '0.4');
+    }
+  }
+
+  // Position tooltip at cursor with 16px offset, clamped to viewport
+  cellHoverEl.style.display = 'block';
+  const tipW = cellHoverEl.offsetWidth;
+  const tipH = cellHoverEl.offsetHeight;
+  let tx = mx + 16;
+  let ty = my + 16;
+  if (tx + tipW > canvasW - 8) tx = mx - tipW - 16;
+  if (ty + tipH > canvasH - 8) ty = my - tipH - 16;
+  if (tx < 8) tx = 8;
+  if (ty < 8) ty = 8;
+  cellHoverEl.style.left = tx + 'px';
+  cellHoverEl.style.top  = ty + 'px';
+}
+
+canvas.addEventListener('mousemove', updateHoverTooltip);
+canvas.addEventListener('mouseleave', () => { cellHoverEl.style.display = 'none'; });
+
+function hoveringVesselPopup(clientX, clientY) {
+  const popups = document.querySelectorAll('.vessel-popup');
+  for (const p of popups) {
+    const r = p.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return true;
+  }
+  return false;
+}
+
+// ══════════════════════════════════════════════════
+// HINT OVERLAY (text update only; dismiss handled by markInteracted)
+// ══════════════════════════════════════════════════
+
+function updateHint() {
+  const hint = document.querySelector('.map-overlay-hint');
+  if (!hint || hint.getAttribute('data-state') === 'dismissed') return;
+
+  const cellW = canvasW / viewport.cellsWide;
+  if (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) {
+    hint.innerHTML = 'stanzas visible in cells<br>depleted = dark';
+  } else if (cellW >= ZOOM_THRESHOLDS.GRID_LINES) {
+    hint.innerHTML = '0.1\u00b0 display grid<br>zoom more to read stanzas';
+  } else {
+    hint.innerHTML = 'scroll to zoom \u00b7 drag to pan<br>zoom in to read the stanzas';
+  }
+}
+
+// Auto-fade hint after 8s if user hasn't interacted
+setTimeout(() => {
+  if (!userInteracted) {
+    const hint = document.querySelector('.map-overlay-hint');
+    if (hint) hint.setAttribute('data-state', 'dismissed');
+  }
+}, 8000);
+
+// ══════════════════════════════════════════════════
+// VESSEL POPUPS — initial reveal (5 geographic samples)
+// ══════════════════════════════════════════════════
+
+const popupLayer = document.getElementById('vessel-popups-layer');
+const activeVesselPopups = []; // {el, vessel}
+
+function translateType(type) {
+  const map = {
+    'Trawler': 'fleet.type.trawler',
+    'Longliner': 'fleet.type.longliner',
+    'Purse Seiner': 'fleet.type.purse-seiner'
+  };
+  return map[type] ? t(map[type]) : type;
+}
+
+function formatVesselMeta(v) {
+  const ns = v.lat >= 0 ? 'N' : 'S';
+  const ew = v.lon >= 0 ? 'E' : 'W';
+  return `${v.flag} \u00b7 ${Math.abs(v.lat).toFixed(1)}\u00b0${ns} ${Math.abs(v.lon).toFixed(1)}\u00b0${ew} \u00b7 ${translateType(v.type)} \u00b7 ${v.hours.toFixed(1)} ${t('popup.fishing')}`;
+}
+
+function spawnVesselPopup(vessel, autoCloseAfter = 7000) {
+  const pos = vesselScreenPos(vessel);
+  if (!pos || pos.vx < 0 || pos.vx > canvasW || pos.vy < 0 || pos.vy > canvasH) return null;
+
+  const el = document.createElement('div');
+  el.className = 'vessel-popup';
+  el.dataset.vesselId = vessel.name.toLowerCase().replace(/\s+/g, '-');
+  el.innerHTML = `
+    <button class="vp-close" aria-label="close">&times;</button>
+    <div class="pi-name">${vessel.name}</div>
+    <div class="pi-meta">${formatVesselMeta(vessel)}</div>
+    <div class="pi-stanza">
+      ${vessel.stanza.map(l => `<span class="pi-line">${l}</span>`).join('')}
+    </div>
+    <div class="pi-entropy">H = ${vessel.entropy.toFixed(2)} &middot; ${t('popup.gps')} &middot; ${t('popup.just-now')}</div>
+  `;
+  popupLayer.appendChild(el);
+
+  const entry = { el, vessel, autoCloseAt: Date.now() + autoCloseAfter };
+  activeVesselPopups.push(entry);
+
+  positionVesselPopup(entry);
+
+  el.querySelector('.vp-close').addEventListener('click', (e) => {
+    e.stopPropagation();
+    fadeVesselPopup(entry);
+  });
+
+  if (autoCloseAfter > 0) {
+    setTimeout(() => { if (entry.el.isConnected) fadeVesselPopup(entry); }, autoCloseAfter);
+  }
+  return entry;
+}
+
+function positionVesselPopup(entry) {
+  const pos = vesselScreenPos(entry.vessel);
+  if (!pos) return;
+  const w = entry.el.offsetWidth || 260;
+  const h = entry.el.offsetHeight || 140;
+  let left = pos.vx - w / 2;
+  let top = pos.vy - h - 20;
+  // clamp to canvas
+  if (left < 8) left = 8;
+  if (left + w > canvasW - 8) left = canvasW - w - 8;
+  if (top < 8) top = pos.vy + 20;
+  entry.el.style.left = left + 'px';
+  entry.el.style.top  = top + 'px';
+  entry.el.style.display = (pos.vx < -50 || pos.vx > canvasW + 50 || pos.vy < -50 || pos.vy > canvasH + 50) ? 'none' : '';
+}
+
+function updateVesselPopupPositions() {
+  for (const entry of activeVesselPopups) positionVesselPopup(entry);
+}
+
+function fadeVesselPopup(entry) {
+  if (!entry.el.isConnected || entry.el.classList.contains('fading')) return;
+  entry.el.classList.add('fading');
+  setTimeout(() => {
+    entry.el.remove();
+    const i = activeVesselPopups.indexOf(entry);
+    if (i >= 0) activeVesselPopups.splice(i, 1);
+  }, 350);
+}
+
+function fadeAllVesselPopups() {
+  for (const entry of [...activeVesselPopups]) fadeVesselPopup(entry);
+}
+
+// Spawn 5 initial popups with staggered delays (§3.1)
+// Rev 18 Apr 2026: deutlich langsamer gestaffelt, damit sich der Blick orientieren kann.
+// Jedes Popup bleibt 9s, Abstand 1.4s zwischen den Erscheinungen.
+function spawnInitialVesselPopups() {
+  const picks = [
+    VESSELS.find(v => v.flag === 'CHN'),
+    VESSELS.find(v => v.flag === 'ESP'),
+    VESSELS.find(v => v.flag === 'KOR'),
+    VESSELS.find(v => v.flag === 'NOR'),
+    VESSELS.find(v => v.flag === 'ARG'),
+  ].filter(Boolean);
+  const delays = [1200, 2600, 4000, 5400, 6800];
+  picks.forEach((v, i) => {
+    setTimeout(() => { if (!userInteracted) spawnVesselPopup(v, 9000); }, delays[i]);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// FLEET — generate 8,766 mock vessels + render grid
+// ══════════════════════════════════════════════════
+
+const TOTAL_FLEET = 8766;
+let fleetData = [];
+
+function generateFleet() {
+  const out = [];
+  for (let i = 0; i < TOTAL_FLEET; i++) {
+    const tpl = VESSELS[i % VESSELS.length];
+    const variant = Math.floor(i / VESSELS.length) + 1;
+    // Jitter hours/catch deterministically
+    const h = Math.round(pseudoRand(i, 1) % 220) / 10 + 2;  // 2..24h
+    const c = Math.round(h * (3.0 + (pseudoRand(i, 2) % 20) / 10));  // ~3 per hour
+    out.push({
+      id: i,
+      name: variant === 1 ? tpl.name : `${tpl.name} ${variant}`,
+      flag: tpl.flag,
+      type: tpl.type,
+      lat: tpl.lat + (pseudoRand(i, 3) % 100 - 50) / 25,
+      lon: tpl.lon + (pseudoRand(i, 4) % 100 - 50) / 25,
+      hours: Math.min(24, h),
+      catch: c,
+      entropy: 2.5 + (pseudoRand(i, 5) % 150) / 100,
+      stanzaSeed: i,
+    });
+  }
+  return out;
+}
+
+function stanzaForFleetEntry(v) {
+  const backendCol = Math.floor(((v.lon + 180) / 0.1) * 10 + 5);
+  const backendRow = Math.floor(((v.lat + 90) / 0.1) * 10 + 5);
+  return generateStanza(backendCol + v.stanzaSeed, backendRow + v.stanzaSeed);
+}
+
+function renderFleetGrid() {
+  const grid = document.getElementById('fleet-grid');
+  grid.innerHTML = '';
+  const filter = getFleetFilter();
+  let shown = 0;
+  const limit = 400; // render a reasonable slice; backend pagination later
+  for (const v of fleetData) {
+    if (shown >= limit) break;
+    if (!matchesFilter(v, filter)) continue;
+    const card = document.createElement('button');
+    card.className = 'vessel-card';
+    card.dataset.id = v.id;
+    card.style.animationDelay = (shown * 3) + 'ms';
+    card.innerHTML = `
+      <div class="vc-flag">${v.flag}</div>
+      <div class="vc-name">${v.name}</div>
+      <div class="vc-stats">${v.hours.toFixed(1)}h &middot; ${v.catch}</div>
+    `;
+    card.addEventListener('click', () => toggleFleetCard(card, v));
+    grid.appendChild(card);
+    shown++;
+  }
+  document.getElementById('fleet-count').textContent =
+    fleetData.filter(v => matchesFilter(v, filter)).length.toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
+}
+
+function getFleetFilter() {
+  return {
+    sort: document.getElementById('fleet-sort').value,
+    flag: document.getElementById('fleet-flag').value,
+    type: document.getElementById('fleet-type').value,
+    q:    document.getElementById('fleet-search').value.toLowerCase(),
+  };
+}
+
+function matchesFilter(v, f) {
+  if (f.flag && v.flag !== f.flag) return false;
+  if (f.type && v.type !== f.type) return false;
+  if (f.q) {
+    const hay = `${v.name} ${v.flag} ${v.type}`.toLowerCase();
+    if (!hay.includes(f.q)) return false;
+  }
+  return true;
+}
+
+function sortFleet() {
+  const sort = document.getElementById('fleet-sort').value;
+  fleetData.sort((a, b) => {
+    if (sort === 'caught-desc') return b.catch - a.catch;
+    if (sort === 'caught-asc')  return a.catch - b.catch;
+    if (sort === 'hours')       return b.hours - a.hours;
+    if (sort === 'alpha')       return a.name.localeCompare(b.name);
+    return 0;
+  });
+}
+
+function toggleFleetCard(card, v) {
+  const isOpen = card.classList.contains('is-open');
+  document.querySelectorAll('.vessel-card.is-open').forEach(c => c.classList.remove('is-open'));
+  if (isOpen) return;
+
+  // Populate expand block on first open
+  if (!card.querySelector('.vc-expand')) {
+    const stanza = stanzaForFleetEntry(v);
+    const expand = document.createElement('div');
+    expand.className = 'vc-expand';
+    expand.innerHTML = stanza.map(l => `<span class="vc-line">${l}</span>`).join('');
+    const entropy = document.createElement('div');
+    entropy.className = 'vc-entropy';
+    const ns = v.lat >= 0 ? 'N' : 'S';
+    const ew = v.lon >= 0 ? 'E' : 'W';
+    entropy.textContent = `${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${v.entropy.toFixed(2)}`;
+    const mapLink = document.createElement('button');
+    mapLink.type = 'button';
+    mapLink.className = 'vc-map-link';
+    mapLink.textContent = '\u2197 show on map';
+    mapLink.addEventListener('click', (e) => { e.stopPropagation(); focusVesselOnMap(v); });
+    card.appendChild(expand);
+    card.appendChild(entropy);
+    card.appendChild(mapLink);
+  } else {
+    // restart reveal animation
+    card.querySelectorAll('.vc-line').forEach(l => { l.style.animation = 'none'; l.offsetHeight; l.style.animation = ''; });
+  }
+  card.classList.add('is-open');
+}
+
+function focusVesselOnMap(v) {
+  // Switch to ocean view, center viewport on vessel, zoom in
+  switchToView('ocean');
+  viewport.centerCol = (v.lon + 180) / 0.1;
+  viewport.centerRow = (v.lat + 90) / 0.1;
+  viewport.cellsWide = 40;
+  clampViewport();
+  scheduleRender();
+  updateHint();
+}
+
+function populateFlagOptions() {
+  const flags = Array.from(new Set(fleetData.map(v => v.flag))).sort();
+  const counts = {};
+  for (const v of fleetData) counts[v.flag] = (counts[v.flag] || 0) + 1;
+  const sel = document.getElementById('fleet-flag');
+  // Keep the "all" option (data-i18n), drop previously injected country options
+  Array.from(sel.querySelectorAll('option[data-flag]')).forEach(o => o.remove());
+  flags.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f;
+    opt.dataset.flag = f;
+    opt.textContent = `${t('fleet.flag.prefix')}: ${f} (${counts[f]})`;
+    sel.appendChild(opt);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// NAVIGATION — horizontale Nav-Bar
+// ══════════════════════════════════════════════════
+
+document.querySelectorAll('.h-nav-item').forEach(btn => {
+  btn.addEventListener('click', () => switchToView(btn.dataset.view));
+});
+
+function switchToView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const target = document.getElementById('view-' + name);
+  if (target) target.classList.add('active');
+
+  // Active-State in Nav-Bar
+  document.querySelectorAll('.h-nav-item').forEach(el => {
+    el.classList.toggle('is-active', el.dataset.view === name);
+  });
+
+  // Status-Bar nur auf Ocean-View
+  document.body.classList.toggle('not-ocean', name !== 'ocean');
+
+  if (name === 'ocean') {
+    resizeCanvas();
+    scheduleRender();
+  } else if (name === 'fleet') {
+    if (fleetData.length === 0) fleetData = generateFleet();
+    const grid = document.getElementById('fleet-grid');
+    if (grid && grid.children.length === 0) {
+      sortFleet();               // respektiert den aktuellen Select-Wert (Default: caught-desc)
+      populateFlagOptions();
+      renderFleetGrid();
+    }
+  } else if (name === 'catch') {
+    animateCatchCounter();
+  }
+}
+
+function animateCatchCounter() {
+  const el = document.getElementById('catch-big-num');
+  if (!el) return;
+  const target = parseInt(el.textContent.replace(/\D/g, ''), 10);
+  if (!Number.isFinite(target)) return;
+  const duration = 700;
+  const start = performance.now();
+  const fmt = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
+  function frame(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(target * eased);
+    if (t < 1) requestAnimationFrame(frame);
+    else el.textContent = fmt(target);
+  }
+  el.textContent = fmt(0);
+  requestAnimationFrame(frame);
+  setTimeout(() => { el.textContent = fmt(target); }, duration + 80);
+}
+
+// ══════════════════════════════════════════════════
+// FLEET FILTER LISTENERS
+// ══════════════════════════════════════════════════
+
+['fleet-sort', 'fleet-flag', 'fleet-type', 'fleet-search'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener(id === 'fleet-search' ? 'input' : 'change', () => {
+    sortFleet();
+    renderFleetGrid();
+  });
+});
+
+// ══════════════════════════════════════════════════
+// DOWNLOAD MODAL
+// ══════════════════════════════════════════════════
+
+function openDownloadModal() {
+  const mod = document.getElementById('download-modal');
+  const bar = document.getElementById('dl-bar');
+  const status = document.getElementById('dl-status');
+  mod.classList.add('is-open');
+  bar.style.width = '0%';
+  status.textContent = t('catch.modal.preparing');
+
+  setTimeout(() => { bar.style.width = '35%'; status.innerHTML = t('catch.modal.rendering'); }, 800);
+  setTimeout(() => { bar.style.width = '72%'; status.innerHTML = t('catch.modal.paginating'); }, 1800);
+  setTimeout(() => { bar.style.width = '100%'; status.textContent = t('catch.modal.done'); }, 2800);
+  setTimeout(() => {
+    mod.classList.remove('is-open');
+    const url = catchDownloadUrl();
+    if (url === '#') {
+      alert('No backend configured — set HAVOC_API_BASE in index.html.');
+      return;
+    }
+    // New tab rather than navigation: the user keeps the map open while
+    // the PDF downloads / opens; larger sizes can take a moment.
+    window.open(url, '_blank', 'noopener');
+  }, 3400);
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'download-without') {
+    openDownloadModal();
+  }
+});
+
+// ══════════════════════════════════════════════════
+// LOADING FALLBACK
+// ══════════════════════════════════════════════════
+
+const loadingFallback = document.getElementById('loading-fallback');
+let loadingShown = false;
+setTimeout(() => {
+  if (!landMask) {
+    loadingFallback.classList.add('is-visible');
+    loadingShown = true;
+  }
+}, 500);
+function hideLoadingFallback() {
+  if (loadingShown) loadingFallback.classList.remove('is-visible');
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  clampViewport();
+  scheduleRender();
+  updateVesselPopupPositions();
+});
+
+function updateStatusBar() {
+  if (!fleetData.length) fleetData = generateFleet();
+  const fmt = n => n.toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
+  const elV = document.getElementById('hs-vessels-active');
+  if (elV) elV.textContent = fmt(fleetData.length);
+}
+
+async function init() {
+  resizeCanvas();
+  updateStatusBar();
+
+  // Land mask is mandatory for the canvas renderer; everything else is
+  // best-effort. Run the API probes in parallel so a slow backend never
+  // holds up the first paint of the map.
+  await Promise.all([
+    loadLandMask(),
+    loadDepletionBitmap(),
+  ]);
+  hideLoadingFallback();
+  clampViewport();
+  scheduleRender();
+  updateHint();
+
+  // Fleet + status in the background — they update the UI when they arrive.
+  (async () => {
+    const [live, status] = await Promise.all([loadVessels(), loadStatus()]);
+    if (live) {
+      VESSELS = live;
+      scheduleRender();
+    }
+    if (status) applyStatusToUI(status);
+    if (status && status.is_final) {
+      const poem = await loadFinalPoem();
+      if (poem) applyFinalState(poem);
+    }
+  })();
+
+  // Wire the Catch-of-the-Day button to the backend PDF (if configured).
+  document.querySelectorAll('a.btn-havoc[data-donate], [id^="download-"]').forEach(el => {
+    if (el.tagName === 'A' && !el.href.startsWith('http')) el.href = catchDownloadUrl();
+  });
+
+  // Spawn 5 initial vessel popups after map fade-in — langsam gestaffelt (1.2–6.8s)
+  setTimeout(() => {
+    if (!userInteracted) spawnInitialVesselPopups();
+  }, 600);
+}
+
+// Write status-endpoint values into the existing status-bar DOM nodes.
+// Kept defensive: any missing element is silently skipped, so the hook
+// survives markup tweaks.
+function applyStatusToUI(s) {
+  const fmt = n => Number(n).toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  if (s.cells_alive != null) set('hs-cells-alive', fmt(s.cells_alive));
+  if (s.depletion_percent != null) set('hs-depleted', s.depletion_percent.toFixed(3) + '%');
+  if (s.day != null) {
+    document.querySelectorAll('[data-havoc-day]').forEach(el => {
+      el.textContent = String(s.day).padStart(3, '0');
+    });
+  }
+}
+
+// Apply saved language preference to the initial DOM — runs after all
+// let/const declarations, so refreshDynamicI18n sees initialised state.
+applyI18n(currentLang);
+
+init().catch(err => {
+  window._havocInitError = err;
+  console.error('init() failed:', err);
+});
+</script>
+</body>
+</html>

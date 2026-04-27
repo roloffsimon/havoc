@@ -1,0 +1,19 @@
+# Railway deployment config
+# ------------------------
+# Assumes a mounted volume at /data so the pool survives deploys.
+# Environment variables to set in Railway dashboard:
+#   GFW_TOKEN                 Global Fishing Watch API bearer token
+#   DATA_DIR                  /data
+#   HAVOC_DAY_0               2026-02-13   (project start, shown as "day 1")
+#   HAVOC_SCHEDULE_HOUR_UTC   14            (daily job fires at 14:15 UTC)
+#   HAVOC_FALLBACK_JSON       (optional) path to a GFW dump used if the
+#                             live API fails
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/api/health"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
