@@ -95,12 +95,22 @@ CREATE INDEX IF NOT EXISTS idx_catches_vessel ON catches(date, vessel_id);
 
 @contextmanager
 def connect():
-    # Stay on the default (rollback) journal mode. WAL needs POSIX file
-    # locks plus a shared-memory mmap of the -shm sidecar file, and
-    # Railway's bind-mounted volume returns EIO on those operations
-    # ("disk I/O error" the moment we set journal_mode=WAL). Our writer
-    # is single-process and runs once a day, so WAL buys us nothing.
+    # Railway's bind-mounted volume has limited support for the
+    # filesystem operations SQLite normally relies on:
+    #   - WAL needs an mmap of the -shm sidecar (returns EIO).
+    #   - The default rollback journal needs to create a -journal
+    #     file alongside the db, which also returns EIO here.
+    #   - Repeated fcntl() locks behave inconsistently.
+    # The pragmas below sidestep all three:
+    #   journal_mode=MEMORY   keep the rollback journal in RAM only
+    #   locking_mode=EXCLUSIVE  one fcntl lock at first write, then never
+    #   synchronous=NORMAL    fewer fsyncs (still durable through writes)
+    # Our writer is single-process and runs once a day, so this
+    # configuration is appropriate.
     conn = sqlite3.connect(DB_PATH, isolation_level=None)
+    conn.execute("PRAGMA journal_mode=MEMORY;")
+    conn.execute("PRAGMA locking_mode=EXCLUSIVE;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.row_factory = sqlite3.Row
     try:
