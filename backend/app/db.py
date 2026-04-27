@@ -116,16 +116,15 @@ def init_db() -> None:
 def save_mask(mask: np.ndarray) -> None:
     """Write the pool bitmap atomically (write-temp + rename)."""
     tmp = MASK_PATH.with_suffix(".bin.tmp")
-    with open(tmp, "wb") as f:
-        f.write(mask.astype(np.uint8, copy=False).tobytes())
+    arr = mask if mask.dtype == np.uint8 else mask.astype(np.uint8, copy=False)
+    arr.tofile(tmp)
     tmp.replace(MASK_PATH)
 
 
 def load_mask() -> np.ndarray | None:
     if not MASK_PATH.exists():
         return None
-    data = MASK_PATH.read_bytes()
-    return np.frombuffer(data, dtype=np.uint8).copy()
+    return np.fromfile(MASK_PATH, dtype=np.uint8)
 
 
 def save_pool_state(pool: "OceanPool", project_day_0: str) -> None:

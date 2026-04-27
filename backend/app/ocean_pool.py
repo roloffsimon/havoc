@@ -85,8 +85,11 @@ class OceanPool:
                  catch_count: int = 0):
         # The mask is a mutable flat uint8 array. Keeping it flat means
         # cell indexing is a single multiply-add and serialisation is
-        # trivial (it's already a byte sequence).
-        self.mask = ocean_mask.ravel().astype(np.uint8, copy=True)
+        # trivial (it's already a byte sequence). At 648 MB we want to
+        # avoid gratuitous copies; only convert/copy when needed.
+        if ocean_mask.dtype != np.uint8:
+            ocean_mask = ocean_mask.astype(np.uint8)
+        self.mask = ocean_mask.reshape(-1)
         self.water_cells = int(self.mask.sum())
         self.total = int(self.mask.size)
         self.catch_count = catch_count

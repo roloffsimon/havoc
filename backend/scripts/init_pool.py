@@ -61,7 +61,9 @@ def load_from_npz(path: Path) -> np.ndarray:
     arr = data[key]
     if arr.shape != (GRID_ROWS, GRID_COLS):
         raise ValueError(f"Expected {(GRID_ROWS, GRID_COLS)}, got {arr.shape}")
-    return arr.astype(np.uint8).ravel()
+    if arr.dtype != np.uint8:
+        arr = arr.astype(np.uint8)
+    return np.ascontiguousarray(arr).reshape(-1)
 
 
 def main() -> None:
