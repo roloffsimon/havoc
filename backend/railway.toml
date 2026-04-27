@@ -13,7 +13,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "([ -f \"$DATA_DIR/pool_mask.bin\" ] || python -m scripts.init_pool --from ocean_mask.npz) && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/api/health"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
