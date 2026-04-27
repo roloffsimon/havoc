@@ -3,17 +3,22 @@ set -e
 
 # Railway sometimes finishes mounting the /data volume a moment after
 # the container starts. If we touch $DATA_DIR before then, writes land
-# on the container's ~1 GB root filesystem and the 618 MB mask write
-# blows it up — without ever producing a useful error.
+# on the container's small root filesystem and either fill it up or
+# disappear when the volume mounts over them.
+#
+# Using `mountpoint -q` rather than comparing stat device IDs: the
+# overlay filesystem hands out different device IDs to newly created
+# directories, so a stat-based check returns "mounted" immediately
+# without ever waiting.
 mkdir -p "$DATA_DIR"
 i=0
-while [ "$(stat -c %d /)" = "$(stat -c %d "$DATA_DIR")" ] && [ "$i" -lt 60 ]; do
+while ! mountpoint -q "$DATA_DIR" && [ "$i" -lt 60 ]; do
   echo "[start] Waiting for $DATA_DIR volume mount (${i}s)..."
   sleep 1
   i=$((i + 1))
 done
-if [ "$(stat -c %d /)" = "$(stat -c %d "$DATA_DIR")" ]; then
-  echo "[start] WARNING: $DATA_DIR still on the container FS after 60s — proceeding anyway"
+if ! mountpoint -q "$DATA_DIR"; then
+  echo "[start] WARNING: $DATA_DIR not a mountpoint after 60s — proceeding anyway"
 fi
 
 if [ ! -f "$DATA_DIR/pool_mask.bin" ]; then
