@@ -22,6 +22,10 @@ aptPkgs = [
 # the apt-installed files are present at /usr/lib/x86_64-linux-gnu/
 # libgobject-2.0.so.0 etc., the dlopen calls fail. Create the
 # unsuffixed symlinks WeasyPrint expects.
+#
+# Also: refresh /etc/ld.so.cache so the loader knows about the apt
+# packages we just installed; without this, transitive dependencies
+# like libglib-2.0.so.0 (pulled in by libgobject) can't be resolved.
 [phases.install]
 cmds = [
   "ln -sf /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0 /usr/lib/libgobject-2.0-0",
@@ -29,6 +33,13 @@ cmds = [
   "ln -sf /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0 /usr/lib/libpangoft2-1.0-0",
   "ln -sf /usr/lib/x86_64-linux-gnu/libharfbuzz.so.0     /usr/lib/libharfbuzz-0",
   "ln -sf /usr/lib/x86_64-linux-gnu/libfontconfig.so.1   /usr/lib/libfontconfig-1",
+  "ldconfig",
   "python -m venv --copies /opt/venv",
   ". /opt/venv/bin/activate && pip install -r requirements.txt",
 ]
+
+# The Nix-prefix LD_LIBRARY_PATH that Nixpacks generates doesn't include
+# Debian's multiarch dir, so the runtime loader misses the apt-installed
+# libs unless we add it back here.
+[variables]
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/lib"
