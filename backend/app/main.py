@@ -26,42 +26,38 @@ from pathlib import Path
 
 
 def _preload_pdf_libs() -> None:
-    """Pre-load WeasyPrint's apt-installed shared libraries by absolute
-    path so cffi's dlopen() inside WeasyPrint finds them already in
-    the process — without us having to add /usr/lib/x86_64-linux-gnu
-    to LD_LIBRARY_PATH (which would shadow Nix's libc.so.6 with
-    Debian's and crash the Nix-built python at startup).
+    """Force every shared object under /usr/lib/x86_64-linux-gnu into
+    the process namespace so WeasyPrint's cffi dlopen calls find their
+    transitive deps. Multiple passes — each pass picks up any lib whose
+    deps a previous pass loaded. The directory isn't on the loader's
+    default search path under Nixpacks, so we cannot rely on SONAME
+    lookup at all; only already-loaded handles work.
 
-    `RTLD_GLOBAL` puts the symbols in the global namespace, so
-    libgobject's dependency on libglib (etc.) resolves transitively
-    through the libs we just loaded.
+    `RTLD_GLOBAL` puts the symbols in the global namespace; failures
+    are silent (a few apt libs reference kernel-only deps we don't
+    care about, and we'd just clutter the logs).
     """
-    libs = [
-        # Order matters: each lib's transitive deps must already be in
-        # the process namespace, because /usr/lib/x86_64-linux-gnu is
-        # not on the loader's default path. Leaf deps first.
-        "/usr/lib/x86_64-linux-gnu/libbz2.so.1.0",
-        "/usr/lib/x86_64-linux-gnu/libmount.so.1",
-        "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
-        "/usr/lib/x86_64-linux-gnu/libfreetype.so.6",
-        "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libgmodule-2.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
-        "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1",
-        "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0",
-    ]
-    for path in libs:
-        if not os.path.exists(path):
-            continue
-        try:
-            ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
-        except OSError as exc:  # noqa: BLE001
-            # Logged below once logging is configured; preload failures
-            # are non-fatal — at worst the daily PDF stays HTML.
-            print(f"[preload] failed to load {path}: {exc}", flush=True)
+    import glob
+    import re
+    candidates = sorted(
+        p for p in glob.glob("/usr/lib/x86_64-linux-gnu/lib*.so.*")
+        if re.search(r"\.so\.[0-9]+$", p)
+    )
+    loaded: set[str] = set()
+    for _ in range(8):
+        progress = False
+        for path in candidates:
+            if path in loaded:
+                continue
+            try:
+                ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+                loaded.add(path)
+                progress = True
+            except OSError:
+                continue
+        if not progress:
+            break
+    print(f"[preload] loaded {len(loaded)}/{len(candidates)} apt libs", flush=True)
 
 
 # Run before any module that pulls in WeasyPrint (pdf_builder, depletion).
