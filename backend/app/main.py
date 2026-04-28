@@ -191,6 +191,34 @@ def health():
         raise HTTPException(status_code=503, detail=str(exc))
 
 
+@app.get("/api/debug/run-day")
+def debug_run_day():
+    """Trigger the depletion job synchronously and return the outcome.
+
+    Includes a full traceback when something raises. Use this to find
+    out *why* the scheduler-driven run leaves the DB empty.
+    """
+    import traceback
+    pool = _get_pool()
+    fallback = Path(os.environ.get("HAVOC_FALLBACK_JSON", "")) or None
+    if fallback and not fallback.exists():
+        fallback = None
+    try:
+        stats = depletion.run_latest(pool, _project_day_0, fallback_json=fallback)
+        return {"ok": True, "stats": stats}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": repr(exc),
+            "traceback": traceback.format_exc(),
+            "pool_state_after_failure": {
+                "catch_count": pool.catch_count,
+                "cursor": pool.cursor,
+                "remaining": pool.remaining,
+            },
+        }
+
+
 @app.get("/api/debug/db")
 def debug_db():
     """Diagnostic — what's actually persisted on the volume right now."""
