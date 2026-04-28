@@ -73,13 +73,24 @@ def run_day(pool: OceanPool, events: list[dict],
     vessels_meta: dict[str, dict] = {}
     all_catches: list[dict] = []
 
+    # Defensive defaults: GFW occasionally serves an event without a
+    # vessel name or a flag (and our DB columns are NOT NULL). Coerce
+    # to safe placeholders right at the input boundary so the rest of
+    # the pipeline never has to think about it.
+    def _s(val, default="—"):
+        s = (val or "").strip() if isinstance(val, str) else val
+        return s if s else default
+
     for e in events_sorted:
+        vname = _s(e.get("vessel_name"), "Unknown vessel")
+        flag = _s(e.get("flag"), "—")
+        vid_raw = e.get("vessel_id")
         catches = pool.process_event(e["lat"], e["lon"], e["fishing_hours"])
-        vkey = e["vessel_id"] or f"{e['vessel_name']}::{e['flag']}"
+        vkey = vid_raw or f"{vname}::{flag}"
         vmeta = vessels_meta.setdefault(vkey, {
             "vessel_id": vkey,
-            "vessel_name": e["vessel_name"],
-            "flag": e["flag"],
+            "vessel_name": vname,
+            "flag": flag,
             "lat": e["lat"], "lon": e["lon"],
             "fishing_hours": 0.0,
             "stanzas": 0,
@@ -88,8 +99,8 @@ def run_day(pool: OceanPool, events: list[dict],
         vmeta["lat"], vmeta["lon"] = e["lat"], e["lon"]  # last-known
         for c in catches:
             c["vessel_id"] = vkey
-            c["vessel_name"] = e["vessel_name"]
-            c["flag"] = e["flag"]
+            c["vessel_name"] = vname
+            c["flag"] = flag
             c["entropy"] = stanza_entropy(c["stanza"])
             per_vessel[vkey].append(c)
             all_catches.append(c)
@@ -102,6 +113,7 @@ def run_day(pool: OceanPool, events: list[dict],
         "stanzas_caught": len(all_catches),
         "gps_catches": sum(1 for c in all_catches if c["source"] == "gps"),
         "pool_catches": sum(1 for c in all_catches if c["source"] == "pool"),
+        "fishing_hours": sum(e.get("fishing_hours", 0.0) for e in events_sorted),
         "depletion_percent": pool.depletion_percent,
         "depletion_factor": DEPLETION_FACTOR,
         "ocean_alive": pool.remaining,

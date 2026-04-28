@@ -102,25 +102,33 @@ def parse_entries(raw_entries: Iterable[dict]) -> list[dict]:
     return events
 
 
-def fetch_events(start_date: str, end_date: str, limit: int = DEFAULT_LIMIT) -> list[dict]:
-    """Pull one window of events from the Events API v3."""
+def fetch_events(start_date: str, end_date: str, page_size: int = DEFAULT_LIMIT) -> list[dict]:
+    """Pull one window of events from the Events API v3, paginating until done."""
     headers = {"Authorization": f"Bearer {_token()}"}
-    params = {
-        "datasets[0]": "public-global-fishing-events:latest",
-        "start-date": start_date,
-        "end-date": end_date,
-        "limit": limit,
-        "offset": 0,
-    }
-    log.info("GFW fetch: %s → %s (limit=%s)", start_date, end_date, limit)
-    r = requests.get(f"{BASE_URL}/events", headers=headers, params=params, timeout=120)
-    r.raise_for_status()
-    data = r.json()
-    entries = data.get("entries", [])
-    total = data.get("total", len(entries))
-    if len(entries) < total:
-        log.warning("GFW returned %d/%d events — increase limit to cover all.", len(entries), total)
-    return parse_entries(entries)
+    all_entries: list[dict] = []
+    offset = 0
+    total: int | None = None
+    while True:
+        params = {
+            "datasets[0]": "public-global-fishing-events:latest",
+            "start-date": start_date,
+            "end-date": end_date,
+            "limit": page_size,
+            "offset": offset,
+        }
+        log.info("GFW fetch: %s → %s (offset=%d, limit=%d)", start_date, end_date, offset, page_size)
+        r = requests.get(f"{BASE_URL}/events", headers=headers, params=params, timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        entries = data.get("entries", [])
+        if total is None:
+            total = data.get("total", len(entries))
+        all_entries.extend(entries)
+        if len(entries) < page_size or len(all_entries) >= total:
+            break
+        offset += page_size
+    log.info("GFW fetch complete: %d entries (total reported %s)", len(all_entries), total)
+    return parse_entries(all_entries)
 
 
 def load_events_from_file(path: str) -> list[dict]:
