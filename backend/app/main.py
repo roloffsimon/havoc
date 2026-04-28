@@ -37,13 +37,15 @@ def _preload_pdf_libs() -> None:
     through the libs we just loaded.
     """
     libs = [
+        # Order matters: each lib's transitive deps must be loaded first.
+        "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
-        "/usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
         "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1",
+        "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0",
     ]
     for path in libs:
         if not os.path.exists(path):
