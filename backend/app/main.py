@@ -336,6 +336,8 @@ def debug_weasyprint(request: Request):
         "libgio_glob":      glob.glob("/usr/lib/x86_64-linux-gnu/libgio*"),
         "libgmodule_glob":  glob.glob("/usr/lib/x86_64-linux-gnu/libgmodule*"),
         "libfreetype_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libfreetype*"),
+        "libbz2_anywhere":  glob.glob("/usr/lib/**/libbz2*", recursive=True) + glob.glob("/lib/**/libbz2*", recursive=True),
+        "libmount_anywhere": glob.glob("/usr/lib/**/libmount*", recursive=True) + glob.glob("/lib/**/libmount*", recursive=True),
         "fonts_dejavu": glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"),
         "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
         "live_preload": preload_results,
