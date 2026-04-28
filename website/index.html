@@ -3942,6 +3942,20 @@ async function init() {
     const [live, status] = await Promise.all([loadVessels(), loadStatus()]);
     if (live) {
       VESSELS = live;
+      // The API returns the actual fleet for the latest day. Use it
+      // verbatim — no need for generateFleet's mock variants — so the
+      // Fleet tab, vessel-card list, and map markers all show real
+      // ships at their real coordinates.
+      fleetData = live.map((v, i) => ({ ...v, id: i, stanzaSeed: i }));
+      const grid = document.getElementById('fleet-grid');
+      if (grid && grid.children.length > 0) {
+        // Fleet tab was already rendered with the static fallback —
+        // wipe and re-render with live data.
+        grid.innerHTML = '';
+        sortFleet();
+        populateFlagOptions();
+        renderFleetGrid();
+      }
       scheduleRender();
     }
     if (status) applyStatusToUI(status);
@@ -3970,6 +3984,15 @@ function applyStatusToUI(s) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   if (s.cells_alive != null) set('hs-cells-alive', fmt(s.cells_alive));
   if (s.depletion_percent != null) set('hs-depleted', s.depletion_percent.toFixed(3) + '%');
+  // Bottom HUD vessels-active + stanzas-caught, plus the Fleet header
+  // count and the Catch-of-the-Day big number — all come from the
+  // latest day the daily job persisted (3 days behind today, per GFW lag).
+  if (s.latest_day) {
+    set('hs-vessels-active', fmt(s.latest_day.vessels));
+    set('hs-caught-today',   fmt(s.latest_day.stanzas_caught));
+    set('catch-big-num',     fmt(s.latest_day.stanzas_caught));
+    set('fleet-count',       fmt(s.latest_day.vessels));
+  }
   if (s.day != null) {
     document.querySelectorAll('[data-havoc-day]').forEach(el => {
       el.textContent = String(s.day).padStart(3, '0');
