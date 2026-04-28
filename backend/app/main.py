@@ -114,7 +114,7 @@ def status():
     pool = _get_pool()
     day0 = datetime.fromisoformat(_project_day_0).replace(tzinfo=timezone.utc)
     day_number = (datetime.now(timezone.utc).date() - day0.date()).days + 1
-    return {
+    out = {
         "project_day_0": _project_day_0,
         "day": day_number,
         "now_utc": datetime.now(timezone.utc).isoformat(),
@@ -123,6 +123,30 @@ def status():
         "depletion_percent": round(pool.depletion_percent, 6),
         "is_final": pool.is_exhausted,
     }
+    # Latest-day stats — what the website's "Catch of the Day" card and
+    # the bottom HUD's vessel/stanza counters need. Comes from the
+    # `days` row written by the most recent successful daily job;
+    # absent on a fresh deploy where no day has been processed yet.
+    latest = db.latest_day()
+    if latest:
+        # fishing_hours isn't stored on the days row directly — sum it
+        # from the vessels_active rows for this date.
+        from . import db as _db
+        with _db.connect() as c:
+            row = c.execute(
+                "SELECT COALESCE(SUM(fishing_hours), 0) AS fh FROM vessels_active WHERE date=?",
+                (latest["date"],),
+            ).fetchone()
+            fh = float(row["fh"]) if row else 0.0
+        out["latest_day"] = {
+            "date": latest["date"],
+            "stanzas_caught": latest["stanzas_caught"],
+            "vessels": latest["vessels"],
+            "events": latest["events"],
+            "fishing_hours": round(fh, 2),
+            "depletion_pct": latest["depletion_pct"],
+        }
+    return out
 
 
 @app.get("/api/vessels")
