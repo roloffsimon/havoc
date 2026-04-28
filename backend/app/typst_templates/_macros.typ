@@ -9,14 +9,14 @@
 
 // ── Font stack ─────────────────────────────────────────────────────
 // Names match what the bundled .ttf files actually export (verified
-// with fontTools). Where a face has no roman cut shipped (Newsreader
-// is italic-only), Typst falls back to the next family — flagged in
-// the migration plan as "Font-Gewichte" risk.
+// with fontTools). Newsreader is shipped as a variable font with the
+// optical-size + weight axes, so a single family name covers every
+// roman/italic/weight combination we use.
 #let FONT_TITLE         = ("Big Shoulders Display",)
 #let FONT_HEADING_BOLD  = ("Instrument Sans", "Inter", "Helvetica")
 #let FONT_HEADING_MED   = ("Instrument Sans Medium", "Instrument Sans", "Inter")
 #let FONT_MONO          = ("DM Mono Medium", "DM Mono", "Menlo", "Courier New")
-#let FONT_BODY_ITALIC   = ("Newsreader 72pt", "Newsreader", "Georgia", "Times")
+#let FONT_BODY_ITALIC   = ("Newsreader", "Georgia", "Times")
 #let FONT_BODY_ROMAN    = ("Newsreader", "Georgia", "Times")
 
 // ── Colours (mirror pdf_builder.py CSS) ────────────────────────────
@@ -124,15 +124,27 @@
 ]
 
 // ── Section opener ─────────────────────────────────────────────────
-// One-line "Catch of Day NNN" page. Emits a real level-1 heading with
-// the `<section-opener>` label — the heading drives the PDF bookmark
-// (so vessels nest under "Catch of Day NNN" instead of under
-// "Introduction"), and the daily.typ show rule checks the label to
-// render this one heading as a big centered title rather than the
-// small section-heading block.
+// Two-line "Catch of Day / NNN" page in display sizes — the day
+// number sits centered below "Catch of Day" so 3- and 4-digit values
+// (the project will run for years) both fit comfortably. The heading
+// here is a real level-1 heading with the `<section-opener>` label
+// so it drives the PDF bookmark (vessels nest under "Catch of Day
+// NNN" rather than under "Introduction"); the daily.typ show rule
+// detects the label and renders empty for this one heading, since
+// the visible big two-line title is drawn by this function itself.
 #let section-opener(day_label) = titlepage[
-  #v(1fr)
   = #upper("Catch of Day " + day_label) <section-opener>
+
+  #v(1fr)
+  #align(center)[
+    #set text(font: FONT_HEADING_MED, weight: 500, fill: INK)
+    // Label sits as the smaller line; the day number below dominates.
+    // 4-digit numbers (year-N projects) fit at 160pt within the 154mm
+    // content width with room to spare.
+    #text(size: 38pt, tracking: 0.16em)[#upper("Catch of Day")]
+    #v(16mm, weak: true)
+    #text(size: 160pt, tracking: 0.04em)[#day_label]
+  ]
   #v(1fr)
 ]
 

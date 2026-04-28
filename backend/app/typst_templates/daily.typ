@@ -20,17 +20,14 @@
 #set heading(numbering: none)
 
 // Visual rendering for headings. Level 1 = section heads. The Section
-// Opener "Catch of Day NNN" gets the big centered display style; the
-// other four (Contents, Introduction, Index, Colophon) get the small
-// block style. We branch on the heading's label.
+// Opener "Catch of Day NNN" is rendered by the section-opener macro
+// itself (big two-line layout); for that one heading the show rule
+// returns empty so the heading sits in the structure (driving the
+// PDF bookmark) with no visual footprint. The other four section
+// heads get the small block style.
 #show heading.where(level: 1): it => context {
   let so = query(<section-opener>)
   if so.len() > 0 and so.first().location() == it.location() [
-    #align(center)[
-      #set text(font: FONT_HEADING_MED, weight: 500, size: 22pt,
-                fill: INK, tracking: 0.22em)
-      #it.body
-    ]
   ] else [
     #small-heading-block(it.body)
   ]
