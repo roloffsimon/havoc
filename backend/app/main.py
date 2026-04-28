@@ -75,6 +75,10 @@ logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+# fontTools subsets every glyph and DEBUG-logs each step; on a 16k-vessel
+# PDF that's tens of thousands of lines per render. Pin it to WARNING.
+for noisy in ("fontTools", "fontTools.subset", "fontTools.ttLib"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 
@@ -268,33 +272,73 @@ def _debug_guard(request_token: str | None) -> None:
         raise HTTPException(status_code=404, detail="Not Found")
 
 
-@app.get("/api/debug/run-day")
-def debug_run_day(request: Request):
-    """Trigger the depletion job synchronously and return the outcome.
+# Background-task state for /api/debug/run-day. The full daily run
+# (28k events through pool, 16k-vessel PDF render) takes several
+# minutes — far longer than Railway's HTTP timeout. We dispatch it
+# to a worker thread and let the caller poll /api/debug/run-day-status.
+_runday_lock = __import__("threading").Lock()
+_runday_state: dict = {"running": False, "result": None, "started_at": None, "finished_at": None}
 
-    Includes a full traceback when something raises. Use this to find
-    out *why* the scheduler-driven run leaves the DB empty.
-    """
-    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+
+def _run_day_worker():
     import traceback
+    from datetime import datetime as _dt, timezone as _tz
     pool = _get_pool()
     fallback = Path(os.environ.get("HAVOC_FALLBACK_JSON", "")) or None
     if fallback and not fallback.exists():
         fallback = None
     try:
         stats = depletion.run_latest(pool, _project_day_0, fallback_json=fallback)
-        return {"ok": True, "stats": stats}
+        with _runday_lock:
+            _runday_state["result"] = {"ok": True, "stats": stats}
     except Exception as exc:  # noqa: BLE001
-        return {
-            "ok": False,
-            "error": repr(exc),
-            "traceback": traceback.format_exc(),
-            "pool_state_after_failure": {
-                "catch_count": pool.catch_count,
-                "cursor": pool.cursor,
-                "remaining": pool.remaining,
-            },
-        }
+        with _runday_lock:
+            _runday_state["result"] = {
+                "ok": False,
+                "error": repr(exc),
+                "traceback": traceback.format_exc(),
+                "pool_state_after_failure": {
+                    "catch_count": pool.catch_count,
+                    "cursor": pool.cursor,
+                    "remaining": pool.remaining,
+                },
+            }
+    finally:
+        with _runday_lock:
+            _runday_state["running"] = False
+            _runday_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/run-day")
+def debug_run_day(request: Request):
+    """Kick off the depletion job in a background thread; return immediately.
+
+    Poll /api/debug/run-day-status to see the outcome. Synchronous in
+    the request handler would block the uvicorn event loop long enough
+    that Railway's healthcheck declares the container unhealthy and
+    restarts it mid-render.
+    """
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    with _runday_lock:
+        if _runday_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _runday_state["started_at"]}
+        _runday_state["running"] = True
+        _runday_state["result"] = None
+        _runday_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _runday_state["finished_at"] = None
+    threading.Thread(target=_run_day_worker, daemon=True).start()
+    return {"started": True, "started_at": _runday_state["started_at"],
+            "poll": "/api/debug/run-day-status"}
+
+
+@app.get("/api/debug/run-day-status")
+def debug_run_day_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _runday_lock:
+        return dict(_runday_state)
 
 
 @app.get("/api/debug/weasyprint")
