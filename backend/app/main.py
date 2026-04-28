@@ -272,7 +272,11 @@ def debug_weasyprint(request: Request):
         "libpango_glob":   glob.glob("/usr/lib/x86_64-linux-gnu/libpango*"),
         "libharfbuzz_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libharfbuzz*"),
         "libfontconfig_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libfontconfig*"),
+        "libglib_glob":     glob.glob("/usr/lib/x86_64-linux-gnu/libglib*"),
+        "libgobject_glob":  glob.glob("/usr/lib/x86_64-linux-gnu/libgobject*"),
+        "libgio_glob":      glob.glob("/usr/lib/x86_64-linux-gnu/libgio*"),
         "fonts_dejavu": glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"),
+        "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
     }
     try:
         from weasyprint import HTML  # type: ignore
