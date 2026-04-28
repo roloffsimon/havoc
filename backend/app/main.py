@@ -257,6 +257,38 @@ def debug_run_day(request: Request):
         }
 
 
+@app.get("/api/debug/weasyprint")
+def debug_weasyprint(request: Request):
+    """Probe WeasyPrint import + a tiny render so we can see precisely
+    why the daily job falls back to HTML. Returns the import error,
+    a tiny PDF byte count if rendering works, and a list of the
+    apt-installed libpango / libharfbuzz paths so we can confirm the
+    runtime libs really arrived.
+    """
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import glob
+    import traceback
+    out: dict = {
+        "libpango_glob":   glob.glob("/usr/lib/x86_64-linux-gnu/libpango*"),
+        "libharfbuzz_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libharfbuzz*"),
+        "libfontconfig_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libfontconfig*"),
+        "fonts_dejavu": glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"),
+    }
+    try:
+        from weasyprint import HTML  # type: ignore
+        out["weasyprint_import"] = "ok"
+        try:
+            pdf_bytes = HTML(string="<h1>hello</h1>").write_pdf()
+            out["weasyprint_render"] = f"ok ({len(pdf_bytes)} bytes)"
+        except Exception as exc:  # noqa: BLE001
+            out["weasyprint_render"] = repr(exc)
+            out["weasyprint_render_traceback"] = traceback.format_exc()
+    except Exception as exc:  # noqa: BLE001
+        out["weasyprint_import"] = repr(exc)
+        out["weasyprint_import_traceback"] = traceback.format_exc()
+    return out
+
+
 @app.get("/api/debug/db")
 def debug_db(request: Request):
     """Diagnostic — what's actually persisted on the volume right now."""
