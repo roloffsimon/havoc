@@ -304,6 +304,18 @@ def debug_weasyprint(request: Request):
     _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
     import glob
     import traceback
+    import ctypes
+    preload_results = {}
+    for path in [
+        "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
+    ]:
+        try:
+            ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+            preload_results[path] = "ok"
+        except Exception as e:  # noqa: BLE001
+            preload_results[path] = repr(e)
     out: dict = {
         "libpango_glob":   glob.glob("/usr/lib/x86_64-linux-gnu/libpango*"),
         "libharfbuzz_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libharfbuzz*"),
@@ -313,6 +325,7 @@ def debug_weasyprint(request: Request):
         "libgio_glob":      glob.glob("/usr/lib/x86_64-linux-gnu/libgio*"),
         "fonts_dejavu": glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"),
         "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
+        "live_preload": preload_results,
     }
     try:
         from weasyprint import HTML  # type: ignore
