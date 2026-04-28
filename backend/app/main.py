@@ -309,9 +309,14 @@ def debug_weasyprint(request: Request):
     import ctypes
     preload_results = {}
     for path in [
+        "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
+        "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1",
         "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0",
     ]:
         try:
             ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
