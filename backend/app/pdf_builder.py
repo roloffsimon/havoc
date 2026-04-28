@@ -1236,15 +1236,22 @@ def _write_daily_artefacts(stats: dict, poems: dict[str, list[dict]], *,
     return pdf_path
 
 
-def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path:
+def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
     """Called by the daily pipeline to render the day's volume.
 
-    Caps the vessel list for the printed volume — the full GFW day can
-    exceed 16k vessels, which blows past the container's memory budget
-    when WeasyPrint shapes every stanza. Top-N by catch count is a
-    fair proxy for "today's biggest hauls" and keeps the volume to a
-    size that actually fits in 8 GB. Adjustable via HAVOC_PDF_TOP_N.
+    Two knobs for the production environment:
+      HAVOC_PDF_SKIP=1     skip PDF rendering entirely (returns None;
+                           record_day still runs, the day's catches and
+                           vessels persist, just without the printed volume)
+      HAVOC_PDF_TOP_N=200  when not skipped, cap to the N biggest hauls;
+                           a full GFW day is 16k+ vessels and WeasyPrint's
+                           text-shaping pass runs out of memory long
+                           before it finishes the volume.
     """
+    if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
+        log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
+        return None
+
     top_n = int(os.environ.get("HAVOC_PDF_TOP_N", "200"))
     if len(poems) > top_n:
         ranked = sorted(poems.items(), key=lambda kv: -len(kv[1]))[:top_n]
