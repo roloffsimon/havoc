@@ -39,7 +39,9 @@ def _preload_pdf_libs() -> None:
     libs = [
         # Order matters: each lib's transitive deps must be loaded first.
         "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
+        "/usr/lib/x86_64-linux-gnu/libfreetype.so.6",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgmodule-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
@@ -310,7 +312,9 @@ def debug_weasyprint(request: Request):
     preload_results = {}
     for path in [
         "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
+        "/usr/lib/x86_64-linux-gnu/libfreetype.so.6",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgmodule-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
         "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
@@ -330,6 +334,8 @@ def debug_weasyprint(request: Request):
         "libglib_glob":     glob.glob("/usr/lib/x86_64-linux-gnu/libglib*"),
         "libgobject_glob":  glob.glob("/usr/lib/x86_64-linux-gnu/libgobject*"),
         "libgio_glob":      glob.glob("/usr/lib/x86_64-linux-gnu/libgio*"),
+        "libgmodule_glob":  glob.glob("/usr/lib/x86_64-linux-gnu/libgmodule*"),
+        "libfreetype_glob": glob.glob("/usr/lib/x86_64-linux-gnu/libfreetype*"),
         "fonts_dejavu": glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"),
         "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
         "live_preload": preload_results,

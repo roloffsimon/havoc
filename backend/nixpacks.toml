@@ -10,7 +10,8 @@
 nixPkgs = ["python3", "gcc"]
 aptPkgs = [
   "libpcre2-8-0",        # transitive dep of libglib
-  "libglib2.0-0",        # libgobject-2.0-0, libgio-2.0-0
+  "libglib2.0-0",        # libgobject-2.0-0, libgio-2.0-0, libgmodule-2.0-0
+  "libfreetype6",        # transitive dep of libharfbuzz, libfontconfig
   "libpango-1.0-0",
   "libpangoft2-1.0-0",
   "libharfbuzz0b",
