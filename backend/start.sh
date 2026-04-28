@@ -1,16 +1,12 @@
 #!/bin/sh
 set -e
 
-# Nixpacks's runtime LD_LIBRARY_PATH only points at the Nix-store /lib
-# dirs and bare /usr/lib — it skips Debian's multiarch directory.
-# Without the multiarch dir, dlopen() can't find apt-installed libs
-# (libpango, libglib, libfontconfig…) and WeasyPrint silently falls
-# back to writing HTML. APPEND (don't prepend) the multiarch dir so
-# Nix's own libc/libpython still win the early lookup — prepending
-# made the linker resolve `libc.so.6` to Debian's copy, which the
-# Nix-built python interpreter is not ABI-compatible with.
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu"
-echo "[start] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+# NB: we deliberately do NOT add /usr/lib/x86_64-linux-gnu to
+# LD_LIBRARY_PATH — Debian's libc.so.6 lives there and gets picked up
+# in front of Nix's, which the Nix-built python isn't ABI-compatible
+# with (interpreter dies with "__vdso_time: invalid mode for dlopen").
+# WeasyPrint's runtime libs are reached via app/main.py's ctypes
+# preload instead.
 
 # Railway mounts the /data volume shortly after the container starts.
 # We must wait not only for the mount to appear in /proc/mounts
@@ -55,8 +51,4 @@ if [ ! -f "$DATA_DIR/pool_mask.bin" ]; then
   python -m scripts.init_pool --from ocean_mask.npz
 fi
 
-# Explicit env on exec so Nixpacks's wrapper (if any) can't strip the
-# value before uvicorn inherits it. (Note: $LD_LIBRARY_PATH already
-# has the multiarch dir appended above; we just re-export it here.)
-exec env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-  uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"

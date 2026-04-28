@@ -17,11 +17,47 @@ plus the project's own computed state.
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _preload_pdf_libs() -> None:
+    """Pre-load WeasyPrint's apt-installed shared libraries by absolute
+    path so cffi's dlopen() inside WeasyPrint finds them already in
+    the process — without us having to add /usr/lib/x86_64-linux-gnu
+    to LD_LIBRARY_PATH (which would shadow Nix's libc.so.6 with
+    Debian's and crash the Nix-built python at startup).
+
+    `RTLD_GLOBAL` puts the symbols in the global namespace, so
+    libgobject's dependency on libglib (etc.) resolves transitively
+    through the libs we just loaded.
+    """
+    libs = [
+        "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0",
+        "/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0",
+        "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1",
+    ]
+    for path in libs:
+        if not os.path.exists(path):
+            continue
+        try:
+            ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+        except OSError as exc:  # noqa: BLE001
+            # Logged below once logging is configured; preload failures
+            # are non-fatal — at worst the daily PDF stays HTML.
+            print(f"[preload] failed to load {path}: {exc}", flush=True)
+
+
+# Run before any module that pulls in WeasyPrint (pdf_builder, depletion).
+_preload_pdf_libs()
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, HTTPException, Request
