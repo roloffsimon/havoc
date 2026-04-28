@@ -8,3 +8,7 @@ weasyprint==63.0
 python-dotenv==1.0.1
 Pillow==10.4.0
 pypdf==6.10.2
+# Typst PDF engine — Rust-backed manylinux wheel, no system deps.
+# Selected via HAVOC_PDF_ENGINE=typst; WeasyPrint stays default
+# during the migration coexistence window (see migration plan).
+typst==0.14.8

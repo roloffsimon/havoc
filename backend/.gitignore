@@ -7,3 +7,8 @@ data/
 *.sqlite3-journal
 *.sqlite3-shm
 *.sqlite3-wal
+
+# Typst render scratch + render-test outputs
+app/typst_templates/.tmp/
+scripts/out/
+scripts/fixtures/sample_full.json

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import date as _date, datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
@@ -40,6 +41,13 @@ PDF_DIR = DATA_DIR / "pdfs"
 WEEKLY_DIR = PDF_DIR / "weekly"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 WEEKLY_DIR.mkdir(parents=True, exist_ok=True)
+
+# Typst-only scratch directory for the cover PNG. Sits inside the
+# template tree so it's always inside the renderer's `root` and the
+# image() call resolves without granting Typst access to the data
+# volume. The directory is created lazily by the Typst path.
+TYPST_TEMPLATE_DIR = Path(__file__).parent / "typst_templates"
+TYPST_TMP_DIR = TYPST_TEMPLATE_DIR / ".tmp"
 
 # Project day 0 — used to compute the daily Vol. number that prints on
 # the cover and the weekly Vol. number for the archive volumes.
@@ -1152,6 +1160,174 @@ def _artefact_name(date: str, ext: str) -> str:
     return f"catch_{date}.{ext}"
 
 
+# ── Typst path ───────────────────────────────────────────────────────
+# The daily-volume render goes through `app.typst_renderer.render`; the
+# WeasyPrint path remains as a fallback selectable via HAVOC_PDF_ENGINE.
+# Once Typst has run a week of production days without incident, the
+# WeasyPrint code (and `_merge_pdfs`, `_write_artefacts`) is removed in
+# the cleanup commit (see migration plan).
+
+def _safe_label(s: str) -> str:
+    """Sanitise a vessel-key for use as a Typst label. Typst labels
+    must match `[A-Za-z0-9_-]+`; vessel-IDs from GFW occasionally
+    contain colons, dots or slashes."""
+    return "v_" + (re.sub(r"\W+", "_", s)[:60] or "unknown")
+
+
+def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
+                         cover_path: Path) -> dict:
+    """Reshape the in-memory stats + poems into the JSON payload that
+    `typst_templates/daily.typ` consumes via `sys.inputs.payload`.
+
+    `cover_path` must sit inside `typst_templates/` so it can be
+    addressed by a Typst-relative path; we compute the .typ-relative
+    form and pass that, since absolute paths are interpreted relative
+    to the Typst project root in a way that breaks on POSIX.
+
+    Pre-sorts: poems by catch count desc (matches the production
+    HAVOC_PDF_TOP_N selection); per-poem stanzas by Shannon entropy
+    desc. Pre-formats numeric strings so the templates stay free of
+    formatting code.
+    """
+    cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
+    day_n = _vol_for(stats["date"])
+    day_label = f"{day_n:03d}"
+    long_date = _format_long_date(stats["date"])
+
+    poems_list: list[dict] = []
+    for vkey, catches in poems.items():
+        if not catches:
+            continue
+        c0 = catches[0]
+        sorted_catches = sorted(
+            catches, key=lambda c: c.get("entropy", 0), reverse=True,
+        )
+        poems_list.append({
+            "vkey": _safe_label(vkey),
+            "name": c0.get("vessel_name") or vkey,
+            "flag": c0.get("flag") or "—",
+            "stanzas": [
+                {
+                    # Strip the per-line indent the stanza generator
+                    # adds to lines 2 and 4 of each stanza — flush left
+                    # is the documented spec (see pdf_builder._stanza_html
+                    # in the WeasyPrint path).
+                    "lines": [line.strip() for line in c["stanza"]],
+                    "lat": float(c["lat"]),
+                    "lon": float(c["lon"]),
+                    "entropy": float(c.get("entropy", 0.0)),
+                    "source": c.get("source", "gps"),
+                }
+                for c in sorted_catches
+            ],
+        })
+    poems_list.sort(key=lambda p: -len(p["stanzas"]))
+
+    rendered = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return {
+        "stats": {
+            "date": stats["date"],
+            "day_label": day_label,
+            "long_date": long_date,
+            "vessels_active": int(stats["vessels_active"]),
+            "stanzas_caught": int(stats["stanzas_caught"]),
+            "fishing_hours": float(stats.get("fishing_hours", 0.0)),
+            "depletion_percent": float(stats["depletion_percent"]),
+            "depletion_factor": int(stats.get("depletion_factor", DEPLETION_FACTOR)),
+            "ocean_remaining_million": stats.get("ocean_remaining_million", 460),
+            "runtime_years": stats.get("runtime_years", "four"),
+            "annual_depletion_pct": stats.get("annual_depletion_pct", 28),
+            "rendered_utc": rendered,
+            "vessels_active_str": f"{int(stats['vessels_active']):,}",
+            "stanzas_caught_str": f"{int(stats['stanzas_caught']):,}",
+            "fishing_hours_str": f"{float(stats.get('fishing_hours', 0.0)):,.0f}",
+            "depletion_pct_str": f"{float(stats['depletion_percent']):.6f}",
+        },
+        "poems": poems_list,
+        "cover_path": str(cover_rel),
+    }
+
+
+def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
+                                  out_dir: Path = PDF_DIR,
+                                  stem: str | None = None) -> Path:
+    """Daily volume via Typst. Cover PNG is rendered with Pillow (the
+    same code the WeasyPrint path uses), dropped into a scratch dir
+    inside the template tree, and inlined as `data.cover_path`."""
+    from . import typst_renderer
+
+    date = stats["date"]
+    name_stem = stem or f"catch_{date}"
+
+    TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
+    cover_path = TYPST_TMP_DIR / f"cover_{date}.png"
+    cover_path.write_bytes(_render_cover_image())
+    try:
+        payload = _build_daily_payload(stats, poems, cover_path)
+        pdf_bytes = typst_renderer.render("daily", payload)
+    finally:
+        cover_path.unlink(missing_ok=True)
+
+    pdf_path = out_dir / f"{name_stem}.pdf"
+    pdf_path.write_bytes(pdf_bytes)
+    log.info("PDF written to %s (%d bytes, typst)", pdf_path, len(pdf_bytes))
+    return pdf_path
+
+
+def _build_weekly_payload(week_start: _date, week_end: _date,
+                           day_data: list[tuple[dict, dict]],
+                           cover_path: Path) -> dict:
+    """Reshape a list of (stats, poems) day-tuples into the JSON
+    payload `weekly.typ` reads via `sys.inputs.payload`. Each day
+    is shaped via `_build_daily_payload` so the weekly template can
+    reuse the daily macros for poem rendering."""
+    iso_year, iso_week, _ = week_end.isocalendar()
+    week_label = f"Week {iso_week:02d}"
+    week_range = (f"{week_start.strftime('%-d')}–"
+                  f"{week_end.strftime('%-d %B %Y')}")
+    days = []
+    for stats, poems in day_data:
+        per_day = _build_daily_payload(stats, poems, cover_path)
+        days.append({"stats": per_day["stats"], "poems": per_day["poems"]})
+    cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
+    rendered = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return {
+        "week": {
+            "iso_year": iso_year,
+            "iso_week": iso_week,
+            "week_label": week_label,
+            "week_range": week_range,
+            "rendered_utc": rendered,
+        },
+        "days": days,
+        "cover_path": str(cover_rel),
+    }
+
+
+def _write_weekly_artefacts_typst(week_start: _date, week_end: _date,
+                                    day_data: list[tuple[dict, dict]], *,
+                                    out_dir: Path = WEEKLY_DIR) -> Path:
+    """Weekly archive volume via Typst."""
+    from . import typst_renderer
+
+    iso_year, iso_week, _ = week_end.isocalendar()
+    stem = f"havoc_week_{iso_year}-W{iso_week:02d}"
+
+    TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
+    cover_path = TYPST_TMP_DIR / f"cover_week_{iso_year}-W{iso_week:02d}.png"
+    cover_path.write_bytes(_render_cover_image())
+    try:
+        payload = _build_weekly_payload(week_start, week_end, day_data, cover_path)
+        pdf_bytes = typst_renderer.render("weekly", payload)
+    finally:
+        cover_path.unlink(missing_ok=True)
+
+    pdf_path = out_dir / f"{stem}.pdf"
+    pdf_path.write_bytes(pdf_bytes)
+    log.info("Weekly PDF written to %s (%d bytes, typst)", pdf_path, len(pdf_bytes))
+    return pdf_path
+
+
 def _merge_pdfs(cover_pdf: bytes, body_pdf: bytes) -> bytes:
     """Concatenate cover + body and merge their outlines so the
     bookmark tree from the body document is preserved."""
@@ -1259,6 +1435,9 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
         log.info("PDF: capping volume to top %d vessels (of %d)", top_n, len(poems))
     else:
         capped_poems = poems
+    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
+    if engine == "typst":
+        return _write_daily_artefacts_typst(stats, capped_poems)
     return _write_daily_artefacts(stats, capped_poems)
 
 
@@ -1395,6 +1574,11 @@ def render_weekly_pdf(week_end: _date) -> Path | None:
         log.info("No days in [%s, %s] — skipping weekly volume.",
                  week_start, week_end)
         return None
+
+    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
+    if engine == "typst":
+        return _write_weekly_artefacts_typst(week_start, week_end, day_payloads,
+                                              out_dir=WEEKLY_DIR)
 
     cover = _weekly_cover_html(week_start, week_end, iso_week)
     day_sections = "".join(
