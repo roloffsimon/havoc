@@ -37,7 +37,11 @@ def _preload_pdf_libs() -> None:
     through the libs we just loaded.
     """
     libs = [
-        # Order matters: each lib's transitive deps must be loaded first.
+        # Order matters: each lib's transitive deps must already be in
+        # the process namespace, because /usr/lib/x86_64-linux-gnu is
+        # not on the loader's default path. Leaf deps first.
+        "/usr/lib/x86_64-linux-gnu/libbz2.so.1.0",
+        "/usr/lib/x86_64-linux-gnu/libmount.so.1",
         "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
         "/usr/lib/x86_64-linux-gnu/libfreetype.so.6",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
@@ -311,6 +315,8 @@ def debug_weasyprint(request: Request):
     import ctypes
     preload_results = {}
     for path in [
+        "/usr/lib/x86_64-linux-gnu/libbz2.so.1.0",
+        "/usr/lib/x86_64-linux-gnu/libmount.so.1",
         "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0",
         "/usr/lib/x86_64-linux-gnu/libfreetype.so.6",
         "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0",
