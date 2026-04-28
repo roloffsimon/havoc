@@ -106,7 +106,7 @@ DB_URI = f"file:{DB_PATH}?vfs=unix-none"
 def connect():
     conn = sqlite3.connect(DB_URI, isolation_level=None, uri=True)
     conn.execute("PRAGMA journal_mode=MEMORY;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA synchronous=FULL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.row_factory = sqlite3.Row
     try:

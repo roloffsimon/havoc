@@ -1735,9 +1735,9 @@
     <div class="h-title">Remorseless Havoc</div>
     <div class="h-title-right">
       <div class="h-meta">
-        <span class="h-day"><span data-i18n="header.day">Day</span> <strong>058</strong></span>
+        <span class="h-day"><span data-i18n="header.day">Day</span> <strong data-havoc-day>058</strong></span>
         <span class="h-sep">&middot;</span>
-        <span class="h-date">10 APR 2026</span>
+        <span class="h-date" data-havoc-date>10 APR 2026</span>
       </div>
       <div class="h-lang" role="group" aria-label="language">
         <button type="button" data-lang="de">DE</button>
@@ -1784,7 +1784,7 @@
         <div class="fleet-view">
           <div class="fleet-head">
             <div class="fh-title" data-i18n="fleet.title">Active Fleet</div>
-            <div class="fh-date">10 April 2026 &middot; <span id="fleet-count">8&thinsp;766</span> <span data-i18n="fleet.vessels-suffix">vessels</span></div>
+            <div class="fh-date"><span data-havoc-date-long>10 April 2026</span> &middot; <span id="fleet-count">8&thinsp;766</span> <span data-i18n="fleet.vessels-suffix">vessels</span></div>
             <div class="fh-search">
               <input type="text" id="fleet-search" data-i18n-placeholder="fleet.search.placeholder" placeholder="search name, flag, type&hellip;" />
             </div>
@@ -1908,7 +1908,7 @@
         <div class="catch-view">
           <div class="catch-head">
             <div class="ch-title" data-i18n="catch.title">Catch of the Day</div>
-            <div class="ch-date">10 April 2026</div>
+            <div class="ch-date" data-havoc-date-long>10 April 2026</div>
           </div>
 
           <div class="catch-big"><span id="catch-big-num">291&thinsp;723</span><span class="cb-unit" data-i18n="catch.unit.stanzas">stanzas</span></div>
@@ -1940,8 +1940,8 @@
               <div>
                 <div class="cpp-cover-rule"></div>
                 <div class="cpp-cover-bottom">
-                  <span><span data-i18n="header.day">Day</span>&nbsp;<span id="cpp-vol">058</span></span>
-                  <span id="cpp-date">10 APR 2026</span>
+                  <span><span data-i18n="header.day">Day</span>&nbsp;<span id="cpp-vol" data-havoc-day>058</span></span>
+                  <span id="cpp-date" data-havoc-date>10 APR 2026</span>
                 </div>
               </div>
             </div>
@@ -2461,7 +2461,7 @@ const HAVOC_API_BASE = (() => {
   const q = new URLSearchParams(location.search).get('api');
   if (q) return q.replace(/\/$/, '');
   // Set this to your Railway URL before pushing to production:
-  return '';    // e.g. 'https://havoc.up.railway.app'
+  return 'https://remorseless-havoc-production.up.railway.app';
 })();
 const HAVOC_HAS_API = !!HAVOC_API_BASE;
 
@@ -3974,6 +3974,23 @@ function applyStatusToUI(s) {
     document.querySelectorAll('[data-havoc-day]').forEach(el => {
       el.textContent = String(s.day).padStart(3, '0');
     });
+  }
+  // Date displays come from now_utc (the backend's "today"). Two formats:
+  //   data-havoc-date       short, like "28 APR 2026" \u2014 used in headers
+  //   data-havoc-date-long  long, like "28 April 2026" \u2014 used in fleet/catch
+  const dateStr = s.now_utc || s.project_day_0;
+  if (dateStr) {
+    const d = new Date(dateStr);
+    if (!isNaN(d)) {
+      const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'en';
+      const locale = lang === 'de' ? 'de-DE' : 'en-GB';
+      const shortFmt = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+      const longFmt  = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      const shortStr = shortFmt.format(d).toUpperCase().replace(/\./g, '');
+      const longStr  = longFmt.format(d);
+      document.querySelectorAll('[data-havoc-date]').forEach(el => { el.textContent = shortStr; });
+      document.querySelectorAll('[data-havoc-date-long]').forEach(el => { el.textContent = longStr; });
+    }
   }
 }
 

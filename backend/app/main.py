@@ -189,3 +189,42 @@ def health():
         return {"ok": True, "cells_alive": pool.remaining}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.get("/api/debug/db")
+def debug_db():
+    """Diagnostic — what's actually persisted on the volume right now."""
+    out: dict = {
+        "db_path": str(db.DB_PATH),
+        "db_exists": db.DB_PATH.exists(),
+        "db_size_bytes": db.DB_PATH.stat().st_size if db.DB_PATH.exists() else None,
+        "mask_path": str(db.MASK_PATH),
+        "mask_exists": db.MASK_PATH.exists(),
+        "mask_size_bytes": db.MASK_PATH.stat().st_size if db.MASK_PATH.exists() else None,
+        "bitmap_path": str(db.DEPLETION_BITMAP_PATH),
+        "bitmap_exists": db.DEPLETION_BITMAP_PATH.exists(),
+    }
+    try:
+        with db.connect() as c:
+            for table in ("days", "vessels_active", "catches", "pool_state"):
+                try:
+                    n = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    out[f"{table}_count"] = n
+                except Exception as e:  # noqa: BLE001
+                    out[f"{table}_error"] = str(e)
+            try:
+                row = c.execute("SELECT * FROM pool_state WHERE id=1").fetchone()
+                out["pool_state_row"] = dict(row) if row else None
+            except Exception as e:  # noqa: BLE001
+                out["pool_state_row_error"] = str(e)
+            try:
+                rows = c.execute(
+                    "SELECT date, events, vessels, stanzas_caught, depletion_pct, pdf_path "
+                    "FROM days ORDER BY date DESC LIMIT 5"
+                ).fetchall()
+                out["days_sample"] = [dict(r) for r in rows]
+            except Exception as e:  # noqa: BLE001
+                out["days_sample_error"] = str(e)
+    except Exception as e:  # noqa: BLE001
+        out["connect_error"] = str(e)
+    return out
