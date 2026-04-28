@@ -108,14 +108,26 @@ def run_day(pool: OceanPool, events: list[dict],
     }
 
     # ── Persist ──────────────────────────────────────────────────────
-    pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
-    db.record_day(stats, list(vessels_meta.values()), all_catches, str(pdf_path))
+    # PDF rendering is the most fragile step: it pulls in WeasyPrint,
+    # which in turn needs system-level Pango/HarfBuzz to shape text. If
+    # any of that goes wrong on a host we don't fully control, we still
+    # want the day's catches in the database — the PDF can be re-rendered
+    # later from the persisted catches.
+    try:
+        pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
+        pdf_path_str = str(pdf_path) if pdf_path else None
+    except Exception as exc:  # noqa: BLE001
+        log.exception("PDF render failed for %s, continuing without PDF: %s", date, exc)
+        pdf_path_str = None
+
+    db.record_day(stats, list(vessels_meta.values()), all_catches, pdf_path_str)
 
     bitmap = build_display_bitmap(pool)
     db.save_depletion_bitmap(bitmap)
     db.save_pool_state(pool, project_day_0)
-    log.info("Day %s recorded: %d catches, %.6f%% depletion",
-             date, stats["stanzas_caught"], stats["depletion_percent"])
+    log.info("Day %s recorded: %d catches, %.6f%% depletion (pdf=%s)",
+             date, stats["stanzas_caught"], stats["depletion_percent"],
+             pdf_path_str or "none")
     return stats
 
 

@@ -1,0 +1,17 @@
+# WeasyPrint depends on Pango (text shaping), HarfBuzz (font shaping),
+# and fontconfig for runtime. Without them, WeasyPrint imports cleanly
+# but every render call dies with "no font found" / "cannot find pango".
+# Adding them here puts the libs into /nix/store and on LD_LIBRARY_PATH
+# during both build and runtime.
+
+[phases.setup]
+nixPkgs = [
+  "python3",
+  "gcc",
+  "pango",
+  "harfbuzz",
+  "fontconfig",
+  "freetype",
+  "glib",
+  "cairo",
+]
