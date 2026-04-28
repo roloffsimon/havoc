@@ -5,10 +5,11 @@ set -e
 # dirs and bare /usr/lib — it skips Debian's multiarch directory.
 # Without the multiarch dir, dlopen() can't find apt-installed libs
 # (libpango, libglib, libfontconfig…) and WeasyPrint silently falls
-# back to writing HTML. Prepend the multiarch dir before launching;
-# we also log it once so the deploy logs make any subsequent reset
-# obvious.
-export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+# back to writing HTML. APPEND (don't prepend) the multiarch dir so
+# Nix's own libc/libpython still win the early lookup — prepending
+# made the linker resolve `libc.so.6` to Debian's copy, which the
+# Nix-built python interpreter is not ABI-compatible with.
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu"
 echo "[start] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
 # Railway mounts the /data volume shortly after the container starts.
@@ -55,6 +56,7 @@ if [ ! -f "$DATA_DIR/pool_mask.bin" ]; then
 fi
 
 # Explicit env on exec so Nixpacks's wrapper (if any) can't strip the
-# value before uvicorn inherits it.
-exec env LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}" \
+# value before uvicorn inherits it. (Note: $LD_LIBRARY_PATH already
+# has the multiarch dir appended above; we just re-export it here.)
+exec env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
   uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
