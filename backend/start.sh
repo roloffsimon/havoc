@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+# Nixpacks's runtime LD_LIBRARY_PATH only points at the Nix-store /lib
+# dirs and bare /usr/lib — it skips Debian's multiarch directory.
+# That means apt-installed libs (libpango, libglib, libfontconfig…)
+# aren't visible to dlopen at runtime, so WeasyPrint silently falls
+# back to writing HTML. Prepend the multiarch dir before launching.
+export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+
 # Railway mounts the /data volume shortly after the container starts.
 # We must wait not only for the mount to appear in /proc/mounts
 # (mountpoint -q) but also for the filesystem to be ready for I/O.
