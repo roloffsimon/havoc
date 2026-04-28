@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 
@@ -215,13 +215,27 @@ def health():
         raise HTTPException(status_code=503, detail=str(exc))
 
 
+def _debug_guard(request_token: str | None) -> None:
+    """Gate /api/debug/* behind a private env-var token.
+
+    If HAVOC_DEBUG_TOKEN is unset, the endpoints look like they don't
+    exist at all (404) — no information leak from probing. If the env
+    var is set, callers must echo it back in the X-Debug-Token header
+    (or `?token=` query string) to get through.
+    """
+    expected = os.environ.get("HAVOC_DEBUG_TOKEN", "").strip()
+    if not expected or request_token != expected:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 @app.get("/api/debug/run-day")
-def debug_run_day():
+def debug_run_day(request: Request):
     """Trigger the depletion job synchronously and return the outcome.
 
     Includes a full traceback when something raises. Use this to find
     out *why* the scheduler-driven run leaves the DB empty.
     """
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
     import traceback
     pool = _get_pool()
     fallback = Path(os.environ.get("HAVOC_FALLBACK_JSON", "")) or None
@@ -244,8 +258,9 @@ def debug_run_day():
 
 
 @app.get("/api/debug/db")
-def debug_db():
+def debug_db(request: Request):
     """Diagnostic — what's actually persisted on the volume right now."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
     out: dict = {
         "db_path": str(db.DB_PATH),
         "db_exists": db.DB_PATH.exists(),

@@ -1,17 +1,17 @@
-# WeasyPrint depends on Pango (text shaping), HarfBuzz (font shaping),
-# and fontconfig for runtime. Without them, WeasyPrint imports cleanly
-# but every render call dies with "no font found" / "cannot find pango".
-# Adding them here puts the libs into /nix/store and on LD_LIBRARY_PATH
-# during both build and runtime.
+# WeasyPrint links against Pango/HarfBuzz/Fontconfig at runtime via cffi.
+# The previous nixPkgs version put these in /nix/store/... where the
+# default ld.so didn't find them. apt installs to /usr/lib/x86_64-linux-gnu,
+# which is on the default LD_LIBRARY_PATH — much more reliable.
+#
+# fonts-dejavu-core gives us a baseline sans-serif font so fontconfig
+# finds at least one match when the document doesn't pin a family.
 
 [phases.setup]
-nixPkgs = [
-  "python3",
-  "gcc",
-  "pango",
-  "harfbuzz",
-  "fontconfig",
-  "freetype",
-  "glib",
-  "cairo",
+nixPkgs = ["python3", "gcc"]
+aptPkgs = [
+  "libpango-1.0-0",
+  "libpangoft2-1.0-0",
+  "libharfbuzz0b",
+  "libfontconfig1",
+  "fonts-dejavu-core",
 ]

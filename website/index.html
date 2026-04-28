@@ -3664,9 +3664,29 @@ function generateFleet() {
 }
 
 function stanzaForFleetEntry(v) {
+  const seed = v.stanzaSeed ?? 0;
   const backendCol = Math.floor(((v.lon + 180) / 0.1) * 10 + 5);
   const backendRow = Math.floor(((v.lat + 90) / 0.1) * 10 + 5);
-  return generateStanza(backendCol + v.stanzaSeed, backendRow + v.stanzaSeed);
+  return generateStanza(backendCol + seed, backendRow + seed);
+}
+
+// Shannon entropy over characters of the joined stanza — used as a
+// "reading metric" for the fleet cards when the API didn't ship a
+// per-vessel entropy value (it currently doesn't — it's recorded
+// per-catch in the backend, not aggregated per vessel).
+function computeStanzaEntropy(stanza) {
+  if (!stanza || !stanza.length) return 0;
+  const text = stanza.join(' ').toLowerCase().replace(/[^a-z]/g, '');
+  if (!text.length) return 0;
+  const counts = {};
+  for (const ch of text) counts[ch] = (counts[ch] || 0) + 1;
+  let h = 0;
+  const n = text.length;
+  for (const ch in counts) {
+    const p = counts[ch] / n;
+    h -= p * Math.log2(p);
+  }
+  return h;
 }
 
 function renderFleetGrid() {
@@ -3740,7 +3760,8 @@ function toggleFleetCard(card, v) {
     entropy.className = 'vc-entropy';
     const ns = v.lat >= 0 ? 'N' : 'S';
     const ew = v.lon >= 0 ? 'E' : 'W';
-    entropy.textContent = `${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${v.entropy.toFixed(2)}`;
+    const entropyVal = (typeof v.entropy === 'number') ? v.entropy : computeStanzaEntropy(stanza);
+    entropy.textContent = `${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${entropyVal.toFixed(2)}`;
     const mapLink = document.createElement('button');
     mapLink.type = 'button';
     mapLink.className = 'vc-map-link';
@@ -3807,6 +3828,15 @@ function switchToView(name) {
   if (name === 'ocean') {
     resizeCanvas();
     scheduleRender();
+    // Some browsers (notably Safari) wipe the canvas backing store while
+    // its parent .view is display:none. After we flip the view back on,
+    // the wrapper's clientWidth/Height may also still be reporting the
+    // pre-flip layout for a frame. Re-resize and re-render once the
+    // browser has settled, so the map is guaranteed to be on screen.
+    requestAnimationFrame(() => {
+      resizeCanvas();
+      scheduleRender();
+    });
   } else if (name === 'fleet') {
     if (fleetData.length === 0) fleetData = generateFleet();
     const grid = document.getElementById('fleet-grid');
