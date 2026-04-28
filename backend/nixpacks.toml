@@ -16,3 +16,19 @@ aptPkgs = [
   "libfontconfig1",
   "fonts-dejavu-core",
 ]
+
+# WeasyPrint 63 calls dlopen() with literal names like "libgobject-2.0-0"
+# (no ".so" suffix). The loader doesn't transform those, so even though
+# the apt-installed files are present at /usr/lib/x86_64-linux-gnu/
+# libgobject-2.0.so.0 etc., the dlopen calls fail. Create the
+# unsuffixed symlinks WeasyPrint expects.
+[phases.install]
+cmds = [
+  "ln -sf /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0 /usr/lib/libgobject-2.0-0",
+  "ln -sf /usr/lib/x86_64-linux-gnu/libpango-1.0.so.0    /usr/lib/libpango-1.0-0",
+  "ln -sf /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0 /usr/lib/libpangoft2-1.0-0",
+  "ln -sf /usr/lib/x86_64-linux-gnu/libharfbuzz.so.0     /usr/lib/libharfbuzz-0",
+  "ln -sf /usr/lib/x86_64-linux-gnu/libfontconfig.so.1   /usr/lib/libfontconfig-1",
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate && pip install -r requirements.txt",
+]
