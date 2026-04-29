@@ -1419,18 +1419,23 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
       HAVOC_PDF_SKIP=1     skip PDF rendering entirely (returns None;
                            record_day still runs, the day's catches and
                            vessels persist, just without the printed volume)
-      HAVOC_PDF_TOP_N=N    optional cap to the N biggest hauls. Originally
-                           a WeasyPrint memory-pressure workaround; with
-                           the Typst engine the full GFW day renders fine,
-                           so this is unset by default. Set it to produce
-                           a smaller volume (e.g., for a print run).
+      HAVOC_PDF_TOP_N=N    cap to the N biggest hauls; default 200.
+                           Reasoning: a full GFW day ships ~15k vessels
+                           and the Typst render saturates Railway-Hobby's
+                           CPU long enough to trip the healthcheck-timeout
+                           restart. Capping to 200 keeps the render under
+                           ~50s — comfortably inside the healthcheck
+                           window — and still produces a 1400-page volume
+                           covering the day's most active fleet. Override
+                           upward if you have a beefier service or want
+                           a fuller archive.
     """
     if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
         log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
         return None
 
-    top_n_raw = os.environ.get("HAVOC_PDF_TOP_N", "").strip()
-    if top_n_raw:
+    top_n_raw = os.environ.get("HAVOC_PDF_TOP_N", "200").strip()
+    if top_n_raw and top_n_raw != "0":
         top_n = int(top_n_raw)
         if len(poems) > top_n:
             ranked = sorted(poems.items(), key=lambda kv: -len(kv[1]))[:top_n]
