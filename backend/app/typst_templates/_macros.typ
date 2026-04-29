@@ -154,13 +154,16 @@
 ]
 
 // ── Introduction ───────────────────────────────────────────────────
+// Body leading set to 0.5em → 1.5× line-height (CSS line-height: 1.5),
+// per the document spec. The stanza blocks keep their tighter 1.30
+// line-height; this rule is local to the prose introduction.
 #let about(stats) = [
   = Introduction
   #label("intro")
 
   #set text(font: FONT_BODY_ITALIC, weight: 300, size: 10pt,
             fill: INK_SOFT, style: "italic")
-  #set par(leading: 0.55em, justify: true, first-line-indent: 0pt)
+  #set par(leading: 0.5em, justify: true, first-line-indent: 0pt)
   #show emph: it => text(style: "normal", weight: 500, fill: INK,
                           it.body)
 
@@ -228,6 +231,40 @@
   few repetitions. As the sequence progresses, the vocabulary narrows,
   more words recur, mirroring an arc from diversity to monotony and
   exhaustion.
+
+
+  // ── The Cut ──────────────────────────────────────────────────────
+  // Tier-aware paragraph that explains the sample. Branches on
+  // stats.tier so each volume describes its own cut honestly.
+  #let _vessel-word(n) = if n == 1 [vessel] else [vessels]
+  #let _verse-word(n) = if n == 1 [verse] else [verses]
+  The full catch of #stats.long_date came from
+  #stats.fleet_total_str vessels and totalled
+  #stats.stanzas_caught_str erased verses. Printed in full, the day's
+  archive would run to several thousand pages — too large a daily
+  artefact for the project's modest infrastructure. This volume is
+  therefore a #emph(stats.tier_label):
+  #if stats.tier == "selection" [
+    a random one-tenth of the day's fleet —
+    #stats.selected_vessels_str #_vessel-word(stats.selected_vessels)
+    and #stats.selected_stanzas_str
+    #_verse-word(stats.selected_stanzas) — drawn without regard to
+    catch size, so the sample represents the working fleet rather
+    than only its heaviest hitters.
+  ] else if stats.tier == "finecut" [
+    a random one-hundredth of the day's fleet —
+    #stats.selected_vessels_str #_vessel-word(stats.selected_vessels)
+    and #stats.selected_stanzas_str
+    #_verse-word(stats.selected_stanzas) — a thinner cut for
+    orientation, drawn without regard to catch size.
+  ] else [
+    a single randomly chosen vessel — #stats.selected_stanzas_str
+    #_verse-word(stats.selected_stanzas) — the minimal portrait of
+    the day. The vessel was drawn without regard to catch size.
+  ]
+  Each vessel that appears is shown with all of its catches. Two
+  further cuts are produced alongside this one and are reachable from
+  the project website's download menu.
 
 
   Depletion of the project's ocean is measured from the project's first
@@ -342,8 +379,9 @@
 
     #v(5mm)
 
-    Day~#stats.day_label · #stats.vessels_active_str vessels ·
-    #stats.stanzas_caught_str stanzas ·
+    Day~#stats.day_label · #upper(stats.tier_label) ·
+    #stats.selected_vessels_str / #stats.fleet_total_str vessels ·
+    #stats.selected_stanzas_str of #stats.stanzas_caught_str stanzas ·
     +#stats.depletion_pct_str% depletion
 
     #v(5mm)

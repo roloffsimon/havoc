@@ -1168,9 +1168,11 @@
   }
   .cpp-cta .link-plain:hover { color: var(--cream-dim); }
 
-  /* Size selector — lets users pick how many poems the PDF includes.
-     The full archive stays the primary document (conceptual mass), the
-     smaller cuts are navigation affordances. */
+  /* Size selector — picks the cut of the day's catch the PDF will
+     contain. Three tiers: Selection (1/10), Fine Cut (1/100),
+     One Piece (1 vessel). Custom dropdown — the native <select>'s
+     OS-default option list breaks the page's typographic register, so
+     we render a styled panel ourselves. */
   .cpp-size {
     display: flex; flex-direction: column; gap: 6px;
     margin-top: 8px; margin-bottom: 14px;
@@ -1182,34 +1184,142 @@
     color: var(--cream-faint);
     text-transform: uppercase;
   }
-  .cpp-size-select {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--cream-dim);
+  .cpp-dropdown { position: relative; }
+  .cpp-dd-trigger {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%;
+    padding: 8px 12px 8px 12px;
     background: rgba(6, 10, 20, 0.6);
     border: 1px solid var(--cream-ghost);
     border-radius: 2px;
-    padding: 6px 28px 6px 10px;
-    width: 100%;
-    max-width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
+    color: var(--cream-dim);
     cursor: pointer;
-    line-height: 1.4;
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--cream-faint) 50%),
-      linear-gradient(135deg, var(--cream-faint) 50%, transparent 50%);
-    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
-    background-size: 5px 5px, 5px 5px;
-    background-repeat: no-repeat;
+    font-family: inherit;
+    line-height: 1.3;
+    text-align: left;
+    transition: border-color 80ms ease, color 80ms ease;
   }
-  .cpp-size-select:focus {
+  .cpp-dd-trigger:hover { border-color: var(--cream-faint); color: var(--cream); }
+  .cpp-dd-trigger:focus-visible {
     outline: none;
     border-color: var(--amber);
     color: var(--cream);
   }
-  .cpp-size-select option {
-    background: #030a18; color: var(--cream);
+  .cpp-dropdown.is-open .cpp-dd-trigger {
+    border-color: var(--amber);
+    color: var(--cream);
+  }
+  .cpp-dd-value {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .cpp-dd-current-name {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cream);
+  }
+  .cpp-dd-current-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--cream-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cpp-dd-caret {
+    flex: 0 0 auto;
+    width: 10px; height: 10px;
+    border-left: 1px solid var(--cream-faint);
+    border-bottom: 1px solid var(--cream-faint);
+    transform: rotate(-45deg);
+    transition: transform 120ms ease;
+    margin-bottom: 2px;
+  }
+  .cpp-dropdown.is-open .cpp-dd-caret {
+    transform: rotate(135deg);
+    margin-bottom: -2px;
+    border-color: var(--amber);
+  }
+  .cpp-dd-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #030a18;
+    border: 1px solid var(--amber);
+    border-radius: 2px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    padding: 4px;
+    display: none;
+    z-index: 50;
+  }
+  .cpp-dropdown.is-open .cpp-dd-panel { display: block; }
+  .cpp-dd-opt {
+    display: block;
+    width: 100%;
+    background: none;
+    border: 0;
+    border-radius: 1px;
+    padding: 9px 10px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--cream-dim);
+    font-family: inherit;
+    transition: background 80ms ease, color 80ms ease;
+  }
+  .cpp-dd-opt + .cpp-dd-opt {
+    border-top: 1px solid var(--cream-ghost);
+  }
+  .cpp-dd-opt:hover,
+  .cpp-dd-opt:focus-visible {
+    background: rgba(255, 198, 90, 0.08);
+    color: var(--cream);
+    outline: none;
+  }
+  .cpp-dd-opt[aria-selected="true"] {
+    color: var(--cream);
+  }
+  .cpp-dd-opt[aria-selected="true"] .cpp-dd-opt-name::before {
+    content: '\2713\00a0\00a0';
+    color: var(--amber);
+    margin-left: -16px;
+  }
+  .cpp-dd-opt-row {
+    display: flex; align-items: baseline; gap: 8px;
+    flex-wrap: wrap;
+  }
+  .cpp-dd-opt-name {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-left: 16px;
+  }
+  .cpp-dd-opt-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--cream-faint);
+  }
+  .cpp-dd-opt-desc {
+    display: block;
+    margin: 2px 0 0 16px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 11px;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--cream-faint);
+  }
+  .cpp-dd-opt:hover .cpp-dd-opt-desc,
+  .cpp-dd-opt:focus-visible .cpp-dd-opt-desc {
+    color: var(--cream-dim);
   }
   .cpp-size-note {
     font-family: 'Instrument Sans', sans-serif;
@@ -1947,13 +2057,42 @@
             </div>
             <div class="cpp-cta">
               <div class="cpp-size">
-                <label class="cpp-size-label" for="catch-size" data-i18n="catch.size.label">Document size</label>
-                <select id="catch-size" class="cpp-size-select" aria-describedby="catch-size-note">
-                  <option value="full"    selected data-i18n="catch.size.full">Complete archive &middot; ~51&thinsp;MB</option>
-                  <option value="digest"           data-i18n="catch.size.digest">Digest (every 10th catch) &middot; ~5&thinsp;MB</option>
-                  <option value="excerpt"          data-i18n="catch.size.excerpt">Excerpt (every 100th catch) &middot; ~500&thinsp;KB</option>
-                  <option value="vessel"           data-i18n="catch.size.vessel">Top vessel only &middot; ~30&thinsp;KB</option>
-                </select>
+                <span class="cpp-size-label" id="catch-size-label" data-i18n="catch.size.label">Document size</span>
+                <div class="cpp-dropdown" id="catch-size" data-value="selection">
+                  <button type="button" class="cpp-dd-trigger"
+                          aria-haspopup="listbox"
+                          aria-expanded="false"
+                          aria-labelledby="catch-size-label">
+                    <span class="cpp-dd-value">
+                      <span class="cpp-dd-current-name" data-i18n="catch.size.selection.name">Selection</span>
+                      <span class="cpp-dd-current-meta" data-i18n="catch.size.selection.meta">a random tenth of the day&rsquo;s fleet</span>
+                    </span>
+                    <span class="cpp-dd-caret" aria-hidden="true"></span>
+                  </button>
+                  <div class="cpp-dd-panel" role="listbox" aria-labelledby="catch-size-label">
+                    <button type="button" class="cpp-dd-opt" role="option" data-value="selection" aria-selected="true">
+                      <span class="cpp-dd-opt-row">
+                        <span class="cpp-dd-opt-name" data-i18n="catch.size.selection.name">Selection</span>
+                        <span class="cpp-dd-opt-meta" data-i18n="catch.size.selection.meta">a random tenth of the day&rsquo;s fleet</span>
+                      </span>
+                      <span class="cpp-dd-opt-desc" data-i18n="catch.size.selection.desc">The canonical archive — every catch from a random tenth of the day&rsquo;s fleet, ordered by Shannon entropy.</span>
+                    </button>
+                    <button type="button" class="cpp-dd-opt" role="option" data-value="finecut" aria-selected="false">
+                      <span class="cpp-dd-opt-row">
+                        <span class="cpp-dd-opt-name" data-i18n="catch.size.finecut.name">Fine Cut</span>
+                        <span class="cpp-dd-opt-meta" data-i18n="catch.size.finecut.meta">a random hundredth of the fleet</span>
+                      </span>
+                      <span class="cpp-dd-opt-desc" data-i18n="catch.size.finecut.desc">Thinner reading copy — about a hundred random vessels with all their catches.</span>
+                    </button>
+                    <button type="button" class="cpp-dd-opt" role="option" data-value="onepiece" aria-selected="false">
+                      <span class="cpp-dd-opt-row">
+                        <span class="cpp-dd-opt-name" data-i18n="catch.size.onepiece.name">One Piece</span>
+                        <span class="cpp-dd-opt-meta" data-i18n="catch.size.onepiece.meta">one randomly chosen vessel</span>
+                      </span>
+                      <span class="cpp-dd-opt-desc" data-i18n="catch.size.onepiece.desc">The minimal portrait — a single vessel&rsquo;s day, its few dozen verses, the smallest possible artefact.</span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div class="cta-label" data-i18n-html="catch.cta.label">Before downloading please consider donating to ocean conservation</div>
               <a class="btn-havoc is-donate" href="https://globalfishingwatch.org/support-us/" target="_blank" rel="noopener" data-donate="gfw">
@@ -2071,13 +2210,17 @@ const I18N = {
     'catch.sub.vessels': 'vessels',
     'catch.sub.hours': 'hours fished',
     'catch.sub.delta': '&Delta; depletion',
-    'catch.intro': 'On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across the world ocean. At the project\u2019s rate of three stanzas per fishing hour, this activity erased 291&thinsp;723 stanzas from the poetic ocean of <em>Sea and Spar Between</em>. The document you can download below is the verbatim catch of that day: every erased stanza, attributed to the vessel that took it, with GPS coordinates ordered by Shannon entropy \u2014 291&thinsp;723 verses across approximately 2&thinsp;450 pages.',
+    'catch.intro': 'On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across the world ocean. At the project\u2019s rate of three stanzas per fishing hour, 291&thinsp;723 verses were lifted from the poetic ocean of <em>Sea and Spar Between</em>, distributed across 8&thinsp;766 vessels. Printed in full the day\u2019s catch would run to thousands of pages \u2014 too much as a daily artefact, both for the project\u2019s small infrastructure and as an object to read. The default <em>Selection</em> below is therefore a random tenth of the fleet, drawn without regard to catch size: an honest sample of the working day rather than a roll-call of its heaviest hitters. Two thinner cuts are also produced.',
     'catch.size.label': 'Document size',
-    'catch.size.full':    'Complete archive \u00b7 ~51\u2009MB',
-    'catch.size.digest':  'Digest (every 10th catch) \u00b7 ~5\u2009MB',
-    'catch.size.excerpt': 'Excerpt (every 100th catch) \u00b7 ~500\u2009KB',
-    'catch.size.vessel':  'Top vessel only \u00b7 ~30\u2009KB',
-    'catch.size.note':    'The full archive is the primary document \u2014 the scale of the day\u2019s erasure is part of the work. Thinner cuts are for orientation; the order of catches and the per-vessel structure are preserved.',
+    'catch.size.selection.name': 'Selection',
+    'catch.size.selection.meta': 'a random tenth of the day\u2019s fleet',
+    'catch.size.selection.desc': 'The canonical archive \u2014 every catch from a random tenth of the day\u2019s fleet, ordered by Shannon entropy.',
+    'catch.size.finecut.name':   'Fine Cut',
+    'catch.size.finecut.meta':   'a random hundredth of the fleet',
+    'catch.size.finecut.desc':   'Thinner reading copy \u2014 about a hundred random vessels with all their catches.',
+    'catch.size.onepiece.name':  'One Piece',
+    'catch.size.onepiece.meta':  'one randomly chosen vessel',
+    'catch.size.onepiece.desc':  'The minimal portrait \u2014 a single vessel\u2019s day, its few dozen verses, the smallest possible artefact.',
     'catch.cta.label': 'Before downloading please consider donating to ocean conservation',
     'catch.cta.gfw': 'Donate to Global Fishing Watch',
     'catch.cta.greenpeace': 'Donate to Greenpeace',
@@ -2167,13 +2310,17 @@ const I18N = {
     'catch.sub.vessels': 'Schiffe',
     'catch.sub.hours': 'Fangstunden',
     'catch.sub.delta': '&Delta; Ersch\u00f6pfung',
-    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Bei der Regel des Projekts \u2014 drei Strophen pro Fangstunde \u2014 wurden dadurch 291&thinsp;723 Strophen aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht. Das unten herunterladbare Dokument ist der wortw\u00f6rtliche Fang dieses Tages: jede gel\u00f6schte Strophe, dem Schiff zugeordnet, das sie entnommen hat, mit GPS-Koordinaten und nach Shannon-Entropie sortiert \u2014 291&thinsp;723 Verse auf rund 2&thinsp;450 Seiten.',
+    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Nach der Regel des Projekts \u2014 drei Strophen pro Fangstunde \u2014 wurden 291&thinsp;723 Verse aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht, verteilt auf 8&thinsp;766 Schiffe. Vollst\u00e4ndig gedruckt w\u00fcrde der Tagesfang mehrere Tausend Seiten f\u00fcllen \u2014 zu viel als t\u00e4gliches Artefakt, sowohl f\u00fcr die kleine Infrastruktur des Projekts als auch als Lesegegenstand. Die Standardausgabe <em>Selection</em> unten ist deshalb ein zuf\u00e4lliges Zehntel der Flotte, ohne R\u00fccksicht auf die Fangmenge gezogen: ein ehrlicher Querschnitt des Arbeitstages statt der reinen Bestenliste. Zwei feinere Schnitte stehen zus\u00e4tzlich bereit.',
     'catch.size.label': 'Dokumentgr\u00f6\u00dfe',
-    'catch.size.full':    'Vollst\u00e4ndiges Archiv \u00b7 ~51\u2009MB',
-    'catch.size.digest':  'Auszug (jeder 10. Fang) \u00b7 ~5\u2009MB',
-    'catch.size.excerpt': 'Kurzfassung (jeder 100. Fang) \u00b7 ~500\u2009KB',
-    'catch.size.vessel':  'Nur das st\u00e4rkste Schiff \u00b7 ~30\u2009KB',
-    'catch.size.note':    'Das vollst\u00e4ndige Archiv ist das prim\u00e4re Dokument \u2014 der Umfang der t\u00e4glichen L\u00f6schung geh\u00f6rt zur Arbeit. D\u00fcnnere Schnitte dienen der Orientierung; die Fang-Reihenfolge und die Gliederung nach Schiffen bleiben erhalten.',
+    'catch.size.selection.name': 'Selection',
+    'catch.size.selection.meta': 'ein zuf\u00e4lliges Zehntel der Tagesflotte',
+    'catch.size.selection.desc': 'Die kanonische Ausgabe \u2014 alle F\u00e4nge eines zuf\u00e4lligen Zehntels der Tagesflotte, nach Shannon-Entropie geordnet.',
+    'catch.size.finecut.name':   'Fine Cut',
+    'catch.size.finecut.meta':   'ein zuf\u00e4lliges Hundertstel der Flotte',
+    'catch.size.finecut.desc':   'Schlankere Lesefassung \u2014 etwa hundert zuf\u00e4llig gezogene Schiffe mit ihren vollst\u00e4ndigen F\u00e4ngen.',
+    'catch.size.onepiece.name':  'One Piece',
+    'catch.size.onepiece.meta':  'ein einziges, zuf\u00e4llig gezogenes Schiff',
+    'catch.size.onepiece.desc':  'Das minimale Portr\u00e4t \u2014 der Tag eines einzigen Schiffs, ein paar Dutzend Verse, das kleinstm\u00f6gliche Artefakt.',
     'catch.cta.label': 'Vor dem Download bitte \u00fcberlegen, an Ozeanschutz zu spenden',
     'catch.cta.gfw': 'An Global Fishing Watch spenden',
     'catch.cta.greenpeace': 'An Greenpeace spenden',
@@ -2889,14 +3036,97 @@ async function loadFinalPoem() {
 
 // URL used by the Catch-of-the-Day button. Falls back to '#' so that
 // pressing it without a backend is a harmless no-op rather than a 404.
-// The size parameter is read from #catch-size; defaults to 'full' so the
-// conceptual mass stays the default. Valid sizes: full / digest / excerpt / vessel.
+// The size is taken from #catch-size's data-value attribute (custom
+// dropdown). Valid sizes: selection (default) / finecut / onepiece.
 function catchDownloadUrl() {
   if (!HAVOC_HAS_API) return '#';
-  const size = document.getElementById('catch-size')?.value || 'full';
+  const dd = document.getElementById('catch-size');
+  const size = dd?.dataset?.value || 'selection';
   const base = `${HAVOC_API_BASE}/api/catch-of-the-day`;
-  return size === 'full' ? base : `${base}?size=${encodeURIComponent(size)}`;
+  return size === 'selection' ? base : `${base}?size=${encodeURIComponent(size)}`;
 }
+
+// ── Custom dropdown wiring ────────────────────────────────────────
+// Native <select> can't be styled inside its option list, so we render
+// a button + panel ourselves and translate it back to a value via a
+// data-value attribute. Behaviour mirrors what users expect: click to
+// toggle, click outside to close, ↑/↓/Enter/Escape via the keyboard.
+(function initCatchSizeDropdown() {
+  const dd = document.getElementById('catch-size');
+  if (!dd) return;
+  const trigger = dd.querySelector('.cpp-dd-trigger');
+  const panel = dd.querySelector('.cpp-dd-panel');
+  const options = Array.from(dd.querySelectorAll('.cpp-dd-opt'));
+  const currentName = dd.querySelector('.cpp-dd-current-name');
+  const currentMeta = dd.querySelector('.cpp-dd-current-meta');
+
+  function setOpen(open) {
+    dd.classList.toggle('is-open', open);
+    trigger.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const sel = options.find(o => o.getAttribute('aria-selected') === 'true') || options[0];
+      sel?.focus();
+    }
+  }
+
+  function selectValue(value) {
+    options.forEach(opt => {
+      opt.setAttribute('aria-selected', opt.dataset.value === value ? 'true' : 'false');
+    });
+    dd.dataset.value = value;
+    // Mirror the chosen option's label into the trigger.
+    const chosen = options.find(o => o.dataset.value === value);
+    if (chosen) {
+      const name = chosen.querySelector('.cpp-dd-opt-name')?.textContent || '';
+      const meta = chosen.querySelector('.cpp-dd-opt-meta')?.textContent || '';
+      if (currentName) currentName.textContent = name;
+      if (currentMeta) currentMeta.textContent = meta;
+    }
+    dd.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { value } }));
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.preventDefault();
+    setOpen(!dd.classList.contains('is-open'));
+  });
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen(true);
+    }
+  });
+
+  options.forEach((opt, i) => {
+    opt.addEventListener('click', (e) => {
+      e.preventDefault();
+      selectValue(opt.dataset.value);
+      setOpen(false);
+      trigger.focus();
+    });
+    opt.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        options[(i + 1) % options.length].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        options[(i - 1 + options.length) % options.length].focus();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectValue(opt.dataset.value);
+        setOpen(false);
+        trigger.focus();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        trigger.focus();
+      }
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!dd.contains(e.target)) setOpen(false);
+  });
+})();
 
 function generateProceduralMask() {
   const mask = new Uint8Array(DISPLAY_COLS * DISPLAY_ROWS);

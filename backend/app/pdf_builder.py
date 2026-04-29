@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import re
 from datetime import date as _date, datetime, timedelta, timezone
 from html import escape
@@ -36,6 +37,27 @@ from .db import DATA_DIR
 from .ocean_pool import DEPLETION_FACTOR
 
 log = logging.getLogger(__name__)
+
+# ── Render tiers ─────────────────────────────────────────────────────
+# Daily volumes ship at three sizes:
+#   selection — random ~1/10 of the day's fleet  (the canonical archive)
+#   finecut   — random ~1/100 of the day's fleet (~150 vessels)
+#   onepiece  — one randomly chosen vessel
+# Random (not top-by-catch-count) so the document reads as a sample of
+# the whole fleet rather than as the heaviest hitters. Sampling is
+# deterministic per-date so reruns produce the same volume.
+TIERS: tuple[str, ...] = ("selection", "finecut", "onepiece")
+TIER_FRACTIONS: dict[str, int] = {
+    "selection": 10,
+    "finecut": 100,
+    "onepiece": 0,   # always exactly 1
+}
+TIER_LABELS: dict[str, str] = {
+    "selection": "Selection",
+    "finecut":   "Fine Cut",
+    "onepiece":  "One Piece",
+}
+DEFAULT_TIER = "selection"
 
 PDF_DIR = DATA_DIR / "pdfs"
 WEEKLY_DIR = PDF_DIR / "weekly"
@@ -1174,20 +1196,51 @@ def _safe_label(s: str) -> str:
     return "v_" + (re.sub(r"\W+", "_", s)[:60] or "unknown")
 
 
+def _sample_for_tier(poems: dict[str, list[dict]], tier: str,
+                      seed_str: str) -> dict[str, list[dict]]:
+    """Deterministic random subsample of `poems` for the given tier.
+
+    Sorting the keys before sampling is what makes the result stable:
+    Python dicts preserve insertion order, but the source `poems` dict
+    is built from event iteration order which is run-dependent. We sort
+    by vkey, seed by date+tier, sample.
+    """
+    keys = sorted(poems.keys())
+    n_total = len(keys)
+    if n_total == 0:
+        return {}
+    if tier == "onepiece":
+        target = 1
+    else:
+        denom = TIER_FRACTIONS.get(tier, 1)
+        target = max(1, n_total // max(denom, 1)) if denom else 1
+    if target >= n_total:
+        return poems
+    rng = random.Random(f"{seed_str}:{tier}")
+    sampled = rng.sample(keys, target)
+    return {k: poems[k] for k in sampled}
+
+
 def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
-                         cover_path: Path) -> dict:
+                         cover_path: Path,
+                         *, tier: str = DEFAULT_TIER,
+                         fleet_total: int | None = None) -> dict:
     """Reshape the in-memory stats + poems into the JSON payload that
     `typst_templates/daily.typ` consumes via `sys.inputs.payload`.
+
+    `poems` is the (possibly sampled) subset for this tier; `fleet_total`
+    is the full fleet size before sampling, used by the Typst intro to
+    explain the cut. If omitted, we fall back to len(poems).
 
     `cover_path` must sit inside `typst_templates/` so it can be
     addressed by a Typst-relative path; we compute the .typ-relative
     form and pass that, since absolute paths are interpreted relative
     to the Typst project root in a way that breaks on POSIX.
 
-    Pre-sorts: poems by catch count desc (matches the production
-    HAVOC_PDF_TOP_N selection); per-poem stanzas by Shannon entropy
-    desc. Pre-formats numeric strings so the templates stay free of
-    formatting code.
+    Per-poem stanzas are pre-sorted by Shannon entropy desc; the
+    poems themselves stay in their original (sampled) order — sorting
+    by catch count would foreground heavy hitters and undo the
+    intentionally-random sample.
     """
     cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
     day_n = _vol_for(stats["date"])
@@ -1221,7 +1274,13 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
                 for c in sorted_catches
             ],
         })
-    poems_list.sort(key=lambda p: -len(p["stanzas"]))
+    # Stable, alphabetic order for the rendered selection — this echoes
+    # the Index of vessels and reads as a calmer document than catch-
+    # count-descending would.
+    poems_list.sort(key=lambda p: p["name"].upper())
+
+    selected_stanzas = sum(len(p["stanzas"]) for p in poems_list)
+    fleet_total = fleet_total if fleet_total is not None else len(poems_list)
 
     rendered = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return {
@@ -1242,36 +1301,78 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
             "stanzas_caught_str": f"{int(stats['stanzas_caught']):,}",
             "fishing_hours_str": f"{float(stats.get('fishing_hours', 0.0)):,.0f}",
             "depletion_pct_str": f"{float(stats['depletion_percent']):.6f}",
+            # Tier metadata read by the introduction to explain the cut.
+            "tier": tier,
+            "tier_label": TIER_LABELS.get(tier, tier.title()),
+            "tier_fraction": TIER_FRACTIONS.get(tier, 1),
+            "fleet_total_str": f"{fleet_total:,}",
+            "selected_vessels": len(poems_list),
+            "selected_vessels_str": f"{len(poems_list):,}",
+            "selected_stanzas": selected_stanzas,
+            "selected_stanzas_str": f"{selected_stanzas:,}",
         },
         "poems": poems_list,
         "cover_path": str(cover_rel),
     }
 
 
-def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
-                                  out_dir: Path = PDF_DIR,
-                                  stem: str | None = None) -> Path:
-    """Daily volume via Typst. Cover PNG is rendered with Pillow (the
-    same code the WeasyPrint path uses), dropped into a scratch dir
-    inside the template tree, and inlined as `data.cover_path`."""
+def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
+                          tier: str, *,
+                          fleet_total: int,
+                          cover_bytes: bytes,
+                          out_dir: Path = PDF_DIR) -> Path:
+    """Render a single tier (selection / finecut / onepiece) for the
+    day. Cover PNG is passed in as bytes so all three tiers share one
+    Pillow render (the cover is identical across tiers).
+    """
     from . import typst_renderer
 
     date = stats["date"]
-    name_stem = stem or f"catch_{date}"
-
     TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
-    cover_path = TYPST_TMP_DIR / f"cover_{date}.png"
-    cover_path.write_bytes(_render_cover_image())
+    cover_path = TYPST_TMP_DIR / f"cover_{date}_{tier}.png"
+    cover_path.write_bytes(cover_bytes)
     try:
-        payload = _build_daily_payload(stats, poems, cover_path)
+        payload = _build_daily_payload(
+            stats, poems, cover_path, tier=tier, fleet_total=fleet_total,
+        )
         pdf_bytes = typst_renderer.render("daily", payload)
     finally:
         cover_path.unlink(missing_ok=True)
 
-    pdf_path = out_dir / f"{name_stem}.pdf"
+    pdf_path = out_dir / f"catch_{date}_{tier}.pdf"
     pdf_path.write_bytes(pdf_bytes)
-    log.info("PDF written to %s (%d bytes, typst)", pdf_path, len(pdf_bytes))
+    log.info("PDF written to %s (%d bytes, typst, tier=%s, vessels=%d/%d)",
+             pdf_path, len(pdf_bytes), tier, len(poems), fleet_total)
     return pdf_path
+
+
+def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
+                                  out_dir: Path = PDF_DIR,
+                                  stem: str | None = None,
+                                  tiers: tuple[str, ...] = TIERS) -> Path:
+    """Render the day's volumes — one PDF per tier. Returns the path of
+    the canonical (selection) PDF; the others sit alongside on disk and
+    are addressable via `tier_pdf_path(date, tier)`. The Pillow cover is
+    rendered once and reused.
+    """
+    fleet_total = len(poems)
+    cover_bytes = _render_cover_image()
+    paths: dict[str, Path] = {}
+    for tier in tiers:
+        sub_poems = _sample_for_tier(poems, tier, stats["date"])
+        paths[tier] = _write_tier_artefact(
+            stats, sub_poems, tier,
+            fleet_total=fleet_total,
+            cover_bytes=cover_bytes,
+            out_dir=out_dir,
+        )
+    return paths.get(DEFAULT_TIER) or next(iter(paths.values()))
+
+
+def tier_pdf_path(date: str, tier: str = DEFAULT_TIER) -> Path:
+    """Disk path for a tier-specific daily volume. Used by the API to
+    serve `?size=...`."""
+    return PDF_DIR / f"catch_{date}_{tier}.pdf"
 
 
 def _build_weekly_payload(week_start: _date, week_end: _date,
@@ -1413,27 +1514,32 @@ def _write_daily_artefacts(stats: dict, poems: dict[str, list[dict]], *,
 
 
 def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
-    """Called by the daily pipeline to render the day's volume.
+    """Called by the daily pipeline to render the day's volumes.
 
-    Knobs for the production environment:
-      HAVOC_PDF_SKIP=1     skip PDF rendering entirely (returns None;
-                           record_day still runs, the day's catches and
-                           vessels persist, just without the printed volume)
-      HAVOC_PDF_TOP_N=N    cap to the N biggest hauls; default 200.
-                           Reasoning: a full GFW day ships ~15k vessels
-                           and the Typst render saturates Railway-Hobby's
-                           CPU long enough to trip the healthcheck-timeout
-                           restart. Capping to 200 keeps the render under
-                           ~50s — comfortably inside the healthcheck
-                           window — and still produces a 1400-page volume
-                           covering the day's most active fleet. Override
-                           upward if you have a beefier service or want
-                           a fuller archive.
+    Renders three tiers of the day's catch (selection / fine cut /
+    one piece) under the Typst engine and returns the path of the
+    canonical Selection PDF. The whole day's fleet is sampled at
+    different fractions per tier — see _sample_for_tier — so the cut
+    reads as a sample of the fleet rather than as the heaviest hitters.
+
+    Knobs:
+      HAVOC_PDF_SKIP=1     skip rendering entirely (record_day still
+                           runs; the day's catches and vessels persist).
+      HAVOC_PDF_ENGINE     "typst" (default behaviour) or "weasy" for
+                           the legacy WeasyPrint pipeline. WeasyPrint
+                           is tier-unaware — it renders a single PDF
+                           covering the full fleet (or the legacy
+                           HAVOC_PDF_TOP_N cap, if set).
     """
     if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
         log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
         return None
 
+    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
+    if engine == "typst":
+        return _write_daily_artefacts_typst(stats, poems)
+
+    # WeasyPrint legacy path — pre-tier behaviour with the env-var cap.
     top_n_raw = os.environ.get("HAVOC_PDF_TOP_N", "200").strip()
     if top_n_raw and top_n_raw != "0":
         top_n = int(top_n_raw)
@@ -1445,16 +1551,23 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
             capped_poems = poems
     else:
         capped_poems = poems
-    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
-    if engine == "typst":
-        return _write_daily_artefacts_typst(stats, capped_poems)
     return _write_daily_artefacts(stats, capped_poems)
 
 
 # ── Public lookups (used by main.py) ─────────────────────────────────
 
-def latest_pdf() -> Path | None:
-    """Newest daily artefact (PDF if present, else HTML fallback)."""
+def latest_pdf(tier: str | None = None) -> Path | None:
+    """Newest daily artefact for the given tier (default: selection).
+
+    Falls back to the most recent `catch_*.pdf` (any tier or legacy
+    untagged) if no tier-specific file exists, then to an HTML
+    fallback if WeasyPrint left one behind on a prior deploy.
+    """
+    tier = tier or DEFAULT_TIER
+    tier_pdfs = sorted(PDF_DIR.glob(f"catch_*_{tier}.pdf"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+    if tier_pdfs:
+        return tier_pdfs[0]
     pdfs = sorted(PDF_DIR.glob("catch_*.pdf"),
                   key=lambda p: p.stat().st_mtime, reverse=True)
     if pdfs:

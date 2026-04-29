@@ -232,18 +232,29 @@ def final_poem():
 
 
 @app.get("/api/catch-of-the-day")
-def catch_of_the_day():
+def catch_of_the_day(size: str = "selection"):
     """
-    Return the most recent daily volume (PDF, with HTML fallback).
+    Return the most recent daily volume.
 
-    The website used to offer four size tiers and a downloadable archive
-    of older days. Both were retired on 2026-04-25: the document is the
-    document, and only today's is exposed publicly. Older days remain
-    in the project's own weekly volumes (see pdf_builder.render_weekly_pdf),
-    which live under data/pdfs/weekly/ and are not served from the API.
+    Three tiers (`?size=...`):
+      selection (default) — random ~1/10 of the day's fleet
+      finecut             — random ~1/100
+      onepiece            — one randomly chosen vessel
+
+    Legacy aliases preserved for older website builds: `full` and
+    `digest` map to selection; `excerpt` to finecut; `vessel` to
+    onepiece. If the requested tier hasn't been rendered yet (e.g.
+    a deploy before the tier code shipped), we fall back to whichever
+    tier is on disk.
     """
     from . import pdf_builder
-    path = pdf_builder.latest_pdf()
+    aliases = {
+        "selection": "selection", "full": "selection", "digest": "selection",
+        "finecut": "finecut",     "excerpt": "finecut",
+        "onepiece": "onepiece",   "vessel": "onepiece",
+    }
+    tier = aliases.get(size.lower().strip(), pdf_builder.DEFAULT_TIER)
+    path = pdf_builder.latest_pdf(tier)
     if path is None:
         raise HTTPException(status_code=404, detail="No catch rendered yet.")
     media = "application/pdf" if path.suffix == ".pdf" else "text/html"
