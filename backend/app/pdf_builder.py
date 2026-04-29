@@ -1415,24 +1415,29 @@ def _write_daily_artefacts(stats: dict, poems: dict[str, list[dict]], *,
 def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
     """Called by the daily pipeline to render the day's volume.
 
-    Two knobs for the production environment:
+    Knobs for the production environment:
       HAVOC_PDF_SKIP=1     skip PDF rendering entirely (returns None;
                            record_day still runs, the day's catches and
                            vessels persist, just without the printed volume)
-      HAVOC_PDF_TOP_N=200  when not skipped, cap to the N biggest hauls;
-                           a full GFW day is 16k+ vessels and WeasyPrint's
-                           text-shaping pass runs out of memory long
-                           before it finishes the volume.
+      HAVOC_PDF_TOP_N=N    optional cap to the N biggest hauls. Originally
+                           a WeasyPrint memory-pressure workaround; with
+                           the Typst engine the full GFW day renders fine,
+                           so this is unset by default. Set it to produce
+                           a smaller volume (e.g., for a print run).
     """
     if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
         log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
         return None
 
-    top_n = int(os.environ.get("HAVOC_PDF_TOP_N", "200"))
-    if len(poems) > top_n:
-        ranked = sorted(poems.items(), key=lambda kv: -len(kv[1]))[:top_n]
-        capped_poems = dict(ranked)
-        log.info("PDF: capping volume to top %d vessels (of %d)", top_n, len(poems))
+    top_n_raw = os.environ.get("HAVOC_PDF_TOP_N", "").strip()
+    if top_n_raw:
+        top_n = int(top_n_raw)
+        if len(poems) > top_n:
+            ranked = sorted(poems.items(), key=lambda kv: -len(kv[1]))[:top_n]
+            capped_poems = dict(ranked)
+            log.info("PDF: capping volume to top %d vessels (of %d)", top_n, len(poems))
+        else:
+            capped_poems = poems
     else:
         capped_poems = poems
     engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
