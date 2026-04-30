@@ -3859,19 +3859,42 @@ function vesselScreenPos(vessel) {
 }
 
 function renderShips(startCol, startRow, cellsWide, cellsHigh, cellW) {
-  // Uniform random sub-sampling at wide zoom: dense fishing regions still
-  // read denser than sparse ones (ratio is preserved in expectation), but
-  // adjacent dots no longer fuse into solid yellow ropes along coastlines.
-  const showAll = cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS;
-  const sampleFrac = showAll ? 1 :
-    Math.max(0.05, (cellW - 0.5) / (ZOOM_THRESHOLDS.STANZA_CANVAS - 0.5));
+  // Source: prefer fleetData (8 766 mock vessels at first paint, then the
+  // real live fleet once /api/vessels resolves). VESSELS remains the
+  // 12-entry static template seed — useful only as the very last fallback
+  // before generateFleet() has run, which would otherwise leave the map
+  // looking empty until Railway answers.
+  const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
 
-  for (let i = 0; i < VESSELS.length; i++) {
+  // Uniform random sub-sampling. The fleet is now ~17 000 vessels, heavily
+  // clustered along the East-Asian and European shelves, so a flat 5 %
+  // floor still bleeds into solid yellow blobs at world view. Cap wide
+  // zoom at TARGET_WIDE_ZOOM_DOTS so only scattered single dots show
+  // (data still comes from /api/vessels — we just thin the draw set), and
+  // ramp up linearly through the mid-zoom band until everything is drawn
+  // at STANZA_CANVAS.
+  const TARGET_WIDE_ZOOM_DOTS = 200;
+  const showAll = cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS;
+  let sampleFrac;
+  if (showAll) {
+    sampleFrac = 1;
+  } else {
+    const lowFrac = Math.min(1, TARGET_WIDE_ZOOM_DOTS / Math.max(1, ships.length));
+    if (cellW <= ZOOM_THRESHOLDS.GRID_LINES) {
+      sampleFrac = lowFrac;
+    } else {
+      const t = (cellW - ZOOM_THRESHOLDS.GRID_LINES)
+              / (ZOOM_THRESHOLDS.STANZA_CANVAS - ZOOM_THRESHOLDS.GRID_LINES);
+      sampleFrac = lowFrac + (1 - lowFrac) * t;
+    }
+  }
+
+  for (let i = 0; i < ships.length; i++) {
     if (!showAll) {
       const score = ((i * 2654435761) >>> 0) / 4294967295;
       if (score >= sampleFrac) continue;
     }
-    const vessel = VESSELS[i];
+    const vessel = ships[i];
     const dcol = (vessel.lon + 180) / 0.1;
     const drow = (vessel.lat + 90) / 0.1;
     const vx = (dcol - startCol) * cellW;
