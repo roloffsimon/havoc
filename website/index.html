@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Remorseless Havoc</title>
+<link rel="preload" href="public/land_mask_3600x1800.bin" as="fetch" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2214,6 +2215,8 @@ const I18N = {
     'nav.catch': 'Catch of the Day',
     'splash.hint': 'click anywhere to enter',
     'ocean.hint': 'scroll to zoom &middot; drag to pan<br>zoom in to read the stanzas',
+    'ocean.hint.midzoom': '0.1\u00b0 display grid<br>zoom more to read stanzas',
+    'ocean.hint.zoomed':  'stanzas visible in cells<br>depleted = dark',
     'ocean.loading': 'calibrating ocean grid \u2026',
     'status.cells-alive': 'cells alive',
     'status.vessels-active': 'vessels active',
@@ -2317,6 +2320,8 @@ const I18N = {
     'nav.catch': 'Fang des Tages',
     'splash.hint': 'klicken zum eintreten',
     'ocean.hint': 'scrollen zum zoomen &middot; ziehen zum schwenken<br>heranzoomen, um die strophen zu lesen',
+    'ocean.hint.midzoom': '0,1\u00b0-anzeigegitter<br>weiter heranzoomen, um die strophen zu lesen',
+    'ocean.hint.zoomed':  'strophen in den zellen sichtbar<br>ersch\u00f6pft = dunkel',
     'ocean.loading': 'ozean-gitter wird kalibriert \u2026',
     'status.cells-alive': 'aktive zellen',
     'status.vessels-active': 'aktive schiffe',
@@ -2476,6 +2481,10 @@ function refreshDynamicI18n() {
   if (dlStatus && document.getElementById('download-modal')?.classList.contains('is-open')) {
     dlStatus.textContent = t('catch.modal.preparing');
   }
+
+  // Hint overlay holds raw HTML (no data-i18n attribute), so we need to
+  // re-render it explicitly when the language toggles.
+  try { if (typeof updateHint === 'function') updateHint(); } catch (_) {}
 }
 
 // Re-render any open fleet cards whenever the language toggles, so the
@@ -2496,7 +2505,10 @@ document.addEventListener('srah:lang-change', () => {
   const splash = document.getElementById('intro-splash');
   if (!splash) return;
 
-  if (sessionStorage.getItem('motto_dismissed')) {
+  // Skip splash only after the user has actually seen it once on this
+  // device (localStorage, not sessionStorage) — avoids a blank canvas
+  // on every refresh while the 6.4 MB land-mask is still in flight.
+  if (localStorage.getItem('motto_dismissed')) {
     splash.remove();
     return;
   }
@@ -2504,21 +2516,44 @@ document.addEventListener('srah:lang-change', () => {
   document.body.style.overflow = 'hidden';
   splash.focus();
 
-  function dismiss() {
+  const splashShownAt = Date.now();
+  const MIN_SPLASH_MS = 1500;
+  let dismissPending = false;
+
+  function actuallyDismiss() {
     if (splash.classList.contains('is-leaving')) return;
     splash.classList.add('is-leaving');
     setTimeout(() => {
       splash.remove();
       document.body.style.overflow = '';
-      sessionStorage.setItem('motto_dismissed', '1');
+      localStorage.setItem('motto_dismissed', '1');
     }, 500);
+  }
+
+  function dismiss() {
+    if (dismissPending || splash.classList.contains('is-leaving')) return;
+    const elapsed = Date.now() - splashShownAt;
+    const ready = !!window._havocMapReady;
+    if (ready && elapsed >= MIN_SPLASH_MS) {
+      actuallyDismiss();
+      return;
+    }
+    // Click came too early — wait for both conditions and then leave.
+    dismissPending = true;
+    const tryAgain = () => {
+      if (window._havocMapReady && Date.now() - splashShownAt >= MIN_SPLASH_MS) {
+        actuallyDismiss();
+        document.removeEventListener('srah:map-ready', tryAgain);
+      }
+    };
+    document.addEventListener('srah:map-ready', tryAgain);
+    setTimeout(tryAgain, MIN_SPLASH_MS - elapsed);
   }
 
   splash.addEventListener('click', dismiss);
   document.addEventListener('keydown', function onKey(e) {
     if (e.key === 'Escape' || e.key === 'Enter') {
       dismiss();
-      document.removeEventListener('keydown', onKey);
     }
   });
 })();
@@ -4037,7 +4072,7 @@ function updateHoverTooltip(e) {
   const deplState = isDepleted(col, row);
 
   if (deplState === 2) {
-    stanzaEl.innerHTML = '<span class="ch-line" style="color:var(--cream-ghost);">[depleted]</span>';
+    stanzaEl.innerHTML = `<span class="ch-line" style="color:var(--cream-ghost);">[${t('status.depleted')}]</span>`;
   } else {
     const stanza = stanzaForDisplayCell(col, row);
     stanzaEl.innerHTML = stanza.map(l => `<span class="ch-line">${l}</span>`).join('');
@@ -4081,13 +4116,10 @@ function updateHint() {
   if (!hint || hint.getAttribute('data-state') === 'dismissed') return;
 
   const cellW = canvasW / viewport.cellsWide;
-  if (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) {
-    hint.innerHTML = 'stanzas visible in cells<br>depleted = dark';
-  } else if (cellW >= ZOOM_THRESHOLDS.GRID_LINES) {
-    hint.innerHTML = '0.1\u00b0 display grid<br>zoom more to read stanzas';
-  } else {
-    hint.innerHTML = 'scroll to zoom \u00b7 drag to pan<br>zoom in to read the stanzas';
-  }
+  const key = (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) ? 'ocean.hint.zoomed'
+            : (cellW >= ZOOM_THRESHOLDS.GRID_LINES)    ? 'ocean.hint.midzoom'
+            : 'ocean.hint';
+  hint.innerHTML = t(key);
 }
 
 // Auto-fade hint after 8s if user hasn't interacted
@@ -4124,6 +4156,23 @@ function spawnVesselPopup(vessel, autoCloseAfter = 7000) {
   const pos = vesselScreenPos(vessel);
   if (!pos || pos.vx < 0 || pos.vx > canvasW || pos.vy < 0 || pos.vy > canvasH) return null;
 
+  // Stanza must come from this vessel's actual day-catch and follow the
+  // active language. Live data (v.catches): pick the first cell the
+  // backend recorded as caught today, regenerate the verse client-side
+  // in the current language — same source the Fleet card pulls from.
+  // Fallback (static VESSELS array, no backend): derive from the ship's
+  // position so the demo still shows something deterministic.
+  let stanzaLines;
+  if (Array.isArray(vessel.catches) && vessel.catches.length > 0) {
+    const c = vessel.catches[0];
+    stanzaLines = generateStanzaForLang(c.col, c.row, currentLang);
+  } else {
+    const backendCol = Math.floor(((vessel.lon + 180) / 0.1) * 10 + 5);
+    const backendRow = Math.floor(((vessel.lat + 90)  / 0.1) * 10 + 5);
+    stanzaLines = generateStanzaForLang(backendCol, backendRow, currentLang);
+  }
+  const entropyVal = (typeof vessel.entropy === 'number') ? vessel.entropy : computeStanzaEntropy(stanzaLines);
+
   const el = document.createElement('div');
   el.className = 'vessel-popup';
   el.dataset.vesselId = vessel.name.toLowerCase().replace(/\s+/g, '-');
@@ -4132,9 +4181,9 @@ function spawnVesselPopup(vessel, autoCloseAfter = 7000) {
     <div class="pi-name">${vessel.name}</div>
     <div class="pi-meta">${formatVesselMeta(vessel)}</div>
     <div class="pi-stanza">
-      ${vessel.stanza.map(l => `<span class="pi-line">${l}</span>`).join('')}
+      ${stanzaLines.map(l => `<span class="pi-line">${l}</span>`).join('')}
     </div>
-    <div class="pi-entropy">H = ${vessel.entropy.toFixed(2)} &middot; ${t('popup.gps')} &middot; ${t('popup.just-now')}</div>
+    <div class="pi-entropy">H = ${entropyVal.toFixed(2)} &middot; ${t('popup.gps')} &middot; ${t('popup.just-now')}</div>
   `;
   popupLayer.appendChild(el);
 
@@ -4335,27 +4384,25 @@ function sortFleet() {
 }
 
 function renderFleetStanzas(card, v) {
-  // Build (or rebuild) the expanded card body: every stanza this
-  // vessel caught today, separated by a thin rule. Used both on
-  // first-open and on language-toggle re-render.
+  // Build (or rebuild) the expanded card body. We only render the
+  // first stanza — vessels can carry hundreds of catches per day, and
+  // the line-reveal animation is designed for a single 4-line block.
+  // Total catch count remains visible in the entropy line below.
   card.querySelectorAll('.vc-expand, .vc-entropy, .vc-map-link').forEach(el => el.remove());
   const stanzas = stanzasForFleetEntry(v);
+  const stanza = stanzas[0] || [];
   const expand = document.createElement('div');
   expand.className = 'vc-expand';
-  expand.innerHTML = stanzas.map((stanza, i) => {
-    const lines = stanza.map(l => `<span class="vc-line">${l}</span>`).join('');
-    const sep = i > 0 ? '<span class="vc-sep" aria-hidden="true"></span>' : '';
-    return sep + `<div class="vc-stanza">${lines}</div>`;
-  }).join('');
+  expand.innerHTML = `<div class="vc-stanza">${
+    stanza.map(l => `<span class="vc-line">${l}</span>`).join('')
+  }</div>`;
   const entropy = document.createElement('div');
   entropy.className = 'vc-entropy';
   const ns = v.lat >= 0 ? 'N' : 'S';
   const ew = v.lon >= 0 ? 'E' : 'W';
-  // Aggregate entropy: average across all stanzas for a single
-  // representative number on the card.
   const entropyVal = (typeof v.entropy === 'number')
     ? v.entropy
-    : (stanzas.reduce((acc, s) => acc + computeStanzaEntropy(s), 0) / stanzas.length);
+    : computeStanzaEntropy(stanza);
   const word = stanzas.length === 1
     ? t('fleet.stanzas.singular')
     : t('fleet.stanzas.plural');
@@ -4577,17 +4624,19 @@ async function init() {
   resizeCanvas();
   updateStatusBar();
 
-  // Land mask is mandatory for the canvas renderer; everything else is
-  // best-effort. Run the API probes in parallel so a slow backend never
-  // holds up the first paint of the map.
-  await Promise.all([
-    loadLandMask(),
-    loadDepletionBitmap(),
-  ]);
+  // Land mask is the only mandatory file for the canvas renderer.
+  // Depletion bitmap comes from Railway and would block first paint
+  // for 5–10 s on a cold start, so it loads in the background and
+  // triggers an extra render once it arrives.
+  await loadLandMask();
   hideLoadingFallback();
   clampViewport();
   scheduleRender();
   updateHint();
+  window._havocMapReady = true;
+  document.dispatchEvent(new CustomEvent('srah:map-ready'));
+
+  loadDepletionBitmap().then(() => scheduleRender());
 
   // Fleet + status in the background — they update the UI when they arrive.
   (async () => {
