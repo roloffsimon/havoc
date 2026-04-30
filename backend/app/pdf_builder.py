@@ -59,6 +59,36 @@ TIER_LABELS: dict[str, str] = {
 }
 DEFAULT_TIER = "selection"
 
+# ── Language strings ─────────────────────────────────────────────────
+# Translatable labels passed into the Typst payload. The DE volume
+# substitutes these at render time and re-generates each catch's
+# stanza from `(col, row)` via stanza_de.generate_stanza_at — the
+# stored EN stanza is replaced. All other PDF prose (Introduction,
+# colophon credits, etc.) stays English in this iteration; only the
+# structural labels and the verse content are localised.
+DEFAULT_LANGUAGE = "en"
+SUPPORTED_LANGUAGES: tuple[str, ...] = ("en", "de")
+STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "title":              "Catch of the Day",
+        "section_opener":     "Catch of Day",
+        "header_running":     "Catch of Day",
+        "colophon_from":      "Catch of the Day from ",
+    },
+    "de": {
+        "title":              "Tagesfang",
+        "section_opener":     "Tagesfang",
+        "header_running":     "Tagesfang",
+        "colophon_from":      "Tagesfang vom ",
+    },
+}
+
+
+def _normalise_language(language: str | None) -> str:
+    lang = (language or DEFAULT_LANGUAGE).strip().lower()
+    return lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+
+
 PDF_DIR = DATA_DIR / "pdfs"
 WEEKLY_DIR = PDF_DIR / "weekly"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
@@ -1221,10 +1251,24 @@ def _sample_for_tier(poems: dict[str, list[dict]], tier: str,
     return {k: poems[k] for k in sampled}
 
 
+def _stanza_for_language(catch: dict, language: str) -> list[str]:
+    """Return the 4-line stanza for a catch in the requested language.
+
+    EN reuses the stored stanza (rendered when the catch happened).
+    DE re-generates from `(col, row)` via stanza_de — the lattice
+    position is deterministic so the result is stable across runs.
+    """
+    if language == "de":
+        from . import stanza_de
+        return stanza_de.generate_stanza_at(int(catch["col"]), int(catch["row"]))
+    return list(catch["stanza"])
+
+
 def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
                          cover_path: Path,
                          *, tier: str = DEFAULT_TIER,
-                         fleet_total: int | None = None) -> dict:
+                         fleet_total: int | None = None,
+                         language: str = DEFAULT_LANGUAGE) -> dict:
     """Reshape the in-memory stats + poems into the JSON payload that
     `typst_templates/daily.typ` consumes via `sys.inputs.payload`.
 
@@ -1265,7 +1309,8 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
                     # adds to lines 2 and 4 of each stanza — flush left
                     # is the documented spec (see pdf_builder._stanza_html
                     # in the WeasyPrint path).
-                    "lines": [line.strip() for line in c["stanza"]],
+                    "lines": [line.strip()
+                              for line in _stanza_for_language(c, language)],
                     "lat": float(c["lat"]),
                     "lon": float(c["lon"]),
                     "entropy": float(c.get("entropy", 0.0)),
@@ -1310,17 +1355,32 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
             "selected_vessels_str": f"{len(poems_list):,}",
             "selected_stanzas": selected_stanzas,
             "selected_stanzas_str": f"{selected_stanzas:,}",
+            # Localised structural labels — read by the Typst template
+            # for the running header, section opener, and document title.
+            "language": language,
+            "strings": STRINGS.get(language, STRINGS[DEFAULT_LANGUAGE]),
         },
         "poems": poems_list,
         "cover_path": str(cover_rel),
     }
 
 
+def _lang_suffix(language: str) -> str:
+    """File-name suffix for non-default languages.
+
+    EN keeps the original `catch_{date}_{tier}.pdf` schema so existing
+    bookmarks and CDN caches stay valid; DE adds `_de` before the
+    extension (`catch_{date}_{tier}_de.pdf`).
+    """
+    return "" if language == DEFAULT_LANGUAGE else f"_{language}"
+
+
 def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
                           tier: str, *,
                           fleet_total: int,
                           cover_bytes: bytes,
-                          out_dir: Path = PDF_DIR) -> Path:
+                          out_dir: Path = PDF_DIR,
+                          language: str = DEFAULT_LANGUAGE) -> Path:
     """Render a single tier (selection / finecut / onepiece) for the
     day. Cover PNG is passed in as bytes so all three tiers share one
     Pillow render (the cover is identical across tiers).
@@ -1329,27 +1389,29 @@ def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
 
     date = stats["date"]
     TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
-    cover_path = TYPST_TMP_DIR / f"cover_{date}_{tier}.png"
+    cover_path = TYPST_TMP_DIR / f"cover_{date}_{tier}{_lang_suffix(language)}.png"
     cover_path.write_bytes(cover_bytes)
     try:
         payload = _build_daily_payload(
             stats, poems, cover_path, tier=tier, fleet_total=fleet_total,
+            language=language,
         )
         pdf_bytes = typst_renderer.render("daily", payload)
     finally:
         cover_path.unlink(missing_ok=True)
 
-    pdf_path = out_dir / f"catch_{date}_{tier}.pdf"
+    pdf_path = out_dir / f"catch_{date}_{tier}{_lang_suffix(language)}.pdf"
     pdf_path.write_bytes(pdf_bytes)
-    log.info("PDF written to %s (%d bytes, typst, tier=%s, vessels=%d/%d)",
-             pdf_path, len(pdf_bytes), tier, len(poems), fleet_total)
+    log.info("PDF written to %s (%d bytes, typst, tier=%s, lang=%s, vessels=%d/%d)",
+             pdf_path, len(pdf_bytes), tier, language, len(poems), fleet_total)
     return pdf_path
 
 
 def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
                                   out_dir: Path = PDF_DIR,
                                   stem: str | None = None,
-                                  tiers: tuple[str, ...] = TIERS) -> Path:
+                                  tiers: tuple[str, ...] = TIERS,
+                                  language: str = DEFAULT_LANGUAGE) -> Path:
     """Render the day's volumes — one PDF per tier. Returns the path of
     the canonical (selection) PDF; the others sit alongside on disk and
     are addressable via `tier_pdf_path(date, tier)`. The Pillow cover is
@@ -1359,20 +1421,25 @@ def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
     cover_bytes = _render_cover_image()
     paths: dict[str, Path] = {}
     for tier in tiers:
+        # Sample with the same date+tier seed regardless of language so
+        # the EN and DE volumes contain the same vessels, just rendered
+        # in different verse.
         sub_poems = _sample_for_tier(poems, tier, stats["date"])
         paths[tier] = _write_tier_artefact(
             stats, sub_poems, tier,
             fleet_total=fleet_total,
             cover_bytes=cover_bytes,
             out_dir=out_dir,
+            language=language,
         )
     return paths.get(DEFAULT_TIER) or next(iter(paths.values()))
 
 
-def tier_pdf_path(date: str, tier: str = DEFAULT_TIER) -> Path:
+def tier_pdf_path(date: str, tier: str = DEFAULT_TIER,
+                   language: str = DEFAULT_LANGUAGE) -> Path:
     """Disk path for a tier-specific daily volume. Used by the API to
-    serve `?size=...`."""
-    return PDF_DIR / f"catch_{date}_{tier}.pdf"
+    serve `?size=...&lang=...`."""
+    return PDF_DIR / f"catch_{date}_{tier}{_lang_suffix(language)}.pdf"
 
 
 def _build_weekly_payload(week_start: _date, week_end: _date,
@@ -1513,7 +1580,8 @@ def _write_daily_artefacts(stats: dict, poems: dict[str, list[dict]], *,
     return pdf_path
 
 
-def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
+def render_daily_pdf(stats: dict, poems: dict[str, list[dict]],
+                     *, language: str = DEFAULT_LANGUAGE) -> Path | None:
     """Called by the daily pipeline to render the day's volumes.
 
     Renders three tiers of the day's catch (selection / fine cut /
@@ -1522,6 +1590,12 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
     different fractions per tier — see _sample_for_tier — so the cut
     reads as a sample of the fleet rather than as the heaviest hitters.
 
+    `language`: "en" (default, original behaviour) or "de" — German
+    edition. DE volumes re-generate each catch's stanza from its
+    `(col, row)` via `stanza_de.generate_stanza_at` and write to a
+    parallel `_de`-suffixed filename so EN and DE bookmarks stay
+    independent.
+
     Knobs:
       HAVOC_PDF_SKIP=1     skip rendering entirely (record_day still
                            runs; the day's catches and vessels persist).
@@ -1529,15 +1603,23 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
                            the legacy WeasyPrint pipeline. WeasyPrint
                            is tier-unaware — it renders a single PDF
                            covering the full fleet (or the legacy
-                           HAVOC_PDF_TOP_N cap, if set).
+                           HAVOC_PDF_TOP_N cap, if set). The WeasyPrint
+                           path currently ignores `language` (EN only);
+                           DE is Typst-only.
     """
     if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
         log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
         return None
 
+    language = _normalise_language(language)
     engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
     if engine == "typst":
-        return _write_daily_artefacts_typst(stats, poems)
+        return _write_daily_artefacts_typst(stats, poems, language=language)
+
+    if language != DEFAULT_LANGUAGE:
+        log.warning("PDF: language=%s not supported on WeasyPrint engine; "
+                    "skipping DE volume", language)
+        return None
 
     # WeasyPrint legacy path — pre-tier behaviour with the env-var cap.
     top_n_raw = os.environ.get("HAVOC_PDF_TOP_N", "200").strip()
@@ -1556,24 +1638,38 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]]) -> Path | None:
 
 # ── Public lookups (used by main.py) ─────────────────────────────────
 
-def latest_pdf(tier: str | None = None) -> Path | None:
+def latest_pdf(tier: str | None = None,
+               language: str | None = None) -> Path | None:
     """Newest daily artefact for the given tier (default: selection).
 
-    Falls back to the most recent `catch_*.pdf` (any tier or legacy
-    untagged) if no tier-specific file exists, then to an HTML
-    fallback if WeasyPrint left one behind on a prior deploy.
+    EN files match `catch_*_{tier}.pdf`; DE files match
+    `catch_*_{tier}_de.pdf`. Falls back to any `catch_*.pdf` if no
+    tier-specific match exists, and finally to an HTML fallback if
+    WeasyPrint left one behind on a prior deploy. The DE lookup is
+    strict — there is no EN fallback for missing DE files (the caller
+    sees a 404 and the user knows the DE volume isn't ready).
     """
     tier = tier or DEFAULT_TIER
-    tier_pdfs = sorted(PDF_DIR.glob(f"catch_*_{tier}.pdf"),
+    language = _normalise_language(language)
+    suffix = _lang_suffix(language)
+    tier_pdfs = sorted(PDF_DIR.glob(f"catch_*_{tier}{suffix}.pdf"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
     if tier_pdfs:
         return tier_pdfs[0]
+    if language != DEFAULT_LANGUAGE:
+        # No EN-fallback for DE: missing DE artefact stays missing.
+        return None
     pdfs = sorted(PDF_DIR.glob("catch_*.pdf"),
                   key=lambda p: p.stat().st_mtime, reverse=True)
+    if pdfs:
+        # Filter out other-language artefacts so EN fallback doesn't
+        # accidentally serve a `_de` file.
+        pdfs = [p for p in pdfs if not p.stem.endswith("_de")]
     if pdfs:
         return pdfs[0]
     htmls = sorted(PDF_DIR.glob("catch_*.html"),
                    key=lambda p: p.stat().st_mtime, reverse=True)
+    htmls = [p for p in htmls if not p.stem.endswith("_de")]
     return htmls[0] if htmls else None
 
 

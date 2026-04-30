@@ -28,3 +28,7 @@ backend/data/
 
 # Privater Schriftverkehr
 mail_*.md
+
+# Copyrighted reference EPUBs (Moby-Dick / Dickinson) — used as
+# translation source material but never committed.
+*.epub

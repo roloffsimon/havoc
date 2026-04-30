@@ -727,10 +727,19 @@
   .vessel-card.is-open .vc-line {
     animation: line-reveal 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
-  .vessel-card.is-open .vc-line:nth-child(1) { animation-delay: 180ms; }
-  .vessel-card.is-open .vc-line:nth-child(2) { animation-delay: 420ms; }
-  .vessel-card.is-open .vc-line:nth-child(3) { animation-delay: 700ms; }
-  .vessel-card.is-open .vc-line:nth-child(4) { animation-delay: 1030ms; }
+  .vessel-card.is-open .vc-stanza .vc-line:nth-child(1) { animation-delay: 180ms; }
+  .vessel-card.is-open .vc-stanza .vc-line:nth-child(2) { animation-delay: 420ms; }
+  .vessel-card.is-open .vc-stanza .vc-line:nth-child(3) { animation-delay: 700ms; }
+  .vessel-card.is-open .vc-stanza .vc-line:nth-child(4) { animation-delay: 1030ms; }
+  .vessel-card .vc-stanza + .vc-sep,
+  .vessel-card .vc-sep {
+    display: block;
+    height: 1px;
+    margin: 14px 0 14px -12px;
+    border: none;
+    border-top: 1px dashed rgba(212, 160, 86, 0.16);
+  }
+  .vessel-card .vc-stanza { display: block; }
 
   @keyframes line-reveal {
     to {
@@ -970,13 +979,20 @@
   .catch-intro em { color: var(--cream); }
 
   .catch-pdf-panel {
-    /* Side-by-side: PDF thumbnail flush left of the download menu.
-       No frame, no background — both blocks sit free on the page. */
+    /* Two stacked rows: thumbnail + CTA on top, download buttons below.
+       Top row keeps the side-by-side layout (auto + 1fr); the right
+       column stretches vertically to match the thumbnail's height so
+       its first and last children sit flush with the thumbnail edges. */
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-bottom: 36px;
+  }
+  .cpp-row {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 36px;
     align-items: start;
-    margin-bottom: 36px;
   }
 
   /* PDF-Thumbnail — mirrors the actual PDF cover (Big Shoulders Display
@@ -984,9 +1000,6 @@
      from the current day (ids #cpp-vol, #cpp-date). */
   .cpp-preview {
     position: relative;
-    /* Push the thumbnail down so its top edge aligns with the top of
-       the dropdown (the "DOCUMENT SIZE" label sits above the select). */
-    margin-top: 30px;
     width: 240px;
     height: 339px;             /* A5 portrait ratio 1 : 1.414 */
     background: #030a18;       /* --abyss / cover ocean */
@@ -1053,16 +1066,34 @@
   }
 
   .cpp-cta {
+    /* Donate column: top-aligned with the thumbnail; bottom flows
+       naturally with the donate buttons. No height matching since the
+       dropdown and download buttons now live below the row. */
     display: flex;
     flex-direction: column;
     gap: 14px;
     max-width: 320px;
-    /* Match thumbnail block (margin-top 30px + height 339px) so the
-       download button can be pinned to the bottom edge of the thumbnail. */
-    min-height: 369px;
   }
-  .cpp-cta .btn-havoc.is-download {
-    margin-top: auto;
+  .cpp-controls {
+    /* Sub-block under the thumbnail row: dropdown + two download
+       buttons. Constrained to the same horizontal extent as the row
+       above (thumbnail 240 + gap 36 + cta max 320 = 596) so the block
+       lines up with the right edge of the donate column. */
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 596px;
+  }
+  .cpp-downloads {
+    /* Both buttons same size, side by side, equal split of the
+       cpp-controls width. */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 720px) {
+    .cpp-controls { max-width: none; }
+    .cpp-downloads { grid-template-columns: 1fr; }
   }
   .cpp-cta .cta-label {
     font-family: 'DM Mono', monospace;
@@ -1728,8 +1759,10 @@
     .h-status { padding: 0 14px; gap: 10px; font-size: 9px; letter-spacing: 0.1em; }
     .fleet-view, .about-view, .catch-view { padding: 22px 16px; }
     .catch-big { font-size: 34px; }
-    .catch-pdf-panel { grid-template-columns: 1fr; gap: 22px; }
+    .cpp-row { grid-template-columns: 1fr; gap: 22px; }
     .cpp-preview { margin: 0 auto; }
+    .cpp-cta { min-height: 0; max-width: none; }
+    .cpp-cta .cpp-donate-group { margin-top: 14px; }
 
     .fv-wrap { padding: 7vh 18px 10vh; }
     .fv-stats { grid-template-columns: 1fr; }
@@ -1807,7 +1840,7 @@
     <p class="fv-note" data-i18n-html="final.note">
       <em>Remorseless Havoc</em> has run its course. The poetic ocean
       is empty &mdash; one cell kept back as the work's final poem. The
-      verses had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>
+      stanzas had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>
       by Nick Montfort &amp; Stephanie Strickland; their deletion was driven
       day by day by AIS data from
       <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>.
@@ -1931,12 +1964,12 @@
             language. The stanzas you can see zooming in on the map are generated by an
             algorithm from <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>,
             a work of digital literature developed by Nick Montfort and Stephanie Strickland
-            in 2010. They devised a grid of algorithmically generated verses assembled from
+            in 2010. They devised a grid of algorithmically generated stanzas assembled from
             language fragments by Emily Dickinson and Herman Melville. If you open
             <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend
             almost endlessly in every direction, triggering the vertigo of combinatorics in
             an infinity with no practically reachable boundary, created from finite source
-            material. Montfort and Strickland say their work contains as many verses as there
+            material. Montfort and Strickland say their work contains as many stanzas as there
             are &ldquo;fish in the sea.&rdquo;
           </p>
           <p data-i18n-html="about.p3">
@@ -1945,13 +1978,13 @@
             Strickland&rsquo;s stanzas into a grid spanning the whole globe with landmasses
             spared. Each cell represents a space of about one square kilometre
             (1.1 &times; 1.1&nbsp;km at the equator). This leaves out the majority of stanzas
-            from the originally generated trillions. Approximately 460 million verses remain,
+            from the originally generated trillions. Approximately 460 million stanzas remain,
             with a subsequent second erasure following, driven by the real fishing operations
             of real-world ships searching for actual fish in the sea.
             <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>
             tracks the movements and activities of tens of thousands of fishing vessels via AIS
-            transponder data; a daily retrieval translates their fishing hours into verse
-            deletions on this website. This means that one day, all verses will have been
+            transponder data; a daily retrieval translates their fishing hours into stanza
+            deletions on this website. This means that one day, all stanzas will have been
             removed from the sea &mdash; just as the resources of the ocean on which we depend,
             the store of language in this work is finite.
           </p>
@@ -1964,15 +1997,14 @@
             (at least one erased), fully depleted (all 100 gone). When you zoom in, each tile
             reveals one representative stanza drawn from its centre cell; the full stanza
             cell grid is only ever consulted by the backend when a fishing event actually
-            deletes verses.
+            deletes stanzas.
           </p>
           <p data-i18n-html="about.p4">
             You can watch this happen on the map, browse all poems generated in the
             <em>Fleet</em>-View or download the day&rsquo;s poetry volume under
             <em>Catch of the Day</em> &mdash; an archive of the previous day&rsquo;s erasures.
-            Each vessel assembles the verses it takes from the ocean on a given day into a
-            poem, ordered from greater lexical diversity toward monotony and simplicity. The
-            poems of a single day are collected into a (rather large) PDF.
+            Each vessel assembles the stanzas it takes from the ocean on a given day into a
+            poem, ordered from greater lexical diversity toward monotony and simplicity.
           </p>
           <p data-i18n-html="about.p5">
             The work runs until the poetic ocean is empty. Based on current data, roughly until
@@ -2034,28 +2066,51 @@
             activity erased 291&thinsp;723 stanzas from the poetic ocean of
             <em>Sea and Spar Between</em>. The document you can download below is the verbatim
             catch of that day: every erased stanza, attributed to the vessel that took it,
-            with GPS coordinates ordered by Shannon entropy &mdash; 291&thinsp;723 verses
+            with GPS coordinates ordered by Shannon entropy &mdash; 291&thinsp;723 stanzas
             across approximately 2&thinsp;450 pages.
           </p>
 
           <div class="catch-pdf-panel">
-            <!-- PDF-Thumbnail: mirrors the Alt-B "Ledger" cover. The spans
-                 carry IDs so the same data pipeline that populates
-                 catch-big / catch-sub / status-bar writes the current
-                 day's values here as well. -->
-            <div class="cpp-preview" aria-hidden="true">
-              <div class="cpp-cover-middle">
-                <div class="cpp-cover-title" data-i18n="catch.title">Catch of the Day</div>
-              </div>
-              <div>
-                <div class="cpp-cover-rule"></div>
-                <div class="cpp-cover-bottom">
-                  <span><span data-i18n="header.day">Day</span>&nbsp;<span id="cpp-vol" data-havoc-day>058</span></span>
-                  <span id="cpp-date" data-havoc-date>10 APR 2026</span>
+            <!-- Top row: thumbnail left, dropdown + donate column right.
+                 The two columns are top-and-bottom flush (the right
+                 column stretches to match the thumbnail's height via
+                 `min-height` on .cpp-cta). The two download buttons
+                 sit in their own row below so they have width to breathe
+                 even at narrow viewports. -->
+            <div class="cpp-row">
+              <!-- PDF-Thumbnail: mirrors the Alt-B "Ledger" cover. The spans
+                   carry IDs so the same data pipeline that populates
+                   catch-big / catch-sub / status-bar writes the current
+                   day's values here as well. -->
+              <div class="cpp-preview" aria-hidden="true">
+                <div class="cpp-cover-middle">
+                  <div class="cpp-cover-title" data-i18n="catch.title">Catch of the Day</div>
+                </div>
+                <div>
+                  <div class="cpp-cover-rule"></div>
+                  <div class="cpp-cover-bottom">
+                    <span><span data-i18n="header.day">Day</span>&nbsp;<span id="cpp-vol" data-havoc-day>058</span></span>
+                    <span id="cpp-date" data-havoc-date>10 APR 2026</span>
+                  </div>
                 </div>
               </div>
+              <div class="cpp-cta">
+                <div class="cta-label" data-i18n-html="catch.cta.label">Before downloading please consider donating to ocean conservation</div>
+                <a class="btn-havoc is-donate" href="https://globalfishingwatch.org/support-us/" target="_blank" rel="noopener" data-donate="gfw">
+                  <span data-i18n="catch.cta.gfw">Donate to Global Fishing Watch</span>
+                  <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+                </a>
+                <a class="btn-havoc is-donate" href="https://www.greenpeace.de/spenden/online-spenden?step=personal_data#webform-submission-spenden-form-multi-o-slider-node-235-add-form" target="_blank" rel="noopener" data-donate="greenpeace">
+                  <span data-i18n="catch.cta.greenpeace">Donate to Greenpeace</span>
+                  <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+                </a>
+                <a class="btn-havoc is-donate" href="https://www.wwf.de/spenden-helfen/allgemeine-spende" target="_blank" rel="noopener" data-donate="wwf">
+                  <span data-i18n="catch.cta.wwf">Donate to WWF</span>
+                  <span class="btn-icon" aria-hidden="true">&#x2197;</span>
+                </a>
+              </div>
             </div>
-            <div class="cpp-cta">
+            <div class="cpp-controls">
               <div class="cpp-size">
                 <span class="cpp-size-label" id="catch-size-label" data-i18n="catch.size.label">Document size</span>
                 <div class="cpp-dropdown" id="catch-size" data-value="selection">
@@ -2089,28 +2144,21 @@
                         <span class="cpp-dd-opt-name" data-i18n="catch.size.onepiece.name">One Piece</span>
                         <span class="cpp-dd-opt-meta" data-i18n="catch.size.onepiece.meta">one randomly chosen vessel</span>
                       </span>
-                      <span class="cpp-dd-opt-desc" data-i18n="catch.size.onepiece.desc">The minimal portrait — a single vessel&rsquo;s day, its few dozen verses, the smallest possible artefact.</span>
+                      <span class="cpp-dd-opt-desc" data-i18n="catch.size.onepiece.desc">The minimal portrait — a single vessel&rsquo;s day, its few dozen stanzas, the smallest possible artefact.</span>
                     </button>
                   </div>
                 </div>
               </div>
-              <div class="cta-label" data-i18n-html="catch.cta.label">Before downloading please consider donating to ocean conservation</div>
-              <a class="btn-havoc is-donate" href="https://globalfishingwatch.org/support-us/" target="_blank" rel="noopener" data-donate="gfw">
-                <span data-i18n="catch.cta.gfw">Donate to Global Fishing Watch</span>
-                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
-              </a>
-              <a class="btn-havoc is-donate" href="https://www.greenpeace.de/spenden/online-spenden?step=personal_data#webform-submission-spenden-form-multi-o-slider-node-235-add-form" target="_blank" rel="noopener" data-donate="greenpeace">
-                <span data-i18n="catch.cta.greenpeace">Donate to Greenpeace</span>
-                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
-              </a>
-              <a class="btn-havoc is-donate" href="https://www.wwf.de/spenden-helfen/allgemeine-spende" target="_blank" rel="noopener" data-donate="wwf">
-                <span data-i18n="catch.cta.wwf">Donate to WWF</span>
-                <span class="btn-icon" aria-hidden="true">&#x2197;</span>
-              </a>
-              <button type="button" class="btn-havoc is-download" id="download-without">
-                <span class="btn-icon btn-icon-lead" aria-hidden="true">&#x2193;</span>
-                <span data-i18n="catch.cta.without">Download</span>
-              </button>
+              <div class="cpp-downloads">
+                <button type="button" class="btn-havoc is-download" id="download-without" data-lang="en">
+                  <span class="btn-icon btn-icon-lead" aria-hidden="true">&#x2193;</span>
+                  <span data-i18n="catch.cta.without">Download (English)</span>
+                </button>
+                <button type="button" class="btn-havoc is-download" id="download-without-de" data-lang="de">
+                  <span class="btn-icon btn-icon-lead" aria-hidden="true">&#x2193;</span>
+                  <span data-i18n="catch.cta.without.de">Download (Deutsch)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2184,11 +2232,13 @@ const I18N = {
     'fleet.type.trawler': 'Trawler',
     'fleet.type.longliner': 'Longliner',
     'fleet.type.purse-seiner': 'Purse Seiner',
+    'fleet.stanzas.singular': 'stanza',
+    'fleet.stanzas.plural':   'stanzas',
     'about.h2': 'About',
-    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the dark tiles in the map, representing the watery regions of our planet, are generated by an algorithm developed for <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>, a digital literary work developed by Nick Montfort and Stephanie Strickland in 2010. It generates poetic verses assembled from language fragments by Emily Dickinson and Herman Melville. If you open <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend almost endlessly in every direction. Montfort and Strickland say their work contains as many stanzas as there are \u201cfish in the sea.\u201d',
-    'about.p3': '<em>Remorseless Havoc</em> takes this metaphor literally, mapping the combinatorial ocean onto the real seas of the world. It transfers the generated stanzas into a grid spanning the entire globe, sparing landmasses. Each cell represents an area of approximately one square kilometre (1.1 \u00d7 1.1\u00a0km at the equator). This leaves out the majority of stanzas from the originally generated trillions. Approximately 460 million verses remain, and a second erasure follows, driven by the real-world fishing operations. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> tracks the movements and activities of tens of thousands of fishing vessels via AIS transponder data. A daily retrieval translates their fishing hours into positions on our map and verse deletions at this position. One day, all verses will have been removed from the sea \u2014 the language used in this work, like ocean resources, is finite.',
-    'about.p3b': 'Note on the map: To improve rendering efficiency, it uses a coarser grid of tiles, each measuring roughly 10 \u00d7 10\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. The three shades of the ocean indicate how many stanzas have been erased from each tile: intact (all 100 stanzas still alive), partially depleted (at least one stanza erased) and fully depleted (all 100 stanzas erased). When you zoom in, each tile reveals a stanza drawn from its centre cell. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes verses.',
-    'about.p4': 'You can track the havoc on the map, browse today\u2019s erased stanzas in <em>Fleet</em> View, or download a random selection of the day\u2019s catch as a poetry volume. Each vessel compiles the verses it collects from the ocean on a given day into a poem, arranged from greatest to least lexical diversity. The poems of a single day are collected into a rather large PDF.',
+    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the dark tiles in the map, representing the watery regions of our planet, are generated by an algorithm developed for <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>, a digital literary work developed by Nick Montfort and Stephanie Strickland in 2010. It generates poetic stanzas assembled from language fragments by Emily Dickinson and Herman Melville. If you open <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend almost endlessly in every direction. Montfort and Strickland say their work contains as many stanzas as there are \u201cfish in the sea.\u201d',
+    'about.p3': '<em>Remorseless Havoc</em> takes this metaphor literally, mapping the combinatorial ocean onto the real seas of the world. It transfers the generated stanzas into a grid spanning the entire globe, sparing landmasses. Each cell represents an area of approximately one square kilometre (1.1 \u00d7 1.1\u00a0km at the equator). This leaves out the majority of stanzas from the originally generated trillions. Approximately 460 million stanzas remain, and a second erasure follows, driven by the real-world fishing operations. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> tracks the movements and activities of tens of thousands of fishing vessels via AIS transponder data. A daily retrieval translates their fishing hours into positions on our map and stanza deletions at this position. One day, all stanzas will have been removed from the sea \u2014 the language used in this work, like ocean resources, is finite.',
+    'about.p3b': 'Note on the map: To improve rendering efficiency, it uses a coarser grid of tiles, each measuring roughly 10 \u00d7 10\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. The three shades of the ocean indicate how many stanzas have been erased from each tile: intact (all 100 stanzas still alive), partially depleted (at least one stanza erased) and fully depleted (all 100 stanzas erased). When you zoom in, each tile reveals a stanza drawn from its centre cell. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes stanzas.',
+    'about.p4': 'You can track the havoc on the map, browse today\u2019s erased stanzas in <em>Fleet</em> View, or download a random selection of the day\u2019s catch as a poetry volume. Each vessel compiles the stanzas it collects from the ocean on a given day into a poem, arranged from greatest to least lexical diversity.',
     'about.p5': 'The project will run until the poetic ocean is empty, which is expected to be around the year 2030 based on current data. One final poem will then remain \u2014 the \u201cfinal puff\u201d of the Leviathan, as discussed in Chapter CV of Herman Melville\u2019s <em>Moby-Dick</em>, \u201cDoes the Whale\u2019s Magnitude Diminish?\u2014Will He Perish?\u201d, from which the project\u2019s title is also taken. The time and place of the emergence of this poem, and not least its text, are determined by the contingencies of the exploitation of the seas.',
     'about.spec.grid': 'Grid',
     'about.spec.cells': 'Water cells',
@@ -2210,7 +2260,7 @@ const I18N = {
     'catch.sub.vessels': 'vessels',
     'catch.sub.hours': 'hours fished',
     'catch.sub.delta': '&Delta; depletion',
-    'catch.intro': 'On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across the world ocean. At the project\u2019s rate of three stanzas per fishing hour, 291&thinsp;723 verses were lifted from the poetic ocean of <em>Sea and Spar Between</em>, distributed across 8&thinsp;766 vessels. Printed in full the day\u2019s catch would run to thousands of pages \u2014 too much as a daily artefact, both for the project\u2019s small infrastructure and as an object to read. The default <em>Selection</em> below is therefore a random tenth of the fleet, drawn without regard to catch size: an honest sample of the working day rather than a roll-call of its heaviest hitters. Two thinner cuts are also produced.',
+    'catch.intro': 'On 10 April 2026, industrial fishing vessels operated for 97&thinsp;241 hours across the world ocean. At the project&rsquo;s rate of three stanzas per fishing hour, 291&thinsp;723 stanzas were lifted from the poetic ocean of <em>Sea and Spar Between</em>, distributed across 8&thinsp;766 vessels. Printed in full the day&rsquo;s catch would run to thousands of pages &mdash; too much as a daily artefact, both for the project&rsquo;s small infrastructure and as an object to read. The default <em>Selection</em> below is therefore a random tenth of the fleet.',
     'catch.size.label': 'Document size',
     'catch.size.selection.name': 'Selection',
     'catch.size.selection.meta': 'a random tenth of the day\u2019s fleet',
@@ -2220,13 +2270,14 @@ const I18N = {
     'catch.size.finecut.desc':   'Thinner reading copy \u2014 about a hundred random vessels with all their catches.',
     'catch.size.onepiece.name':  'One Piece',
     'catch.size.onepiece.meta':  'one randomly chosen vessel',
-    'catch.size.onepiece.desc':  'The minimal portrait \u2014 a single vessel\u2019s day, its few dozen verses, the smallest possible artefact.',
+    'catch.size.onepiece.desc':  'The minimal portrait \u2014 a single vessel\u2019s day, its few dozen stanzas, the smallest possible artefact.',
     'catch.cta.label': 'Before downloading please consider donating to ocean conservation',
     'catch.cta.gfw': 'Donate to Global Fishing Watch',
     'catch.cta.greenpeace': 'Donate to Greenpeace',
     'catch.cta.wwf': 'Donate to WWF',
     'catch.cta.or': 'or',
-    'catch.cta.without': 'Download',
+    'catch.cta.without': 'Download (English)',
+    'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Generating your catch',
     'catch.modal.text': '10 April 2026 \u2014 291&thinsp;723 stanzas, 2&thinsp;450 pages, ~51&thinsp;MB.<br>This takes about 40 seconds.',
     'catch.modal.preparing': 'Preparing\u2026',
@@ -2253,7 +2304,7 @@ const I18N = {
     'final.stat.possible': 'possible',
     'final.stat.factor': 'Depletion factor',
     'final.stat.per-hour': 'per hour',
-    'final.note': '<em>Remorseless Havoc</em> has run its course. The poetic ocean is empty \u2014 one cell kept back as the work\u2019s final poem. The verses had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> by Nick Montfort &amp; Stephanie Strickland; their deletion was driven day by day by AIS data from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. A project by <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
+    'final.note': '<em>Remorseless Havoc</em> has run its course. The poetic ocean is empty \u2014 one cell kept back as the work\u2019s final poem. The stanzas had their origin in <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> by Nick Montfort &amp; Stephanie Strickland; their deletion was driven day by day by AIS data from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. A project by <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
     'final.motto.text': 'Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
     'final.motto.chapter': 'Chapter\u00a0CV',
     'final.footer.license': 'Texts released under the <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT&nbsp;License</a>',
@@ -2284,11 +2335,13 @@ const I18N = {
     'fleet.type.trawler': 'Trawler',
     'fleet.type.longliner': 'Langleiner',
     'fleet.type.purse-seiner': 'Ringwadenf\u00e4nger',
+    'fleet.stanzas.singular': 'Strophe',
+    'fleet.stanzas.plural':   'Strophen',
     'about.h2': '\u00dcber',
-    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die Strophen, die Sie sehen, wenn Sie die dunklen Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 vergr\u00f6\u00dfern, werden von einem Algorithmus generiert, der f\u00fcr <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> entwickelt wurde, ein digitales literarisches Werk von Nick Montfort und Stephanie Strickland aus dem Jahr 2010. Der Algorithmus generiert Verse, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt sind. Wenn man <em>Sea and Spar Between</em> in einem Browser \u00f6ffnet, erstrecken sich etwa 225 Billionen Eintr\u00e4ge fast endlos in alle Richtungen. Montfort und Strickland sagen, ihr Werk enthalte so viele Strophen, wie es \u201eFische im Meer\u201c gibt.',
-    'about.p3': '<em>Remorseless Havoc</em> nimmt diese Metapher w\u00f6rtlich und bildet den kombinatorischen Ozean auf die realen Meere der Welt ab. Es \u00fcbertr\u00e4gt die generierten Strophen in ein Raster, das den gesamten Globus \u00fcberspannt, wobei Landmassen ausgespart werden. Jede Zelle repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quator). Dadurch f\u00e4llt der Gro\u00dfteil der urspr\u00fcnglich generierten Billionen von Strophen weg, es verbleiben etwa 460 Millionen Verse. Dann folgt eine zweite L\u00f6schung, angetrieben durch reale Fischereiaktivit\u00e4t. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> verfolgt die Bewegungen und Aktivit\u00e4ten von Zehntausenden von industriellen Fangschiffen anhand von AIS-Transponderdaten. Durch eine t\u00e4gliche Abfrage werden ihre Fangzeiten in Positionen auf unserer Karte und in die L\u00f6schung von Versen an dieser Position umgewandelt. Eines Tages werden alle Verse aus dem Meer entfernt sein \u2013 die in diesem Werk verwendete Sprache ist, wie die Ressourcen des Ozeans, endlich.',
-    'about.p3b': 'Anmerkung zur Karte: Um die Darstellungsleistung zu verbessern, wird ein gr\u00f6beres Raster aus Kacheln verwendet, die jeweils etwa 10 \u00d7 10 km (0,1\u00b0) gro\u00df sind, wobei jede sichtbare Kachel 100 Strophenzellen umfasst. Die drei Farbt\u00f6ne des Ozeans zeigen an, wie viele Strophen aus jeder Kachel gel\u00f6scht wurden: intakt (alle 100 Strophen noch vorhanden), teilweise ersch\u00f6pft (mindestens eine Strophe gel\u00f6scht) und vollst\u00e4ndig ersch\u00f6pft (alle 100 Strophen gel\u00f6scht). Wenn man hineinzoomt, zeigt jede Kachel eine Strophe. Das vollst\u00e4ndige Strophenzellenraster wird vom Backend nur dann abgefragt, wenn ein Fischereivorgang Verse l\u00f6scht.',
-    'about.p4': 'Sie k\u00f6nnen die Zerst\u00f6rung auf der Karte verfolgen, die heute gel\u00f6schten Strophen in der <em>Flotte</em>-Ansicht durchst\u00f6bern oder eine zuf\u00e4llige Auswahl des Tagesfangs als Gedichtband herunterladen. Jedes Schiff fasst die Verse, die es an einem bestimmten Tag aus dem Ozean sammelt, zu einem Gedicht zusammen, geordnet nach absteigender lexikalischer Vielfalt. Die Gedichte eines einzelnen Tages werden in einer recht umfangreichen PDF-Datei gesammelt.',
+    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die Strophen, die Sie sehen, wenn Sie die dunklen Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 vergr\u00f6\u00dfern, werden von einem Algorithmus generiert, der f\u00fcr <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> entwickelt wurde, ein digitales literarisches Werk von Nick Montfort und Stephanie Strickland aus dem Jahr 2010. Der Algorithmus generiert Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt sind. Wenn man <em>Sea and Spar Between</em> in einem Browser \u00f6ffnet, erstrecken sich etwa 225 Billionen Eintr\u00e4ge fast endlos in alle Richtungen. Montfort und Strickland sagen, ihr Werk enthalte so viele Strophen, wie es \u201eFische im Meer\u201c gibt.',
+    'about.p3': '<em>Remorseless Havoc</em> nimmt diese Metapher w\u00f6rtlich und bildet den kombinatorischen Ozean auf die realen Meere der Welt ab. Es \u00fcbertr\u00e4gt die generierten Strophen in ein Raster, das den gesamten Globus \u00fcberspannt, wobei Landmassen ausgespart werden. Jede Zelle repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quator). Dadurch f\u00e4llt der Gro\u00dfteil der urspr\u00fcnglich generierten Billionen von Strophen weg, es verbleiben etwa 460 Millionen Strophen. Dann folgt eine zweite L\u00f6schung, angetrieben durch reale Fischereiaktivit\u00e4t. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> verfolgt die Bewegungen und Aktivit\u00e4ten von Zehntausenden von industriellen Fangschiffen anhand von AIS-Transponderdaten. Durch eine t\u00e4gliche Abfrage werden ihre Fangzeiten in Positionen auf unserer Karte und in die L\u00f6schung von Strophen an dieser Position umgewandelt. Eines Tages werden alle Strophen aus dem Meer entfernt sein \u2013 die in diesem Werk verwendete Sprache ist, wie die Ressourcen des Ozeans, endlich.',
+    'about.p3b': 'Anmerkung zur Karte: Um die Darstellungsleistung zu verbessern, wird ein gr\u00f6beres Raster aus Kacheln verwendet, die jeweils etwa 10 \u00d7 10 km (0,1\u00b0) gro\u00df sind, wobei jede sichtbare Kachel 100 Strophenzellen umfasst. Die drei Farbt\u00f6ne des Ozeans zeigen an, wie viele Strophen aus jeder Kachel gel\u00f6scht wurden: intakt (alle 100 Strophen noch vorhanden), teilweise ersch\u00f6pft (mindestens eine Strophe gel\u00f6scht) und vollst\u00e4ndig ersch\u00f6pft (alle 100 Strophen gel\u00f6scht). Wenn man hineinzoomt, zeigt jede Kachel eine Strophe. Das vollst\u00e4ndige Strophenzellenraster wird vom Backend nur dann abgefragt, wenn ein Fischereivorgang Strophen l\u00f6scht.',
+    'about.p4': 'Sie k\u00f6nnen die Zerst\u00f6rung auf der Karte verfolgen, die heute gel\u00f6schten Strophen in der <em>Flotte</em>-Ansicht durchst\u00f6bern oder eine zuf\u00e4llige Auswahl des Tagesfangs als Gedichtband herunterladen. Jedes Schiff fasst die Strophen, die es an einem bestimmten Tag aus dem Ozean sammelt, zu einem Gedicht zusammen, geordnet nach absteigender lexikalischer Vielfalt.',
     'about.p5': 'Das Projekt l\u00e4uft so lange, bis der poetische Ozean leer ist, was nach aktuellen Daten voraussichtlich um das Jahr 2030 der Fall sein wird. Dann wird ein letztes Gedicht \u00fcbrig bleiben \u2013 der \u201eletzte Atemzug\u201c des Leviathan, wie er in Kapitel CV von Herman Melvilles <em>Moby-Dick</em>, \u201eDoes the Whale\u2019s Magnitude Diminish?\u2014Will He Perish?\u201c, beschrieben wird, aus dem auch der Titel des Projekts stammt. Der Zeitpunkt und Ort seines Entstehens und nicht zuletzt der Text dieses Gedichts werden von den Unw\u00e4gbarkeiten der Ausbeutung der Meere bestimmt.',
     'about.spec.grid': 'Gitter',
     'about.spec.cells': 'Wasserzellen',
@@ -2310,7 +2363,7 @@ const I18N = {
     'catch.sub.vessels': 'Schiffe',
     'catch.sub.hours': 'Fangstunden',
     'catch.sub.delta': '&Delta; Ersch\u00f6pfung',
-    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Nach der Regel des Projekts \u2014 drei Strophen pro Fangstunde \u2014 wurden 291&thinsp;723 Verse aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht, verteilt auf 8&thinsp;766 Schiffe. Vollst\u00e4ndig gedruckt w\u00fcrde der Tagesfang mehrere Tausend Seiten f\u00fcllen \u2014 zu viel als t\u00e4gliches Artefakt, sowohl f\u00fcr die kleine Infrastruktur des Projekts als auch als Lesegegenstand. Die Standardausgabe <em>Selection</em> unten ist deshalb ein zuf\u00e4lliges Zehntel der Flotte, ohne R\u00fccksicht auf die Fangmenge gezogen: ein ehrlicher Querschnitt des Arbeitstages statt der reinen Bestenliste. Zwei feinere Schnitte stehen zus\u00e4tzlich bereit.',
+    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Nach der Regel des Projekts &mdash; drei Strophen pro Fangstunde &mdash; wurden 291&thinsp;723 Strophen aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht, verteilt auf 8&thinsp;766 Schiffe. Vollst\u00e4ndig gedruckt w\u00fcrde der Tagesfang mehrere Tausend Seiten f\u00fcllen &mdash; zu viel als t\u00e4gliches Artefakt, sowohl f\u00fcr die kleine Infrastruktur des Projekts als auch als Lesegegenstand. Die Standardausgabe <em>Selection</em> unten ist deshalb ein zuf\u00e4lliges Zehntel der Flotte.',
     'catch.size.label': 'Dokumentgr\u00f6\u00dfe',
     'catch.size.selection.name': 'Selection',
     'catch.size.selection.meta': 'ein zuf\u00e4lliges Zehntel der Tagesflotte',
@@ -2320,13 +2373,14 @@ const I18N = {
     'catch.size.finecut.desc':   'Schlankere Lesefassung \u2014 etwa hundert zuf\u00e4llig gezogene Schiffe mit ihren vollst\u00e4ndigen F\u00e4ngen.',
     'catch.size.onepiece.name':  'One Piece',
     'catch.size.onepiece.meta':  'ein einziges, zuf\u00e4llig gezogenes Schiff',
-    'catch.size.onepiece.desc':  'Das minimale Portr\u00e4t \u2014 der Tag eines einzigen Schiffs, ein paar Dutzend Verse, das kleinstm\u00f6gliche Artefakt.',
-    'catch.cta.label': 'Vor dem Download bitte \u00fcberlegen, an Ozeanschutz zu spenden',
+    'catch.size.onepiece.desc':  'Das minimale Portr\u00e4t \u2014 der Tag eines einzigen Schiffs, ein paar Dutzend Strophen, das kleinstm\u00f6gliche Artefakt.',
+    'catch.cta.label': 'Vor dem Download bitte f\u00fcr den Erhalt der Ozeane spenden',
     'catch.cta.gfw': 'An Global Fishing Watch spenden',
     'catch.cta.greenpeace': 'An Greenpeace spenden',
     'catch.cta.wwf': 'An WWF spenden',
     'catch.cta.or': 'oder',
-    'catch.cta.without': 'Download',
+    'catch.cta.without': 'Download (Englisch)',
+    'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Dein Fang wird erzeugt',
     'catch.modal.text': '10. April 2026 \u2014 291&thinsp;723 Strophen, 2&thinsp;450 Seiten, ~51&thinsp;MB.<br>Das dauert etwa 40 Sekunden.',
     'catch.modal.preparing': 'Wird vorbereitet\u2026',
@@ -2353,7 +2407,7 @@ const I18N = {
     'final.stat.possible': 'm\u00f6glich',
     'final.stat.factor': 'L\u00f6schfaktor',
     'final.stat.per-hour': 'pro Stunde',
-    'final.note': '<em>Remorseless Havoc</em> ist zu Ende gelaufen. Der poetische Ozean ist geleert \u2014 eine Zelle wurde zur\u00fcckgehalten und bildet das letzte Gedicht dieser Arbeit. Die Verse stammen aus <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> von Nick Montfort &amp; Stephanie Strickland; ihre L\u00f6schung speiste sich Tag f\u00fcr Tag aus den AIS-Daten von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Ein Projekt von <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
+    'final.note': '<em>Remorseless Havoc</em> ist zu Ende gelaufen. Der poetische Ozean ist geleert \u2014 eine Zelle wurde zur\u00fcckgehalten und bildet das letzte Gedicht dieser Arbeit. Die Strophen stammen aus <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> von Nick Montfort &amp; Stephanie Strickland; ihre L\u00f6schung speiste sich Tag f\u00fcr Tag aus den AIS-Daten von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Ein Projekt von <a href="https://roloffsimon.com" target="_blank" rel="noopener">Simon Roloff</a>.',
     'final.motto.text': 'Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
     'final.motto.chapter': 'Kapitel\u00a0CV',
     'final.footer.license': 'Texte unter der <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT-Lizenz</a>',
@@ -2390,6 +2444,13 @@ function applyI18n(lang) {
 
   // Re-render dynamic UI that embeds translatable strings
   if (typeof refreshDynamicI18n === 'function') refreshDynamicI18n();
+
+  // Stanza-emitting views are re-rendered on demand via this custom
+  // event so the hover overlay, fleet cards and any other
+  // language-aware widget can subscribe without being invoked
+  // directly here. Hover regenerates on next mousemove anyway; the
+  // fleet listener re-renders open cards in the new language.
+  document.dispatchEvent(new CustomEvent('srah:lang-change', { detail: { lang } }));
 }
 
 document.addEventListener('click', (e) => {
@@ -2416,6 +2477,16 @@ function refreshDynamicI18n() {
     dlStatus.textContent = t('catch.modal.preparing');
   }
 }
+
+// Re-render any open fleet cards whenever the language toggles, so the
+// expanded stanzas follow the toggle without forcing the user to close
+// and re-open the card. Hover-overlay re-renders on the next mousemove
+// without explicit notification, so it doesn't subscribe here.
+document.addEventListener('srah:lang-change', () => {
+  try {
+    if (typeof rerenderOpenFleetCards === 'function') rerenderOpenFleetCards();
+  } catch (_) { /* fleet renderer still in TDZ on first apply — safe to skip */ }
+});
 
 // ══════════════════════════════════════════════════
 // INTRO SPLASH — Moby-Dick-Motto
@@ -2655,7 +2726,7 @@ let VESSELS = [
 ];
 
 // Tiny deterministic PRNG used by the Fleet demo data (vessel hours,
-// catch counts, jitter). Nothing verse-related depends on this — the
+// catch counts, jitter). Nothing stanza-related depends on this — the
 // stanza generator below uses the real Sea-and-Spar-Between arithmetic.
 function pseudoRand(seed, i) {
   let h = ((seed + i * 374761393) * 2246822519) >>> 0;
@@ -2675,14 +2746,14 @@ function pseudoRand(seed, i) {
  *  remain byte-for-byte identical so that a given lattice coordinate (i, j)
  *  yields exactly the same four-line stanza here and on the server —
  *  otherwise the correspondence between a GPS fishing event and a deletable
- *  verse would break.
+ *  stanza would break.
  *
  *  This is the hinge at which *Remorseless Havoc* takes over Montfort
  *  and Strickland's code and turns it against itself. Their work presents
  *  an apparently inexhaustible combinatorial ocean — 14,992,384 × 14,992,384
  *  lattice positions, ≈225 trillion stanzas, generated on the fly and
  *  navigable endlessly in the browser. They write that their work contains
- *  "as many verses as there are fish in the sea." This project takes that
+ *  "as many stanzas as there are fish in the sea." This project takes that
  *  metaphor LITERALLY: each cell of the lattice is mapped onto a real
  *  square kilometre of ocean (see `gridToLattice` below), and then the
  *  industrial fishing fleet, reported by Global Fishing Watch, is permitted
@@ -2766,7 +2837,7 @@ const SSB_TWO_SYLL = [...SSB_DICK_NOUN[1], ...SSB_LESS[1]];
 const SSB_NAILED_END = ['coffin','deck','desk','groove','mast','spar','pole',
                         'plank','rail','room','sash'];
 
-// ── Line generators — one per verse-type in the original ─────────────────
+// ── Line generators — one per line-type in the original ──────────────────
 function ssbShort(n)      { return SSB_SHORT_PHRASE[n % SSB_SHORT_PHRASE.length]; }
 function ssbOneNoun(n) {
   const L = SSB_DICK_NOUN[0].length, dn = SSB_DICK_NOUN[0];
@@ -2824,7 +2895,7 @@ function ssbCanonical(v) {
   return v;
 }
 
-// gridToLattice — the LITERAL cash-out of "as many verses as fish in the sea".
+// gridToLattice — the LITERAL cash-out of "as many stanzas as fish in the sea".
 // Each of the 648 million geographic cells (0.01° × 0.01°) lands on a distinct
 // lattice position; the lattice is ~417× larger per axis than the grid, so
 // there are no collisions. This is where the combinatorial ocean stops being
@@ -2848,6 +2919,256 @@ function generateStanza(col, row) {
     ssbFirstLine(i + j2n + 1),
     '  ' + ssbSecondLine(Math.abs(i - j2n) + 1)
   ];
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  GERMAN EDITION  —  parallel port of backend/app/stanza_de.py
+ * ══════════════════════════════════════════════════════════════════════════
+ *  Listenlängen identisch zur EN-Version — die Lattice-Koordinate (i, j)
+ *  liefert dieselbe Strophenposition, nur mit deutschem Wortmaterial. Bei
+ *  Änderungen an diesem Block muss `backend/app/stanza_de.py` synchron
+ *  gepflegt werden (oder umgekehrt) — die beiden sind die Quelle der
+ *  Wahrheit füreinander.
+ *
+ *  Strukturelle Eigenheiten gegenüber dem EN-Generator:
+ *    - Substantive in SSB_DE_DICK_NOUN[0] als Tupel [Artikel, Wort];
+ *      [null, …] für die zwei artikellosen Sonderfälle (`je`, `hell`).
+ *    - SSB_DE_COURSE_START als Zirkumposition [Präfix, Suffix].
+ *    - SSB_DE_LESS[*] enthält vorgebildete Privationsformen
+ *      (`kunstlos`, `unwiderruflich`, `schuldfrei` …), keine
+ *      Suffixanhängung zur Laufzeit.
+ *    - ssbDeCompoundCourse setzt Bindestrich an Konsonantenkollisionen
+ *      und kapitalisiert danach; bei b == c wird der zweite Index
+ *      toroidal um 1 verschoben, um Doppelungen zu vermeiden.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+const SSB_DE_SHORT_PHRASE = [
+  'kreise weiter','voran nun','lass sie','horch nun','windet euch',
+  'o Zeit','hinab nun','taumle nur','rolle nur','jag nur',
+  'spinn weiter','stetig','mich aufhalten?','wend dich','kreis nur',
+  'wirble nur','du -- auch --','fester Fisch','freier Fisch'
+];
+const SSB_DE_DICK_NOUN = [
+  [
+    ['eine','Luft'], ['eine','Kunst'], ['eine','Sorg'],
+    ['eine','Tür'], ['ein','Staub'], [null,'je'],
+    ['ein','Ohr'], ['eine','Erd'], [null,'hell'],
+    ['ein','Glaub'], ['eine','Furcht'], ['ein','Freund'],
+    ['ein','Gold'], ['eine','Huld'], ['ein','Gras'],
+    ['ein','Grab'], ['eine','Hand'], ['eine','Höh'],
+    ['ein','Haus'], ['eine','Freud'], ['eine','Hut'],
+    ['ein','Bein'], ['eine','Macht'], ['ein','Sinn'],
+    ['eine','Früh'], ['ein','Nam'], ['eine','Not'],
+    ['ein','Mittag'], ['eine','Pein'], ['ein','Ort'],
+    ['ein','Spiel'], ['eine','Ruh'], ['eine','Ros'],
+    ['eine','Schau'], ['ein','Blick'], ['ein','Blau'],
+    ['ein','Schnee'], ['ein','Stern'], ['ein','Gedanke'],
+    ['ein','Baum'], ['ein','Quell'], ['ein','Wind'],
+    ['eine','Welt'], ['ein','Jahr']
+  ],
+  ['wieder','allein','besser','jenseits','Wonne','Sterben',
+   'leichthin','genug','immer','Vater','Blume','ferner',
+   'er selbst','menschlich','Morgen','ich selbst','Gewalt',
+   'purpurn','einzig','Geist','heute'],
+  ['ein andres','Paradies'],
+  ['Ewigkeit'],
+  ['Unsterblichkeit']
+];
+const SSB_DE_COURSE_START = [
+  ['auf den ',' versessen'],
+  ['auf den ',' zugerichtet'],
+  ['wie den ',' zu bestehen']
+];
+const SSB_DE_DICK_SYLL = [
+  'Skald','Perl','Bienen','Trog','Klecks','Schlier','Gesumm',
+  'Kringel','Schmutz','Scheiben','Trumm','Farn','Haut','Volk',
+  'Keim','Stock','Hauben','Hülsen','Häher','Pink','Plan','Garn','Netz'
+];
+const SSB_DE_MELV_SYLL = [
+  'Sack','Stier','Pritschen','Stab','Kerl','Schlag','Strich',
+  'Dock','Schneid','Flossen','Hexen','Falken','Haken','Reif',
+  'Horn','Geheul','Eisen','Hein','Maul','Tritt','Kalk','Narren',
+  'Schleich','Milch','Spieß','Lumpen','Reling','Bock','Beutel','Salz','Zeug'
+];
+const SSB_DE_SYLLABLE = [...SSB_DE_DICK_SYLL, ...SSB_DE_MELV_SYLL].sort();
+
+const SSB_DE_LESS = [
+  ['kunstlos','standlos','schuldfrei','brotlos','heillos',
+   'fristfern','todesfern','dürrefern','fehlfrei','fleischfern',
+   'bodenlos','fußlos','rahmenlos','fruchtlos','ziellos',
+   'unfasslich','arglos','reuelos','farblos','schlüssellos',
+   'bundlos','listenlos','notfrei','tonlos','schmerzlos',
+   'pausenlos','wortlos','steglos','klanglos','preislos',
+   'schamlos','gestaltlos','blicklos','klanglos','sternlos',
+   'wurzellos','maßlos','regungslos','haltlos','unaufhaltsam',
+   'märlos','geschmacklos','fadenlos','wertlos'],
+  ['bannfrei','deckenlos','sorglos','kostümlos','chiffrelos',
+   'gradlos','begehrlos','mitgiftlos','löschfern','zauberlos',
+   'fluchtlos','modelos','würzlos','ehrlos','sippenlos',
+   'marklos','unmerklich','unstörbar','grundlos','unaufschiebbar',
+   'unrufbar','spurlos','unverminderbar','unwiderruflich',
+   'berichtlos','ungeborgen','mieterlos'],
+  ['breitenlos','unwiederbringlich']
+];
+const SSB_DE_LESS_FLAT = [...SSB_DE_LESS[0], ...SSB_DE_LESS[1], ...SSB_DE_LESS[2]].sort();
+
+const SSB_DE_UP_VERB = [
+  'sonnen','läuten','tanzen','gehen','scheiden','regen',
+  'steigen','singen','sprechen','schreiten','wenden','wandeln'
+];
+const SSB_DE_BUT_BEGIN = ['doch','denn','dann'];
+const SSB_DE_BUT_END = [
+  ['die','Erde'], ['die','See'], ['der','Himmel'], ['die','Sonne']
+];
+
+const SSB_DE_THREE_TO_FIVE = [
+  ...SSB_DE_DICK_NOUN[2], ...SSB_DE_DICK_NOUN[3], ...SSB_DE_DICK_NOUN[4],
+  ...SSB_DE_LESS[2]
+];
+const SSB_DE_TWO_SYLL = [...SSB_DE_DICK_NOUN[1], ...SSB_DE_LESS[1]];
+
+const SSB_DE_NAILED_END = [
+  ['den','Sarg'], ['das','Deck'], ['das','Pult'],
+  ['die','Furche'], ['den','Mast'], ['die','Spiere'],
+  ['den','Pfahl'], ['die','Planke'], ['die','Reling'],
+  ['die','Kammer'], ['die','Schärpe']
+];
+
+// ── DE line generators ───────────────────────────────────────────────
+function ssbDeShort(n) {
+  return SSB_DE_SHORT_PHRASE[n % SSB_DE_SHORT_PHRASE.length];
+}
+function ssbDeRenderNoun(entry) {
+  const [art, word] = entry;
+  return art === null ? word : (art + ' ' + word);
+}
+function ssbDeOneNoun(n) {
+  const L = SSB_DE_DICK_NOUN[0].length, dn = SSB_DE_DICK_NOUN[0];
+  const d = n % L; n = Math.floor(n / L);
+  const c = n % L; n = Math.floor(n / L);
+  const b = n % L; n = Math.floor(n / L);
+  const a = n % L;
+  // Artikellose Einträge (je, hell) binden sich an den folgenden Slot:
+  // der Em-Dash zwischen ihnen und dem nächsten Wort wird durch ein
+  // Leerzeichen ersetzt, sodass das Wort als Quantor bzw. Attribut zur
+  // nächsten Nomenphrase läuft. Steht ein solcher Eintrag im letzten
+  // Slot, bleibt er alleinstehend am Zeilenende.
+  const entries = [dn[a], dn[b], dn[c], dn[d]];
+  const parts = [];
+  for (let i = 0; i < entries.length; i++) {
+    if (i > 0) {
+      const prevArt = entries[i - 1][0];
+      parts.push(prevArt === null ? ' ' : ' -- ');
+    }
+    parts.push(ssbDeRenderNoun(entries[i]));
+  }
+  return parts.join('');
+}
+function ssbDeCompoundCourse(n) {
+  const Ls = SSB_DE_SYLLABLE.length;
+  let c = n % Ls; n = Math.floor(n / Ls);
+  const b = n % Ls; n = Math.floor(n / Ls);
+  const a = n % SSB_DE_COURSE_START.length;
+  // b == c → toroidal Verschiebung um 1, vermeidet Beutelbeutelkurs
+  if (b === c) c = (c + 1) % Ls;
+  const [prefix, suffix] = SSB_DE_COURSE_START[a];
+  const head = SSB_DE_SYLLABLE[b];
+  const sylC = SSB_DE_SYLLABLE[c];
+  // Bindestrich bei gleichem Buchstaben an der Naht; nach Bindestrich
+  // bleibt das folgende Glied großgeschrieben.
+  let sepInner, tail;
+  if (head.slice(-1).toLowerCase() === sylC.slice(0, 1).toLowerCase()) {
+    sepInner = '-';
+    tail = sylC;
+  } else {
+    sepInner = '';
+    tail = sylC.toLowerCase();
+  }
+  // 'k' am Ende → Bindestrich vor 'Kurs', sonst inneres 'kurs' kleingeschrieben.
+  const sepOuter = tail.slice(-1).toLowerCase() === 'k' ? '-' : '';
+  const kurs = sepOuter ? 'Kurs' : 'kurs';
+  return prefix + head + sepInner + tail + sepOuter + kurs + suffix;
+}
+function ssbDeFirstLine(n) {
+  const m = Math.floor(n / 4), r = n % 4;
+  if (r < 2) return ssbDeShort(m);
+  if (r === 2) return ssbDeOneNoun(m);
+  return ssbDeCompoundCourse(m);
+}
+function ssbDeRiseAndGo(n) {
+  const Lv = SSB_DE_UP_VERB.length;
+  const c = n % Lv; n = Math.floor(n / Lv);
+  const b = n % Lv; n = Math.floor(n / Lv);
+  const a = n % SSB_DE_LESS_FLAT.length;
+  const word = SSB_DE_LESS_FLAT[a];
+  const dash = SSB_DE_LESS[0].includes(word) ? ' --' : '';
+  return word + ' ' + SSB_DE_UP_VERB[b] + ' und ' + SSB_DE_UP_VERB[c] + dash;
+}
+function ssbDeBut(n) {
+  const Le = SSB_DE_BUT_END.length;
+  const c = n % Le; n = Math.floor(n / Le);
+  const b = n % SSB_DE_LESS_FLAT.length; n = Math.floor(n / SSB_DE_LESS_FLAT.length);
+  const a = n % SSB_DE_BUT_BEGIN.length;
+  const [art, noun] = SSB_DE_BUT_END[c];
+  const konj = SSB_DE_BUT_BEGIN[a];
+  const privation = SSB_DE_LESS_FLAT[b];
+  // `dann` ist temporales Adverb, das das Vorfeld belegt: V2 erzwingt
+  // umgekehrte Wortstellung — `dann ist die Erde arglos` statt
+  // `dann arglos ist die Erde`. Doch/denn bleiben in der parallelen
+  // Konjunktor-Form.
+  if (konj === 'dann') {
+    return `dann ist ${art} ${noun} ${privation}`;
+  }
+  return `${konj} ${privation} ist ${art} ${noun}`;
+}
+function ssbDeExclaim(n) {
+  const b = n % SSB_DE_TWO_SYLL.length; n = Math.floor(n / SSB_DE_TWO_SYLL.length);
+  const a = n % SSB_DE_THREE_TO_FIVE.length;
+  return SSB_DE_THREE_TO_FIVE[a] + '! ' + SSB_DE_TWO_SYLL[b] + '!';
+}
+function ssbDeNailed(n) {
+  const [art, noun] = SSB_DE_NAILED_END[n % SSB_DE_NAILED_END.length];
+  return 'genagelt an ' + art + ' ' + noun;
+}
+function ssbDeSecondLine(n) {
+  const m = Math.floor(n / 4), r = n % 4;
+  if (r === 0) return ssbDeRiseAndGo(m);
+  if (r === 1) return ssbDeBut(m);
+  if (r === 2) return ssbDeExclaim(m);
+  return ssbDeNailed(m);
+}
+
+// Großschreibung des ersten alphabetischen Zeichens — wird nur auf
+// die erste Zeile der DE-Strophe angewendet, damit deutsche Strophen
+// typografisch einem Satzanfang entsprechen (kreise weiter →
+// Kreise weiter, je ein Mittag → Je ein Mittag).
+function ssbDeCapitaliseFirst(line) {
+  for (let k = 0; k < line.length; k++) {
+    const ch = line[k];
+    if (ch.toLowerCase() !== ch.toUpperCase()) {
+      return line.slice(0, k) + ch.toUpperCase() + line.slice(k + 1);
+    }
+  }
+  return line;
+}
+
+function generateStanzaDe(col, row) {
+  const [i, j] = gridToLattice(col, row);
+  const j2 = ssbCanonical(j * 2);
+  const j2n = ssbCanonical(j2 + 1);
+  return [
+    ssbDeCapitaliseFirst(ssbDeFirstLine(i + j2 + 1)),
+    '  ' + ssbDeSecondLine(Math.abs(i - j2) + 1),
+    ssbDeFirstLine(i + j2n + 1),
+    '  ' + ssbDeSecondLine(Math.abs(i - j2n) + 1)
+  ];
+}
+
+// generateStanzaForLang — every consumer that should react to the
+// EN/DE toggle calls through here. EN remains the default fallback.
+function generateStanzaForLang(col, row, lang) {
+  return (lang === 'de') ? generateStanzaDe(col, row) : generateStanza(col, row);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2909,7 +3230,7 @@ const DISPLAY_ROWS = 1800;
 //   depletedFull     → STATE_DEPLETED   all 100 stanza cells erased
 // The three tones are intentionally close in value: as the ocean empties,
 // the map gets darker, not more colourful. No green/red "health" bar —
-// just the material subtraction of verses.
+// just the material subtraction of stanzas.
 const GRID_COLORS = {
   land: [184, 188, 194],              // --land #b8bcc2 — hellgrau
   landEdge: [141, 145, 152],          // --land-edge #8d9198
@@ -3008,10 +3329,14 @@ async function loadVessels() {
       hours: v.fishing_hours,
       catch: v.stanzas,
       // Use one of the vessel's own catch cells for the on-card preview.
-      stanza: generateStanza(
+      // Note: this is the *one-line* preview only; the expanded card
+      // pulls from `v.catches` so it can show every stanza of the day.
+      stanza: generateStanzaForLang(
         Math.floor((v.lon + 180) / 0.01),
-        Math.floor((v.lat + 90) / 0.01)
+        Math.floor((v.lat + 90) / 0.01),
+        currentLang
       ),
+      catches: Array.isArray(v.catches) ? v.catches : [],
       entropy: null,    // computed server-side, not needed for the cards
       vesselId: v.vessel_id,
     }));
@@ -3034,16 +3359,22 @@ async function loadFinalPoem() {
   }
 }
 
-// URL used by the Catch-of-the-Day button. Falls back to '#' so that
-// pressing it without a backend is a harmless no-op rather than a 404.
-// The size is taken from #catch-size's data-value attribute (custom
-// dropdown). Valid sizes: selection (default) / finecut / onepiece.
-function catchDownloadUrl() {
+// URL used by the Catch-of-the-Day buttons. Falls back to '#' so that
+// pressing one without a backend is a harmless no-op rather than a 404.
+// `size` comes from #catch-size's data-value attribute (custom dropdown);
+// `lang` lets us point the EN button at the original artefact and the
+// DE button at its `_de` parallel. The DE volume is offered
+// independently of the page's EN/DE toggle: both buttons stay visible
+// at all times so the user can grab either edition at any moment.
+function catchDownloadUrl(lang) {
   if (!HAVOC_HAS_API) return '#';
   const dd = document.getElementById('catch-size');
   const size = dd?.dataset?.value || 'selection';
   const base = `${HAVOC_API_BASE}/api/catch-of-the-day`;
-  return size === 'selection' ? base : `${base}?size=${encodeURIComponent(size)}`;
+  const params = [];
+  if (size !== 'selection') params.push(`size=${encodeURIComponent(size)}`);
+  if (lang === 'de') params.push('lang=de');
+  return params.length ? `${base}?${params.join('&')}` : base;
 }
 
 // ── Custom dropdown wiring ────────────────────────────────────────
@@ -3479,7 +3810,7 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
 function stanzaForDisplayCell(dcol, drow) {
   const backendCol = dcol * 10 + 5;
   const backendRow = drow * 10 + 5;
-  return generateStanza(backendCol, backendRow);
+  return generateStanzaForLang(backendCol, backendRow, currentLang);
 }
 
 // Project a vessel's GPS to current screen coords. Returns null if offscreen.
@@ -3905,11 +4236,27 @@ function generateFleet() {
   return out;
 }
 
-function stanzaForFleetEntry(v) {
+// stanzasForFleetEntry — every stanza this vessel erased today.
+// Live data: v.catches carries each (col, row) the day's job recorded
+// for this ship; we re-generate the verse client-side so the language
+// follows the active toggle. Fallback (mock fleet, no live data): one
+// deterministic stanza from the vessel's GPS centre + seed, keeping
+// legacy behaviour for the static demo.
+function stanzasForFleetEntry(v) {
+  const lang = currentLang;
+  if (Array.isArray(v.catches) && v.catches.length > 0) {
+    return v.catches.map(c => generateStanzaForLang(c.col, c.row, lang));
+  }
   const seed = v.stanzaSeed ?? 0;
   const backendCol = Math.floor(((v.lon + 180) / 0.1) * 10 + 5);
   const backendRow = Math.floor(((v.lat + 90) / 0.1) * 10 + 5);
-  return generateStanza(backendCol + seed, backendRow + seed);
+  return [generateStanzaForLang(backendCol + seed, backendRow + seed, lang)];
+}
+
+// Backwards-compat wrapper — older call sites still expect a single
+// 4-line stanza. Returns the vessel's first stanza of the day.
+function stanzaForFleetEntry(v) {
+  return stanzasForFleetEntry(v)[0];
 }
 
 // Shannon entropy over characters of the joined stanza — used as a
@@ -3987,6 +4334,43 @@ function sortFleet() {
   });
 }
 
+function renderFleetStanzas(card, v) {
+  // Build (or rebuild) the expanded card body: every stanza this
+  // vessel caught today, separated by a thin rule. Used both on
+  // first-open and on language-toggle re-render.
+  card.querySelectorAll('.vc-expand, .vc-entropy, .vc-map-link').forEach(el => el.remove());
+  const stanzas = stanzasForFleetEntry(v);
+  const expand = document.createElement('div');
+  expand.className = 'vc-expand';
+  expand.innerHTML = stanzas.map((stanza, i) => {
+    const lines = stanza.map(l => `<span class="vc-line">${l}</span>`).join('');
+    const sep = i > 0 ? '<span class="vc-sep" aria-hidden="true"></span>' : '';
+    return sep + `<div class="vc-stanza">${lines}</div>`;
+  }).join('');
+  const entropy = document.createElement('div');
+  entropy.className = 'vc-entropy';
+  const ns = v.lat >= 0 ? 'N' : 'S';
+  const ew = v.lon >= 0 ? 'E' : 'W';
+  // Aggregate entropy: average across all stanzas for a single
+  // representative number on the card.
+  const entropyVal = (typeof v.entropy === 'number')
+    ? v.entropy
+    : (stanzas.reduce((acc, s) => acc + computeStanzaEntropy(s), 0) / stanzas.length);
+  const word = stanzas.length === 1
+    ? t('fleet.stanzas.singular')
+    : t('fleet.stanzas.plural');
+  const countTxt = `${stanzas.length} ${word}`;
+  entropy.textContent = `${countTxt}  \u00b7  ${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${entropyVal.toFixed(2)}`;
+  const mapLink = document.createElement('button');
+  mapLink.type = 'button';
+  mapLink.className = 'vc-map-link';
+  mapLink.textContent = '\u2197 show on map';
+  mapLink.addEventListener('click', (e) => { e.stopPropagation(); focusVesselOnMap(v); });
+  card.appendChild(expand);
+  card.appendChild(entropy);
+  card.appendChild(mapLink);
+}
+
 function toggleFleetCard(card, v) {
   const isOpen = card.classList.contains('is-open');
   document.querySelectorAll('.vessel-card.is-open').forEach(c => c.classList.remove('is-open'));
@@ -3994,29 +4378,21 @@ function toggleFleetCard(card, v) {
 
   // Populate expand block on first open
   if (!card.querySelector('.vc-expand')) {
-    const stanza = stanzaForFleetEntry(v);
-    const expand = document.createElement('div');
-    expand.className = 'vc-expand';
-    expand.innerHTML = stanza.map(l => `<span class="vc-line">${l}</span>`).join('');
-    const entropy = document.createElement('div');
-    entropy.className = 'vc-entropy';
-    const ns = v.lat >= 0 ? 'N' : 'S';
-    const ew = v.lon >= 0 ? 'E' : 'W';
-    const entropyVal = (typeof v.entropy === 'number') ? v.entropy : computeStanzaEntropy(stanza);
-    entropy.textContent = `${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${entropyVal.toFixed(2)}`;
-    const mapLink = document.createElement('button');
-    mapLink.type = 'button';
-    mapLink.className = 'vc-map-link';
-    mapLink.textContent = '\u2197 show on map';
-    mapLink.addEventListener('click', (e) => { e.stopPropagation(); focusVesselOnMap(v); });
-    card.appendChild(expand);
-    card.appendChild(entropy);
-    card.appendChild(mapLink);
+    renderFleetStanzas(card, v);
   } else {
     // restart reveal animation
     card.querySelectorAll('.vc-line').forEach(l => { l.style.animation = 'none'; l.offsetHeight; l.style.animation = ''; });
   }
   card.classList.add('is-open');
+}
+
+// Re-render every currently open fleet card in the new language.
+function rerenderOpenFleetCards() {
+  document.querySelectorAll('.vessel-card.is-open').forEach(card => {
+    const id = card.dataset.id;
+    const v = fleetData.find(x => String(x.id) === String(id));
+    if (v) renderFleetStanzas(card, v);
+  });
 }
 
 function focusVesselOnMap(v) {
@@ -4129,7 +4505,7 @@ function animateCatchCounter() {
 // DOWNLOAD MODAL
 // ══════════════════════════════════════════════════
 
-function openDownloadModal() {
+function openDownloadModal(lang) {
   const mod = document.getElementById('download-modal');
   const bar = document.getElementById('dl-bar');
   const status = document.getElementById('dl-status');
@@ -4142,7 +4518,7 @@ function openDownloadModal() {
   setTimeout(() => { bar.style.width = '100%'; status.textContent = t('catch.modal.done'); }, 2800);
   setTimeout(() => {
     mod.classList.remove('is-open');
-    const url = catchDownloadUrl();
+    const url = catchDownloadUrl(lang);
     if (url === '#') {
       alert('No backend configured — set HAVOC_API_BASE in index.html.');
       return;
@@ -4154,8 +4530,12 @@ function openDownloadModal() {
 }
 
 document.addEventListener('click', (e) => {
-  if (e.target.id === 'download-without') {
-    openDownloadModal();
+  // Both download buttons resolve via the same modal; the language
+  // is picked up from the button's data-lang attribute (set in the
+  // button HTML and used by catchDownloadUrl to add `?lang=de`).
+  const btn = e.target.closest('#download-without, #download-without-de');
+  if (btn) {
+    openDownloadModal(btn.dataset.lang || 'en');
   }
 });
 

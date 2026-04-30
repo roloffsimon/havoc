@@ -253,3 +253,25 @@ def catches_for(date: str) -> list[dict]:
         d.pop("stanza_json", None)
         out.append(d)
     return out
+
+
+def catches_by_vessel(date: str) -> dict[str, list[dict]]:
+    """All catches of a given day, grouped by vessel_id.
+
+    Returns a dict mapping vessel_id → list of compact catch dicts
+    `{col, row, source, lat, lon, entropy}`. Used by `/api/vessels` to
+    inline the day's catches into the fleet payload so the frontend
+    can render one stanza per catch (regenerated client-side from the
+    lattice coordinates) without an extra round-trip per ship.
+    """
+    with connect() as c:
+        rows = c.execute(
+            "SELECT vessel_id, col, row, source, lat, lon, entropy "
+            "FROM catches WHERE date=? ORDER BY id",
+            (date,),
+        ).fetchall()
+    grouped: dict[str, list[dict]] = {}
+    for r in rows:
+        d = dict(r)
+        grouped.setdefault(d.pop("vessel_id"), []).append(d)
+    return grouped

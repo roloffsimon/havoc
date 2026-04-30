@@ -12,7 +12,7 @@
 
 // ── Document-wide defaults ─────────────────────────────────────────
 #set document(
-  title: "Catch of the Day — " + stats.long_date,
+  title: stats.strings.title + " — " + stats.long_date,
   author: "Simon Roloff",
 )
 #set text(font: FONT_BODY_ROMAN, size: 9.2pt, fill: INK)
@@ -53,7 +53,7 @@
     grid(
       columns: (1fr, 1fr),
       align: (left, right),
-      upper("Catch of Day " + stats.day_label),
+      upper(stats.strings.header_running + " " + stats.day_label),
       upper(stats.long_date),
     )
   },
@@ -66,7 +66,7 @@
 // ── Front matter ───────────────────────────────────────────────────
 #toc(stats)
 #about(stats)
-#section-opener(stats.day_label)
+#section-opener(stats.day_label, label_text: stats.strings.section_opener)
 
 // ── Per-vessel poems ───────────────────────────────────────────────
 #for poem in poems [

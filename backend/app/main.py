@@ -198,7 +198,11 @@ def vessels():
     day = db.latest_day()
     if not day:
         return {"date": None, "vessels": []}
-    return {"date": day["date"], "vessels": db.vessels_for(day["date"])}
+    rows = db.vessels_for(day["date"])
+    catches_by_id = db.catches_by_vessel(day["date"])
+    for v in rows:
+        v["catches"] = catches_by_id.get(v["vessel_id"], [])
+    return {"date": day["date"], "vessels": rows}
 
 
 @app.get("/api/depletion-grid")
@@ -232,7 +236,7 @@ def final_poem():
 
 
 @app.get("/api/catch-of-the-day")
-def catch_of_the_day(size: str = "selection"):
+def catch_of_the_day(size: str = "selection", lang: str = "en"):
     """
     Return the most recent daily volume.
 
@@ -241,11 +245,16 @@ def catch_of_the_day(size: str = "selection"):
       finecut             — random ~1/100
       onepiece            — one randomly chosen vessel
 
+    Two languages (`?lang=...`):
+      en (default) — original English volume
+      de           — German edition (parallel `_de` artefact)
+
     Legacy aliases preserved for older website builds: `full` and
     `digest` map to selection; `excerpt` to finecut; `vessel` to
-    onepiece. If the requested tier hasn't been rendered yet (e.g.
+    onepiece. If the requested EN tier hasn't been rendered yet (e.g.
     a deploy before the tier code shipped), we fall back to whichever
-    tier is on disk.
+    tier is on disk. Missing DE artefacts return 404 — no EN fallback,
+    so the caller can detect the difference.
     """
     from . import pdf_builder
     aliases = {
@@ -254,7 +263,9 @@ def catch_of_the_day(size: str = "selection"):
         "onepiece": "onepiece",   "vessel": "onepiece",
     }
     tier = aliases.get(size.lower().strip(), pdf_builder.DEFAULT_TIER)
-    path = pdf_builder.latest_pdf(tier)
+    lang_aliases = {"en": "en", "english": "en", "de": "de", "deutsch": "de", "german": "de"}
+    language = lang_aliases.get(lang.lower().strip(), "en")
+    path = pdf_builder.latest_pdf(tier, language=language)
     if path is None:
         raise HTTPException(status_code=404, detail="No catch rendered yet.")
     media = "application/pdf" if path.suffix == ".pdf" else "text/html"

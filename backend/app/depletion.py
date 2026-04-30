@@ -125,12 +125,21 @@ def run_day(pool: OceanPool, events: list[dict],
     # any of that goes wrong on a host we don't fully control, we still
     # want the day's catches in the database — the PDF can be re-rendered
     # later from the persisted catches.
+    # The canonical EN volume drives the `pdf_path` row written to the
+    # `days` table; the DE volume is rendered alongside but tracked
+    # only by filesystem presence (looked up via pdf_builder.latest_pdf
+    # at request time). Either render is allowed to fail without
+    # taking the day's persistence with it.
     try:
         pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
         pdf_path_str = str(pdf_path) if pdf_path else None
     except Exception as exc:  # noqa: BLE001
         log.exception("PDF render failed for %s, continuing without PDF: %s", date, exc)
         pdf_path_str = None
+    try:
+        pdf_builder.render_daily_pdf(stats, per_vessel, language="de")
+    except Exception as exc:  # noqa: BLE001
+        log.exception("DE PDF render failed for %s, continuing: %s", date, exc)
 
     db.record_day(stats, list(vessels_meta.values()), all_catches, pdf_path_str)
 

@@ -100,10 +100,10 @@
 
   #context {
     let entries = (
-      ("Introduction",                                  <intro>),
-      ("Catch of Day " + stats.day_label,               <section-opener>),
-      ("Index of vessels",                              <vessel-index>),
-      ("Colophon",                                      <colophon>),
+      ("Introduction",                                              <intro>),
+      (stats.strings.section_opener + " " + stats.day_label,        <section-opener>),
+      ("Index of vessels",                                          <vessel-index>),
+      ("Colophon",                                                  <colophon>),
     )
     set text(font: FONT_BODY_ROMAN, size: 11pt, fill: INK_SOFT,
              style: "italic", weight: 300)
@@ -137,8 +137,8 @@
 // NNN" rather than under "Introduction"); the daily.typ show rule
 // detects the label and renders empty for this one heading, since
 // the visible big two-line title is drawn by this function itself.
-#let section-opener(day_label) = titlepage[
-  = #upper("Catch of Day " + day_label) <section-opener>
+#let section-opener(day_label, label_text: "Catch of Day") = titlepage[
+  = #upper(label_text + " " + day_label) <section-opener>
 
   #v(1fr)
   #align(center)[
@@ -146,7 +146,7 @@
     // Label and number sit at related sizes — the number is only
     // slightly larger so the title page reads as a balanced two-line
     // statement rather than as a number with a small caption.
-    #text(size: 38pt, tracking: 0.16em)[#upper("Catch of Day")]
+    #text(size: 38pt, tracking: 0.16em)[#upper(label_text)]
     #v(8mm, weak: true)
     #text(size: 52pt, tracking: 0.04em)[#day_label]
   ]
@@ -375,7 +375,7 @@
     #set par(leading: 0.7em, justify: false)
     #show emph: it => text(style: "normal", fill: INK, it.body)
 
-    Catch of the Day from #stats.long_date.
+    #stats.strings.colophon_from#stats.long_date.
 
     #v(5mm)
 
