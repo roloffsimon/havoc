@@ -2992,7 +2992,7 @@ const SSB_DE_DICK_NOUN = [
     ['ein','Glaub'], ['eine','Furcht'], ['ein','Freund'],
     ['ein','Gold'], ['eine','Huld'], ['ein','Gras'],
     ['ein','Grab'], ['eine','Hand'], ['eine','Höh'],
-    ['ein','Haus'], ['eine','Freud'], ['eine','Hut'],
+    ['ein','Haus'], ['eine','Freud'], ['ein','Hut'],
     ['ein','Bein'], ['eine','Macht'], ['ein','Sinn'],
     ['eine','Früh'], ['ein','Nam'], ['eine','Not'],
     ['ein','Mittag'], ['eine','Pein'], ['ein','Ort'],
@@ -3639,6 +3639,13 @@ function render() {
     renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW);
   }
 
+  // Cells with at least one active vessel get a warm-brown tint regardless
+  // of depletion state. Painted *after* land/ocean/depletion so it reads
+  // as "today's hot zones," and *before* stanzas/lines so the text still
+  // renders on top.
+  const activeCells = collectActiveVesselCells();
+  renderActiveVesselCells(activeCells, startCol, startRow, cellsWide, cellsHigh, cellW);
+
   if (cellW >= ZOOM_THRESHOLDS.GRID_LINES) {
     renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW);
   }
@@ -3648,7 +3655,54 @@ function render() {
     renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW);
   }
 
-  renderShips(startCol, startRow, cellsWide, cellsHigh, cellW);
+  renderShips(activeCells, startCol, startRow, cellsWide, cellsHigh, cellW);
+}
+
+// Collect the set of 0.1° display cells that contain at least one vessel
+// from the active fleet. Shared by the brown-tint pass and renderShips so
+// both stay in lock-step (one tint, one dot per occupied cell).
+function collectActiveVesselCells() {
+  const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
+  const cells = new Map();   // key -> first vessel that landed there
+  for (const v of ships) {
+    if (typeof v.lon !== 'number' || typeof v.lat !== 'number') continue;
+    const dcol = Math.floor((v.lon + 180) / 0.1);
+    const drow = Math.floor((v.lat + 90)  / 0.1);
+    const key = dcol * 18000 + drow;
+    if (!cells.has(key)) cells.set(key, { dcol, drow, vessel: v });
+  }
+  return cells;
+}
+
+function renderActiveVesselCells(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
+  if (!cells || !cells.size) return;
+  const cellH = cellW;
+  ctx.fillStyle = 'rgba(132, 96, 58, 0.36)';   // warm brown overlay, distinct from rust depletion
+  // Min draw size keeps the tint visible at world view, where a single
+  // 0.1° cell is sub-pixel and would otherwise alpha-out to nothing —
+  // active regions then read as coherent brown swathes that resolve
+  // back to per-cell rectangles when the user zooms in.
+  const w = Math.max(1.5, cellW);
+  const h = Math.max(1.5, cellH);
+  // Range filter in display-cell space, plus longitude wrap so eastern
+  // panes pick up the same vessels as the canonical 0..3600 column.
+  const wrap = DISPLAY_COLS;
+  const colMin = Math.floor(startCol);
+  const colMax = Math.ceil(startCol + cellsWide);
+  const rowMin = Math.max(0, Math.floor(startRow));
+  const rowMax = Math.min(DISPLAY_ROWS - 1, Math.ceil(startRow + cellsHigh));
+  for (const { dcol, drow } of cells.values()) {
+    if (drow < rowMin || drow > rowMax) continue;
+    // The longitude axis can be panned past 360°, so test against every
+    // image of dcol that falls inside the visible column range.
+    let dc = dcol;
+    while (dc > colMax) dc -= wrap;
+    while (dc < colMin) dc += wrap;
+    if (dc < colMin || dc > colMax) continue;
+    const px = (dc - startCol) * cellW;
+    const py = canvasH - (drow - startRow + 1) * cellH;
+    ctx.fillRect(px, py, w, h);
+  }
 }
 
 let offCanvas = null;
@@ -3805,8 +3859,13 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
   const rowEnd = Math.ceil(startRow + cellsHigh);
 
   const fontSize = 8;
+  const prevAlign = ctx.textAlign;
+  const prevBaseline = ctx.textBaseline;
   ctx.font = `500 ${fontSize}px 'DM Mono', monospace`;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
+
+  const lineH = fontSize * 1.25;
 
   for (let drow = rowStart; drow < rowEnd; drow++) {
     for (let dcol = colStart; dcol < colEnd; dcol++) {
@@ -3825,18 +3884,23 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
       else if (deplState === 1) ctx.fillStyle = GRID_COLORS.stanzaPartial;
       else ctx.fillStyle = GRID_COLORS.stanzaGhost;
 
-      const lineH = fontSize * 1.25;
-      const padX = cellW * 0.07;
-      const padY = cellH * 0.1;
-      const maxLines = Math.min(4, Math.floor((cellH - padY * 2) / lineH));
+      // Block size from the actual line count (not 4) so a short stanza
+      // sits in the visual centre instead of the top of the cell.
+      const lineCount = Math.min(4, stanza.filter(Boolean).length || 4);
+      const totalH = lineCount * lineH;
+      const startY = py + (cellH - totalH) / 2;
+      const cx = px + cellW / 2;
+      const maxW = cellW * 0.92;
 
-      for (let i = 0; i < maxLines; i++) {
+      for (let i = 0; i < lineCount; i++) {
         if (!stanza[i]) continue;
-        const indent = stanza[i].startsWith('  ') ? padX + fontSize * 0.8 : padX;
-        ctx.fillText(stanza[i].trim(), px + indent, py + padY + i * lineH, cellW - indent - padX);
+        ctx.fillText(stanza[i].trim(), cx, startY + i * lineH, maxW);
       }
     }
   }
+
+  ctx.textAlign = prevAlign;
+  ctx.textBaseline = prevBaseline;
 }
 
 // Each display cell (0.1°) averages a 10×10 block of backend cells (0.01°).
@@ -3858,48 +3922,30 @@ function vesselScreenPos(vessel) {
   return { vx, vy, cellW };
 }
 
-function renderShips(startCol, startRow, cellsWide, cellsHigh, cellW) {
-  // Source: prefer fleetData (8 766 mock vessels at first paint, then the
-  // real live fleet once /api/vessels resolves). VESSELS remains the
-  // 12-entry static template seed — useful only as the very last fallback
-  // before generateFleet() has run, which would otherwise leave the map
-  // looking empty until Railway answers.
-  const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
-
-  // Uniform random sub-sampling. The fleet is now ~17 000 vessels, heavily
-  // clustered along the East-Asian and European shelves, so a flat 5 %
-  // floor still bleeds into solid yellow blobs at world view. Cap wide
-  // zoom at TARGET_WIDE_ZOOM_DOTS so only scattered single dots show
-  // (data still comes from /api/vessels — we just thin the draw set), and
-  // ramp up linearly through the mid-zoom band until everything is drawn
-  // at STANZA_CANVAS.
-  const TARGET_WIDE_ZOOM_DOTS = 200;
-  const showAll = cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS;
-  let sampleFrac;
-  if (showAll) {
-    sampleFrac = 1;
-  } else {
-    const lowFrac = Math.min(1, TARGET_WIDE_ZOOM_DOTS / Math.max(1, ships.length));
-    if (cellW <= ZOOM_THRESHOLDS.GRID_LINES) {
-      sampleFrac = lowFrac;
-    } else {
-      const t = (cellW - ZOOM_THRESHOLDS.GRID_LINES)
-              / (ZOOM_THRESHOLDS.STANZA_CANVAS - ZOOM_THRESHOLDS.GRID_LINES);
-      sampleFrac = lowFrac + (1 - lowFrac) * t;
-    }
-  }
-
-  for (let i = 0; i < ships.length; i++) {
-    if (!showAll) {
-      const score = ((i * 2654435761) >>> 0) / 4294967295;
-      if (score >= sampleFrac) continue;
-    }
-    const vessel = ships[i];
+function renderShips(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
+  // Dedup by screen-pixel bucket so wide-zoom shows scattered single dots
+  // even where the underlying fleet is dense (the China/Korea coastline
+  // packs hundreds of vessels into a few pixels). Bucket size shrinks as
+  // we zoom in so dots split apart and resolve to individual vessels at
+  // STANZA_CANVAS zoom and beyond.
+  if (!cells || !cells.size) return;
+  const bucketPx = (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) ? 0
+                 : Math.max(2, Math.min(12, 12 - cellW * 0.8));
+  const seen = bucketPx > 0 ? new Set() : null;
+  for (const { vessel } of cells.values()) {
     const dcol = (vessel.lon + 180) / 0.1;
     const drow = (vessel.lat + 90) / 0.1;
     const vx = (dcol - startCol) * cellW;
     const vy = canvasH - (drow - startRow) * cellW;
     if (vx < -20 || vx > canvasW + 20 || vy < -20 || vy > canvasH + 20) continue;
+
+    if (seen) {
+      const bx = Math.floor(vx / bucketPx);
+      const by = Math.floor(vy / bucketPx);
+      const key = bx * 100000 + by;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
 
     const glowR = Math.min(20, Math.max(2, cellW * 1.5));
     const gradient = ctx.createRadialGradient(vx, vy, 0, vx, vy, glowR);
@@ -3942,8 +3988,13 @@ function markInteracted() {
   fadeAllVesselPopups();
 }
 
+// dragMoved is consulted by the click-handler to distinguish a real
+// click from the synthesized one that fires at the end of a pan gesture.
+let dragMoved = false;
+
 canvas.addEventListener('mousedown', (e) => {
   isDragging = true;
+  dragMoved = false;
   dragStartX = e.clientX;
   dragStartY = e.clientY;
   dragStartCenterCol = viewport.centerCol;
@@ -3956,6 +4007,7 @@ window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   const dx = e.clientX - dragStartX;
   const dy = e.clientY - dragStartY;
+  if (!dragMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) dragMoved = true;
 
   const cellW = canvasW / viewport.cellsWide;
   viewport.centerCol = dragStartCenterCol - dx / cellW;
@@ -4118,8 +4170,41 @@ function updateHoverTooltip(e) {
   cellHoverEl.style.top  = ty + 'px';
 }
 
-canvas.addEventListener('mousemove', updateHoverTooltip);
-canvas.addEventListener('mouseleave', () => { cellHoverEl.style.display = 'none'; });
+// Hover tooltip is disabled — stanzas are now revealed by clicking a
+// vessel marker. The cellHoverEl + updateHoverTooltip stay in the source
+// for now in case we want a coords-only readout later.
+if (cellHoverEl) cellHoverEl.style.display = 'none';
+
+// Click anywhere on the canvas: hit-test against fleetData and open a
+// popup if the cursor landed on a vessel marker. The dragMoved flag
+// suppresses the synthesized click that browsers fire at the end of a
+// pan gesture so dragging the map never opens a stray popup.
+canvas.addEventListener('click', (e) => {
+  if (dragMoved) { dragMoved = false; return; }
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const cellW = canvasW / viewport.cellsWide;
+  // Hit radius scales with zoom but never below 14 px so wide-zoom dots
+  // (which only render as 2 px glows) stay reachable for fingers/cursor.
+  const hitR = Math.max(14, cellW * 1.5);
+  const hitR2 = hitR * hitR;
+  const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
+  let best = null, bestDist = Infinity;
+  for (const v of ships) {
+    if (typeof v.lon !== 'number' || typeof v.lat !== 'number') continue;
+    const pos = vesselScreenPos(v);
+    if (!pos) continue;
+    const dx = pos.vx - mx, dy = pos.vy - my;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < hitR2 && d2 < bestDist) { best = v; bestDist = d2; }
+  }
+  if (best) {
+    markInteracted();
+    spawnVesselPopup(best, 0);   // 0 = no auto-close; user dismisses via × button
+  }
+});
 
 function hoveringVesselPopup(clientX, clientY) {
   const popups = document.querySelectorAll('.vessel-popup');

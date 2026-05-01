@@ -65,7 +65,7 @@ DICKINSON_NOUN = [
         ('ein', 'Glaub'), ('eine', 'Furcht'), ('ein', 'Freund'),
         ('ein', 'Gold'), ('eine', 'Huld'), ('ein', 'Gras'),
         ('ein', 'Grab'), ('eine', 'Hand'), ('eine', 'Höh'),
-        ('ein', 'Haus'), ('eine', 'Freud'), ('eine', 'Hut'),
+        ('ein', 'Haus'), ('eine', 'Freud'), ('ein', 'Hut'),
         ('ein', 'Bein'), ('eine', 'Macht'), ('ein', 'Sinn'),
         ('eine', 'Früh'), ('ein', 'Nam'), ('eine', 'Not'),
         ('ein', 'Mittag'), ('eine', 'Pein'), ('ein', 'Ort'),
