@@ -3661,11 +3661,19 @@ function render() {
 // Collect the set of 0.1° display cells that contain at least one vessel
 // from the active fleet. Shared by the brown-tint pass and renderShips so
 // both stay in lock-step (one tint, one dot per occupied cell).
+//
+// Filter: as soon as any vessel carries a `catches` array (the live-API
+// signature), restrict the set to those — the mock fleet from
+// generateFleet() shares positions across 12 templates and would paint
+// as a dozen ugly rectangular clusters during the Railway cold-start
+// window. If nothing has catches yet, return an empty map so the ocean
+// stays clean while we wait for the API.
 function collectActiveVesselCells() {
   const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
-  const cells = new Map();   // key -> first vessel that landed there
+  const cells = new Map();
   for (const v of ships) {
     if (typeof v.lon !== 'number' || typeof v.lat !== 'number') continue;
+    if (!Array.isArray(v.catches) || v.catches.length === 0) continue;
     const dcol = Math.floor((v.lon + 180) / 0.1);
     const drow = Math.floor((v.lat + 90)  / 0.1);
     const key = dcol * 18000 + drow;
@@ -4304,6 +4312,11 @@ function spawnVesselPopup(vessel, autoCloseAfter = 7000) {
     e.stopPropagation();
     fadeVesselPopup(entry);
   });
+  // Click anywhere on the popup body also closes it. The × button still
+  // works (its handler runs first and stopPropagation prevents a double
+  // fade); links inside the popup, if we ever add any, can opt out via
+  // their own stopPropagation.
+  el.addEventListener('click', () => fadeVesselPopup(entry));
 
   if (autoCloseAfter > 0) {
     setTimeout(() => { if (entry.el.isConnected) fadeVesselPopup(entry); }, autoCloseAfter);
@@ -4779,10 +4792,10 @@ async function init() {
     if (el.tagName === 'A' && !el.href.startsWith('http')) el.href = catchDownloadUrl();
   });
 
-  // Spawn 5 initial vessel popups after map fade-in — langsam gestaffelt (1.2–6.8s)
-  setTimeout(() => {
-    if (!userInteracted) spawnInitialVesselPopups();
-  }, 600);
+  // Initial vessel popups dropped: they overlap the cold-start window
+  // and add layout/render churn while the live API is still resolving.
+  // Popups now appear only on click. (spawnInitialVesselPopups remains
+  // defined further down in case we want to re-enable it.)
 }
 
 // Write status-endpoint values into the existing status-bar DOM nodes.
