@@ -390,6 +390,10 @@
     display: block;
     width: 100%;
     height: 100%;
+    /* Mobile: keep pan/pinch on the canvas instead of the page. iOS Safari
+       otherwise scrolls the document when the user pinch-zooms the map. */
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Scanline-Overlay — CRT-Effekt (subtil) */
@@ -578,6 +582,16 @@
     padding-left: 10px;
     letter-spacing: 0.06em;
     opacity: 0.6;
+  }
+
+  /* On phones the 320 px popup overflows the viewport when the vessel
+     sits near the right edge. Cap the width to the canvas with a small
+     gutter on either side. */
+  @media (max-width: 700px) {
+    .vessel-popup {
+      max-width: calc(100vw - 32px);
+      min-width: 0;
+    }
   }
 
   /* ════════════════════════════════════════════════════════════════════
@@ -2760,6 +2774,20 @@ let VESSELS = [
     entropy:3.44 },
 ];
 
+// Synth-catches on the static fallback so the map shows ships during the
+// Railway cold-start window. collectActiveVesselCells() filters out any
+// vessel without at least one catch entry, and the live API replaces
+// VESSELS wholesale once /api/vessels resolves — so this only matters
+// for the first 5–10 s, especially noticeable on slower mobile networks.
+for (const v of VESSELS) {
+  if (!Array.isArray(v.catches) || v.catches.length === 0) {
+    v.catches = [{
+      col: Math.floor((v.lon + 180) * 100),
+      row: Math.floor((v.lat + 90)  * 100),
+    }];
+  }
+}
+
 // Tiny deterministic PRNG used by the Fleet demo data (vessel hours,
 // catch counts, jitter). Nothing stanza-related depends on this — the
 // stanza generator below uses the real Sea-and-Spar-Between arithmetic.
@@ -3560,7 +3588,7 @@ const viewport = {
 };
 
 const ZOOM_LIMITS = { minCellsWide: 10, maxCellsWide: 3600 };
-const ZOOM_THRESHOLDS = { GRID_LINES: 3, STANZA_CANVAS: 12, STANZA_FULL: 40 };
+const ZOOM_THRESHOLDS = { GRID_LINES: 3, STANZA_CANVAS: 20, STANZA_FULL: 40 };
 
 // Keep viewport inside the grid — prevents dark bands above/below
 function clampViewport() {
@@ -3669,7 +3697,15 @@ function render() {
 // window. If nothing has catches yet, return an empty map so the ocean
 // stays clean while we wait for the API.
 function collectActiveVesselCells() {
-  const ships = (Array.isArray(fleetData) && fleetData.length) ? fleetData : VESSELS;
+  // Prefer fleetData only once it carries real catches (the live-API
+  // signature). The cold-start path runs generateFleet() to populate the
+  // status-bar counter, and that mock fleet has no catches — using it
+  // here would print 8766 catch-less rows for nothing. Fall back to the
+  // hand-curated VESSELS list (12 ships, each with a synthetic catch
+  // entry) so the ocean stays populated during the API warm-up.
+  const fleetReady = Array.isArray(fleetData)
+    && fleetData.some(v => Array.isArray(v.catches) && v.catches.length);
+  const ships = fleetReady ? fleetData : VESSELS;
   const cells = new Map();
   for (const v of ships) {
     if (typeof v.lon !== 'number' || typeof v.lat !== 'number') continue;
@@ -3866,14 +3902,18 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
   const rowStart = Math.floor(startRow);
   const rowEnd = Math.ceil(startRow + cellsHigh);
 
-  const fontSize = 8;
+  // Scale the verse with the cell so it reads as a stanza at every zoom
+  // level instead of a fixed 8 px block that floats lost inside large
+  // cells or crowds smaller ones. Clamped so it never falls below 7 px
+  // (illegible) or grows past 14 px (pushes lines out of the cell).
+  const fontSize = Math.max(7, Math.min(14, cellW * 0.18));
   const prevAlign = ctx.textAlign;
   const prevBaseline = ctx.textBaseline;
   ctx.font = `500 ${fontSize}px 'DM Mono', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
-  const lineH = fontSize * 1.25;
+  const lineH = fontSize * 1.45;
 
   for (let drow = rowStart; drow < rowEnd; drow++) {
     for (let dcol = colStart; dcol < colEnd; dcol++) {
@@ -3963,7 +4003,11 @@ function renderShips(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
     ctx.fillStyle = gradient;
     ctx.fillRect(vx - glowR, vy - glowR, glowR * 2, glowR * 2);
 
-    const dotR = Math.max(2, Math.min(4, cellW * 0.15));
+    // Slightly fatter minimum dot on phone-sized canvases — at world
+    // zoom on a 390 px screen each cell is 0.1 px, so the previous 2 px
+    // floor disappeared into the brown active-cell tint.
+    const minDot = canvasW < 700 ? 3 : 2;
+    const dotR = Math.max(minDot, Math.min(4, cellW * 0.15));
     ctx.beginPath();
     ctx.arc(vx, vy, dotR, 0, Math.PI * 2);
     ctx.fillStyle = '#fff066';
@@ -4743,6 +4787,13 @@ function updateStatusBar() {
 
 async function init() {
   resizeCanvas();
+  // On phone-sized canvases the full 360° world view collapses each
+  // 0.1° cell to ~0.1 px, which makes ships and active-zone tints read
+  // as noise. Start the mobile viewport at half-width so vessels are
+  // visible as discrete dots from the first frame.
+  if (canvasW < 700) {
+    viewport.cellsWide = 1800;
+  }
   updateStatusBar();
 
   // Land mask is the only mandatory file for the canvas renderer.
