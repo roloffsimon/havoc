@@ -39,6 +39,13 @@ Bekannte Kompromisse:
   Streuung ist kosmetisch.
 - `klanglos` erscheint zweimal in LESS_LESS[0] (für plash und sound),
   Doppelung aus Kontext-Spalte hingenommen.
+- `_nailed` ist der einzige Generator, der vom EN-1:1-Port abweicht:
+  vier Verben (genagelt / geschmiedet / gefesselt / festgezurrt) statt
+  einem, plus V2/V-end-Inversion. Grund: das deutsche Partizip ist
+  schwerer als das englische „nailed to the", und das fixe Inzipit
+  „genagelt an" trat in 50 % aller Strophen auf. Listen-Längen-Parität
+  zum EN-Original wird hier bewusst aufgegeben. Begründung und
+  Verb-×-Nomen-Matrix: `Stanza_DE_Uebersetzung.md` §8.
 ======================================================================
 """
 
@@ -150,12 +157,31 @@ THREE_TO_FIVE_SYLLABLE = (
 )
 TWO_SYLLABLE = DICKINSON_NOUN[1] + DICKINSON_LESS_LESS[1]
 
-# (Akkusativ-Artikel, Substantiv) — "an die/den/das X"
-NAILED_ENDING = [
-    ('den', 'Sarg'), ('das', 'Deck'), ('das', 'Pult'),
-    ('die', 'Furche'), ('den', 'Mast'), ('die', 'Spiere'),
-    ('den', 'Pfahl'), ('die', 'Planke'), ('die', 'Reling'),
-    ('die', 'Kammer'), ('die', 'Schärpe'),
+# (Verb-Partizip, [(Akk-Artikel, Substantiv), …]) — pro Verb kuratierte
+# Akk-Nomen-Sub-Liste. Lattice-Index wählt erst Verb, dann Nomen aus
+# dessen Sub-Liste. Verb-Pool und Sub-Listen-Auswahl: siehe
+# Stanza_DE_Uebersetzung.md §8.
+NAILED_VERBS = [
+    ('genagelt', [
+        ('den', 'Sarg'), ('das', 'Deck'), ('das', 'Pult'),
+        ('die', 'Furche'), ('den', 'Mast'), ('die', 'Spiere'),
+        ('den', 'Pfahl'), ('die', 'Planke'), ('die', 'Reling'),
+        ('die', 'Kammer'), ('die', 'Schärpe'),
+    ]),
+    ('geschmiedet', [
+        ('den', 'Sarg'), ('das', 'Pult'), ('die', 'Furche'),
+        ('den', 'Mast'), ('den', 'Pfahl'), ('die', 'Reling'),
+        ('die', 'Kammer'),
+    ]),
+    ('gefesselt', [
+        ('den', 'Sarg'), ('das', 'Pult'), ('die', 'Furche'),
+        ('den', 'Mast'), ('den', 'Pfahl'), ('die', 'Reling'),
+        ('die', 'Kammer'), ('die', 'Schärpe'),
+    ]),
+    ('festgezurrt', [
+        ('das', 'Deck'), ('den', 'Mast'), ('die', 'Spiere'),
+        ('den', 'Pfahl'), ('die', 'Planke'), ('die', 'Reling'),
+    ]),
 ]
 
 
@@ -170,7 +196,8 @@ assert [len(b) for b in DICKINSON_LESS_LESS] == [44, 27, 2]
 assert len(UP_VERB) == 12
 assert len(BUT_BEGINNING) == 3
 assert len(BUT_ENDING) == 4
-assert len(NAILED_ENDING) == 11
+assert len(NAILED_VERBS) == 4
+assert [len(nouns) for _, nouns in NAILED_VERBS] == [11, 7, 8, 6]
 
 
 # ── Zeilen-Generatoren ───────────────────────────────────────────────
@@ -280,8 +307,12 @@ def _exclaim(n):
 
 
 def _nailed(n):
-    art, noun = NAILED_ENDING[n % len(NAILED_ENDING)]
-    return 'genagelt an ' + art + ' ' + noun
+    verb_idx = n % len(NAILED_VERBS); n //= len(NAILED_VERBS)
+    verb, nouns = NAILED_VERBS[verb_idx]
+    art, noun = nouns[n % len(nouns)]; n //= len(nouns)
+    if n % 2 == 0:
+        return f'{verb} an {art} {noun}'
+    return f'an {art} {noun} {verb}'
 
 
 def _second_line(n):

@@ -487,6 +487,56 @@ Schema: *"nailed to the X"* → *"genagelt an die/den/das X"*. Bezugsstelle: Dou
 | room | Kammer | f | Kammer | `('die', 'Kammer')` | M: "the public room" (Wirtshaus-Schank), "the further angle of the room" (Kapitäns-Kabine); D: "Elysium is as far as to / The very nearest room, / If in that room a friend await / Felicity or doom" — *Kammer* hält die Klassen-Topografie des Schiffs (Kapitäns-Kammer / Mannschafts-Logis) und die schwellen-haftige Innenraum-Topik bei Dickinson. |
 | sash | Schärpe | f | Schärpe | `('die', 'Schärpe')` | M: "trailing behind like his sash" (Offiziers-Schärpe) — die textile Insignie der Befehlsgewalt; Schärpe als getragene Hierarchie-Markierung, an die genagelt zu sein heißt: in den Befehls-Apparat eingenäht zu sein. |
 
+### 8a. Verb-Rotation und Stellungs-Inversion
+
+Die deutsche Realisierung von *"nailed to the X"* trägt schwerer als das englische Original — Partizip-Konstruktion mit `ge-…-t`, härteres Lautbild, fixes Bigramm-Inzipit „genagelt an". Da die `_second_line`-Architektur den `_nailed`-Zweig deterministisch auf 50 % aller Strophen verteilt (die zwei zweiten Zeilen einer Strophe nehmen stets benachbarte Modulo-4-Reste), erschien das Verb in jeder zweiten Strophe — im Englischen tragbar, im Deutschen über-präsent.
+
+Die DE-Adaption weicht hier — als einziger Generator — vom 1:1-Port ab:
+
+- **Verb-Rotation** über vier Partizipien des Fixierens (statt nur „genagelt"). Alle vier sind in Melville bzw. Dickinson belegt, jedes trägt ein eigenes Register.
+- **V2/V-end-Inversion** der Phrase: die Hälfte aller `_nailed`-Zeilen erscheint in Endstellung („an X genagelt"), bricht damit das fixe Inzipit.
+
+Listen-Längen-Parität zum EN-Original wird hier bewusst aufgegeben. Der Doublonen-Anker bleibt erhalten: „genagelt" ist eines von vier Verben, die Münze-an-Mast-Szene (M Kap. 36) bleibt voll abgedeckt.
+
+#### Verb-Pool
+
+| Verb-Partizip | Quelle | Register |
+|---|---|---|
+| **genagelt an** | M Kap. 36 („nailed to the mast"), Kap. 99 („when aught's nailed to the mast it's a sign that things grow desperate") | Doublone, Wertfetisch — Anker-Verb |
+| **geschmiedet an** | M Kap. 113 „The Forge" (Perth schmiedet Ahabs Harpune: „three barbs were welded together") | Schmiede, Prometheus — eisernes, dramatisches Register |
+| **gefesselt an** | D „Each bound the other's crucifix"; „Bind one, and one will flee"; M Kap. 89 *fast-fish* als Eigentums-Marker durch Befestigung | Captivity, Bindung — affektiv, juridisch |
+| **festgezurrt an** | M Kap. 47 „lashing to our boat"; Kap. 60 „the line's coils lashed" | Seemannschaft, Sturm — sachlich-nautisches Register |
+
+#### Verb × Akk-Nomen-Matrix
+
+Nicht jedes Verb passt zu jedem Nomen aus dem Pool von §8. Pro Verb eine kuratierte Sub-Liste; der Lattice-Index zieht erst das Verb (mod 4), dann das Nomen aus der Sub-Liste des Verbs. Insgesamt **32 Verb-Nomen-Treffer**, mal 2 Stellungen = **64 Oberflächenformen** (gegenüber 11 im Status quo).
+
+| Verb | Sub-Liste | Ausschluss-Begründung |
+|---|---|---|
+| **genagelt** (11) | Sarg, Deck, Pult, Furche, Mast, Spiere, Pfahl, Planke, Reling, Kammer, Schärpe | — (alle Nomen passen, das Verb ist semantisch breitest) |
+| **geschmiedet** (7) | Sarg, Pult, Furche, Mast, Pfahl, Reling, Kammer | Schmieden braucht Eisen-Kontext: Schärpe (textil), Planke/Spiere (Holz), Deck (semantisch zu groß) entfallen |
+| **gefesselt** (8) | Sarg, Pult, Furche, Mast, Pfahl, Reling, Kammer, Schärpe | Fesseln braucht Körper-Bindung an etwas Distinktes: Spiere/Planke (zu unbestimmt), Deck (zu groß) entfallen |
+| **festgezurrt** (6) | Deck, Mast, Spiere, Pfahl, Planke, Reling | Festzurren braucht nautischen Bezug: Sarg, Pult, Furche, Kammer, Schärpe entfallen |
+
+#### Stellungs-Inversion
+
+Über einen weiteren Modulo aus dem Lattice-Index (`m // (verbanzahl × nomenanzahl_des_verbs)` mod 2) alterniert die Phrase deterministisch zwischen V2- und V-end-Stellung:
+
+```
+m % 2 == 0  →  „genagelt an die Reling"
+m % 2 == 1  →  „an die Reling genagelt"
+```
+
+V-end ist im deutschen Vers idiomatisch (klagend statt deklarativ). Frequenz-Effekt: Bigramm „genagelt an" am Zeilenanfang fällt von 50 % auf ~12,5 % aller Strophen.
+
+#### Frequenz-Bilanz
+
+| Phänomen | Vorher | Nachher |
+|---|---|---|
+| Anteil _nailed-Zeilen pro Strophe | 50 % | 50 % (unverändert — Architektur-Konstante) |
+| Bigramm „genagelt an" am Zeilenanfang | 50 % | ~12,5 % |
+| Eindeutige _nailed-Oberflächenformen | 11 | 64 |
+
 ---
 
 ## 9. Entscheidungen (Zusammenfassung)

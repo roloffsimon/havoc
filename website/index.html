@@ -3091,11 +3091,33 @@ const SSB_DE_THREE_TO_FIVE = [
 ];
 const SSB_DE_TWO_SYLL = [...SSB_DE_DICK_NOUN[1], ...SSB_DE_LESS[1]];
 
-const SSB_DE_NAILED_END = [
-  ['den','Sarg'], ['das','Deck'], ['das','Pult'],
-  ['die','Furche'], ['den','Mast'], ['die','Spiere'],
-  ['den','Pfahl'], ['die','Planke'], ['die','Reling'],
-  ['die','Kammer'], ['die','Schärpe']
+// (Verb-Partizip, [(Akk-Artikel, Substantiv), …]) — pro Verb kuratierte
+// Akk-Nomen-Sub-Liste. Lattice-Index wählt erst Verb, dann Nomen aus
+// dessen Sub-Liste. Verb-Pool und Sub-Listen-Auswahl: siehe
+// Stanza_DE_Uebersetzung.md §8. _nailed ist der einzige DE-Generator,
+// der vom EN-1:1-Port abweicht (vier Verben statt einem, plus
+// V2/V-end-Inversion) — Begründung siehe stanza_de.py-Docstring.
+const SSB_DE_NAILED_VERBS = [
+  ['genagelt', [
+    ['den','Sarg'], ['das','Deck'], ['das','Pult'],
+    ['die','Furche'], ['den','Mast'], ['die','Spiere'],
+    ['den','Pfahl'], ['die','Planke'], ['die','Reling'],
+    ['die','Kammer'], ['die','Schärpe']
+  ]],
+  ['geschmiedet', [
+    ['den','Sarg'], ['das','Pult'], ['die','Furche'],
+    ['den','Mast'], ['den','Pfahl'], ['die','Reling'],
+    ['die','Kammer']
+  ]],
+  ['gefesselt', [
+    ['den','Sarg'], ['das','Pult'], ['die','Furche'],
+    ['den','Mast'], ['den','Pfahl'], ['die','Reling'],
+    ['die','Kammer'], ['die','Schärpe']
+  ]],
+  ['festgezurrt', [
+    ['das','Deck'], ['den','Mast'], ['die','Spiere'],
+    ['den','Pfahl'], ['die','Planke'], ['die','Reling']
+  ]]
 ];
 
 // ── DE line generators ───────────────────────────────────────────────
@@ -3191,8 +3213,13 @@ function ssbDeExclaim(n) {
   return SSB_DE_THREE_TO_FIVE[a] + '! ' + SSB_DE_TWO_SYLL[b] + '!';
 }
 function ssbDeNailed(n) {
-  const [art, noun] = SSB_DE_NAILED_END[n % SSB_DE_NAILED_END.length];
-  return 'genagelt an ' + art + ' ' + noun;
+  const verbIdx = n % SSB_DE_NAILED_VERBS.length; n = Math.floor(n / SSB_DE_NAILED_VERBS.length);
+  const [verb, nouns] = SSB_DE_NAILED_VERBS[verbIdx];
+  const [art, noun] = nouns[n % nouns.length]; n = Math.floor(n / nouns.length);
+  if (n % 2 === 0) {
+    return verb + ' an ' + art + ' ' + noun;
+  }
+  return 'an ' + art + ' ' + noun + ' ' + verb;
 }
 function ssbDeSecondLine(n) {
   const m = Math.floor(n / 4), r = n % 4;
