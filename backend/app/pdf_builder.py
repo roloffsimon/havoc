@@ -18,8 +18,7 @@ visual identity in colour; the rest is type only, so the body pages
 compress well and stay light when WeasyPrint flattens to PDF.
 
 Sizing tiers were dropped on 2026-04-25: the website serves only the
-day's full document. A weekly compilation is rendered separately for
-project documentation (see render_weekly_pdf).
+day's full document.
 """
 
 from __future__ import annotations
@@ -100,9 +99,7 @@ def _normalise_language(language: str | None) -> str:
 
 
 PDF_DIR = DATA_DIR / "pdfs"
-WEEKLY_DIR = PDF_DIR / "weekly"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
-WEEKLY_DIR.mkdir(parents=True, exist_ok=True)
 
 # Typst-only scratch directory for the cover PNG. Sits inside the
 # template tree so it's always inside the renderer's `root` and the
@@ -112,7 +109,7 @@ TYPST_TEMPLATE_DIR = Path(__file__).parent / "typst_templates"
 TYPST_TMP_DIR = TYPST_TEMPLATE_DIR / ".tmp"
 
 # Project day 0 — used to compute the daily Vol. number that prints on
-# the cover and the weekly Vol. number for the archive volumes.
+# the cover.
 _DAY_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13")
 
 
@@ -1205,7 +1202,7 @@ def render_html(stats: dict, poems: dict[str, list[dict]]) -> str:
     sit in one HTML, separated by a page break. This loses the
     'half-title is page 1' invariant — for that, render the cover
     and body separately via _render_cover_doc / _render_body_doc and
-    merge the resulting PDFs (see _write_artefacts).
+    merge the resulting PDFs (see _merge_pdfs).
     """
     return _render_body_doc(stats, poems).replace(
         '<body>',
@@ -1226,8 +1223,8 @@ def _artefact_name(date: str, ext: str) -> str:
 # The daily-volume render goes through `app.typst_renderer.render`; the
 # WeasyPrint path remains as a fallback selectable via HAVOC_PDF_ENGINE.
 # Once Typst has run a week of production days without incident, the
-# WeasyPrint code (and `_merge_pdfs`, `_write_artefacts`) is removed in
-# the cleanup commit (see migration plan).
+# WeasyPrint code (and `_merge_pdfs`) is removed in the cleanup commit
+# (see migration plan).
 
 def _safe_label(s: str) -> str:
     """Sanitise a vessel-key for use as a Typst label. Typst labels
@@ -1467,60 +1464,6 @@ def tier_pdf_path(date: str, tier: str = DEFAULT_TIER,
     return PDF_DIR / f"catch_{date}_{tier}{_lang_suffix(language)}.pdf"
 
 
-def _build_weekly_payload(week_start: _date, week_end: _date,
-                           day_data: list[tuple[dict, dict]],
-                           cover_path: Path) -> dict:
-    """Reshape a list of (stats, poems) day-tuples into the JSON
-    payload `weekly.typ` reads via `sys.inputs.payload`. Each day
-    is shaped via `_build_daily_payload` so the weekly template can
-    reuse the daily macros for poem rendering."""
-    iso_year, iso_week, _ = week_end.isocalendar()
-    week_label = f"Week {iso_week:02d}"
-    week_range = (f"{week_start.strftime('%-d')}–"
-                  f"{week_end.strftime('%-d %B %Y')}")
-    days = []
-    for stats, poems in day_data:
-        per_day = _build_daily_payload(stats, poems, cover_path)
-        days.append({"stats": per_day["stats"], "poems": per_day["poems"]})
-    cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
-    rendered = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    return {
-        "week": {
-            "iso_year": iso_year,
-            "iso_week": iso_week,
-            "week_label": week_label,
-            "week_range": week_range,
-            "rendered_utc": rendered,
-        },
-        "days": days,
-        "cover_path": str(cover_rel),
-    }
-
-
-def _write_weekly_artefacts_typst(week_start: _date, week_end: _date,
-                                    day_data: list[tuple[dict, dict]], *,
-                                    out_dir: Path = WEEKLY_DIR) -> Path:
-    """Weekly archive volume via Typst."""
-    from . import typst_renderer
-
-    iso_year, iso_week, _ = week_end.isocalendar()
-    stem = f"havoc_week_{iso_year}-W{iso_week:02d}"
-
-    TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
-    cover_path = TYPST_TMP_DIR / f"cover_week_{iso_year}-W{iso_week:02d}.png"
-    cover_path.write_bytes(_render_cover_image())
-    try:
-        payload = _build_weekly_payload(week_start, week_end, day_data, cover_path)
-        pdf_bytes = typst_renderer.render("weekly", payload)
-    finally:
-        cover_path.unlink(missing_ok=True)
-
-    pdf_path = out_dir / f"{stem}.pdf"
-    pdf_path.write_bytes(pdf_bytes)
-    log.info("Weekly PDF written to %s (%d bytes, typst)", pdf_path, len(pdf_bytes))
-    return pdf_path
-
-
 def _merge_pdfs(cover_pdf: bytes, body_pdf: bytes) -> bytes:
     """Concatenate cover + body and merge their outlines so the
     bookmark tree from the body document is preserved."""
@@ -1552,26 +1495,6 @@ def _merge_pdfs(cover_pdf: bytes, body_pdf: bytes) -> bytes:
     buf = BytesIO()
     out.write(buf)
     return buf.getvalue()
-
-
-def _write_artefacts(html: str, date: str, *,
-                     out_dir: Path = PDF_DIR,
-                     stem: str | None = None) -> Path:
-    """Plain HTML→PDF write path, used by the weekly volume."""
-    name_stem = stem or f"catch_{date}"
-    html_path = out_dir / f"{name_stem}.html"
-    html_path.write_text(html, encoding="utf-8")
-
-    try:
-        from weasyprint import HTML  # type: ignore
-    except Exception as exc:  # noqa: BLE001
-        log.warning("WeasyPrint unavailable (%s) — HTML only at %s", exc, html_path)
-        return html_path
-
-    pdf_path = out_dir / f"{name_stem}.pdf"
-    HTML(string=html).write_pdf(str(pdf_path))
-    log.info("PDF written to %s", pdf_path)
-    return pdf_path
 
 
 def _write_daily_artefacts(stats: dict, poems: dict[str, list[dict]], *,
@@ -1706,140 +1629,3 @@ def latest_date() -> str | None:
     return stem.replace("catch_", "", 1) if stem.startswith("catch_") else None
 
 
-# ── Weekly archive (backend documentation only) ──────────────────────
-# Generated on Mondays for the previous Mon–Sun week. Not exposed via
-# the public API; it lives under data/pdfs/weekly/ for the project's
-# own records.
-
-def _weekly_cover_svg() -> str:
-    """Same grid as the daily cover; the daily title is reused — the
-    weekly volume is conceptually a Catch of the Day collected, so the
-    front face stays identical and the week info goes on the footer."""
-    return _cover_svg()
-
-
-def _weekly_cover_html(week_start: _date, week_end: _date,
-                       vol_week: int) -> str:
-    label_range = f"{week_start.strftime('%-d')}–{week_end.strftime('%-d %B %Y')}"
-    return f"""<div class="cover">
-  {_weekly_cover_svg()}
-  <div class="cover-footer">
-    <div class="rule"></div>
-    <div class="cover-footer-row">
-      <span class="vol">Week {vol_week:02d}</span>
-      <span class="byline"><em>From Remorseless Havoc</em> by Simon Roloff</span>
-      <span class="date">{escape(label_range)}</span>
-    </div>
-  </div>
-</div>"""
-
-
-def _day_section_html(stats: dict, poems: dict[str, list[dict]]) -> str:
-    """A single day inside a weekly volume — its own header, then poems."""
-    body_parts = [_poem_html(k, v) for k, v in poems.items() if v]
-    long_date = _format_long_date(stats["date"])
-    head = (
-        '<section class="day-section">'
-        f'<h1 class="day-title">{escape(long_date)}</h1>'
-        f'<p class="day-stats">'
-        f'{stats["vessels_active"]:,} vessels · '
-        f'{stats["stanzas_caught"]:,} stanzas · '
-        f'+{stats["depletion_percent"]:.6f}% depletion'
-        f'</p></section>'
-    )
-    return head + "".join(body_parts)
-
-
-def _weekly_extra_css() -> str:
-    return """
-.day-section { break-before: page; margin-bottom: 8mm; }
-.day-title {
-  font-family: 'EB Garamond', serif;
-  font-weight: 500;
-  font-size: 22pt;
-  letter-spacing: 0.04em;
-  color: #111;
-  margin: 0 0 2mm 0;
-  border-bottom: 0.4mm solid #111;
-  padding-bottom: 2mm;
-}
-.day-stats {
-  font-family: 'DM Mono', monospace;
-  font-size: 8pt;
-  color: #555;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 8mm;
-}
-"""
-
-
-def render_weekly_pdf(week_end: _date) -> Path | None:
-    """
-    Render one weekly volume covering Monday–Sunday ending on `week_end`.
-    Returns the path of the rendered file (or None if the week has no
-    days recorded yet). Stored in data/pdfs/weekly/.
-    """
-    if week_end.weekday() != 6:  # 6 = Sunday
-        # Snap to the most recent Sunday. Keeps callers from needing to
-        # know the calendar precisely.
-        week_end = week_end - timedelta(days=(week_end.weekday() + 1) % 7)
-    week_start = week_end - timedelta(days=6)
-    iso_year, iso_week, _ = week_end.isocalendar()
-    stem = f"havoc_week_{iso_year}-W{iso_week:02d}"
-
-    # Pull every recorded day in [week_start, week_end].
-    day_payloads: list[tuple[dict, dict]] = []
-    with db.connect() as c:
-        rows = c.execute(
-            "SELECT * FROM days WHERE date BETWEEN ? AND ? ORDER BY date",
-            (week_start.isoformat(), week_end.isoformat()),
-        ).fetchall()
-        for row in rows:
-            d = dict(row)
-            stats = {
-                "date": d["date"],
-                "events_processed": d["events"],
-                "vessels_active": d["vessels"],
-                "stanzas_caught": d["stanzas_caught"],
-                "gps_catches": d["gps_catches"],
-                "pool_catches": d["pool_catches"],
-                "depletion_percent": d["depletion_pct"],
-                "ocean_alive": None,
-            }
-            catches = db.catches_for(d["date"])
-            poems: dict[str, list[dict]] = {}
-            for ct in catches:
-                key = ct.get("vessel_id") or f'{ct.get("vessel_name","UNKNOWN")}::{ct.get("flag","??")}'
-                poems.setdefault(key, []).append(ct)
-            day_payloads.append((stats, poems))
-
-    if not day_payloads:
-        log.info("No days in [%s, %s] — skipping weekly volume.",
-                 week_start, week_end)
-        return None
-
-    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
-    if engine == "typst":
-        return _write_weekly_artefacts_typst(week_start, week_end, day_payloads,
-                                              out_dir=WEEKLY_DIR)
-
-    cover = _weekly_cover_html(week_start, week_end, iso_week)
-    day_sections = "".join(
-        _day_section_html(stats, poems) for stats, poems in day_payloads
-    )
-    running = (f"REMORSELESS HAVOC · WEEK {iso_week:02d} · "
-               f"{week_start.strftime('%-d').upper()}–"
-               f"{week_end.strftime('%-d %b %Y').upper()}")
-
-    html = (
-        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        f'<title>Remorseless Havoc — Week {iso_year}-W{iso_week:02d}</title>'
-        f'<style>{CSS}{_weekly_extra_css()}</style></head><body>'
-        + cover
-        + f'<main class="body" data-running="{escape(running)}">'
-        + day_sections
-        + '</main></body></html>'
-    )
-    return _write_artefacts(html, week_end.isoformat(),
-                            out_dir=WEEKLY_DIR, stem=stem)

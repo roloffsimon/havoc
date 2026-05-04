@@ -1,4 +1,4 @@
-// _macros.typ — shared layout helpers for the daily and weekly volumes.
+// _macros.typ — shared layout helpers for the daily volume.
 //
 // Design: every section emits real `#heading()` calls so PDF bookmarks
 // appear automatically; visual styling lives in `show heading.where(...)`
@@ -35,7 +35,6 @@
 #let CREAM_SOFT  = rgb(216, 220, 226, 71)   // 0.28 * 255
 
 // ── Visual styles for headings (used by daily.typ via show rules) ──
-// Keep these as standalone functions so weekly.typ can reuse them.
 #let small-heading-block(body) = block(
   below: 8mm,
   stroke: (bottom: 0.3pt + INK),
