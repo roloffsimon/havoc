@@ -15,7 +15,10 @@ Flow
 
 from __future__ import annotations
 
+import gc
 import logging
+import resource
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -29,6 +32,13 @@ from .grid import (
 from .ocean_pool import DEPLETION_FACTOR, OceanPool
 
 log = logging.getLogger(__name__)
+
+
+def _rss_mb() -> int:
+    # Diagnostic for Railway OOM kills during the daily PDF job. ru_maxrss
+    # is peak RSS since process start; Linux reports kB, macOS reports bytes.
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return rss // 1024 if sys.platform.startswith("linux") else rss // (1024 * 1024)
 
 
 def build_display_bitmap(pool: OceanPool) -> bytes:
@@ -66,6 +76,7 @@ def build_display_bitmap(pool: OceanPool) -> bytes:
 def run_day(pool: OceanPool, events: list[dict],
             date: str, project_day_0: str) -> dict:
     """Process one day of events. Mutates the pool in place."""
+    log.info("run_day %s start: %d events, rss=%dMB", date, len(events), _rss_mb())
     # Chronological order. The ocean doesn't sort by anything else.
     events_sorted = sorted(events, key=lambda e: e.get("start", ""))
 
@@ -118,6 +129,8 @@ def run_day(pool: OceanPool, events: list[dict],
         "depletion_factor": DEPLETION_FACTOR,
         "ocean_alive": pool.remaining,
     }
+    log.info("events processed: %d catches across %d vessels, rss=%dMB",
+             len(all_catches), len(per_vessel), _rss_mb())
 
     # ── Persist ──────────────────────────────────────────────────────
     # PDF rendering is the most fragile step: it pulls in WeasyPrint,
@@ -140,15 +153,30 @@ def run_day(pool: OceanPool, events: list[dict],
         pdf_builder.render_daily_pdf(stats, per_vessel, language="de")
     except Exception as exc:  # noqa: BLE001
         log.exception("DE PDF render failed for %s, continuing: %s", date, exc)
+    log.info("PDF render done, rss=%dMB", _rss_mb())
 
     db.record_day(stats, list(vessels_meta.values()), all_catches, pdf_path_str)
+
+    # Free the per-day catch buffers before the bitmap/pool checkpoint —
+    # all_catches alone can be 200-300 MB at 484k catches × ~600 B, and
+    # per_vessel holds the same data partitioned. After db.record_day no
+    # caller needs them; explicit del + gc.collect makes sure the bytes
+    # are reclaimed before the next stage adds to the heap.
+    all_catches.clear()
+    del all_catches
+    per_vessel.clear()
+    del per_vessel
+    vessels_meta.clear()
+    del vessels_meta
+    gc.collect()
+    log.info("buffers freed, rss=%dMB", _rss_mb())
 
     bitmap = build_display_bitmap(pool)
     db.save_depletion_bitmap(bitmap)
     db.save_pool_state(pool, project_day_0)
-    log.info("Day %s recorded: %d catches, %.6f%% depletion (pdf=%s)",
+    log.info("Day %s recorded: %d catches, %.6f%% depletion (pdf=%s, rss=%dMB)",
              date, stats["stanzas_caught"], stats["depletion_percent"],
-             pdf_path_str or "none")
+             pdf_path_str or "none", _rss_mb())
     return stats
 
 

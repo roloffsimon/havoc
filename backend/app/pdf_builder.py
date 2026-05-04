@@ -24,10 +24,13 @@ project documentation (see render_weekly_pdf).
 
 from __future__ import annotations
 
+import gc
 import logging
 import os
 import random
 import re
+import resource
+import sys
 from datetime import date as _date, datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
@@ -37,6 +40,13 @@ from .db import DATA_DIR
 from .ocean_pool import DEPLETION_FACTOR
 
 log = logging.getLogger(__name__)
+
+
+def _rss_mb() -> int:
+    # Diagnostic for Railway OOM kills during the daily PDF job. ru_maxrss
+    # is peak RSS since process start; Linux reports kB, macOS reports bytes.
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return rss // 1024 if sys.platform.startswith("linux") else rss // (1024 * 1024)
 
 # ── Render tiers ─────────────────────────────────────────────────────
 # Daily volumes ship at three sizes:
@@ -1402,8 +1412,15 @@ def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
 
     pdf_path = out_dir / f"catch_{date}_{tier}{_lang_suffix(language)}.pdf"
     pdf_path.write_bytes(pdf_bytes)
-    log.info("PDF written to %s (%d bytes, typst, tier=%s, lang=%s, vessels=%d/%d)",
-             pdf_path, len(pdf_bytes), tier, language, len(poems), fleet_total)
+    pdf_size = len(pdf_bytes)
+    sample_size = len(poems)
+    log.info("PDF written to %s (%d bytes, typst, tier=%s, lang=%s, vessels=%d/%d, rss=%dMB)",
+             pdf_path, pdf_size, tier, language, sample_size, fleet_total, _rss_mb())
+    # Drop the per-tier buffers before returning. payload + json_str inside
+    # typst.compile + pdf_bytes can each be 25-50 MB; the typst Rust heap
+    # behind them isn't directly visible to Python's GC, so we at least
+    # release everything we *can* see and let CPython reclaim the slabs.
+    del payload, pdf_bytes
     return pdf_path
 
 
@@ -1432,6 +1449,14 @@ def _write_daily_artefacts_typst(stats: dict, poems: dict[str, list[dict]], *,
             out_dir=out_dir,
             language=language,
         )
+        # Force-collect between tiers: the typst Rust heap from the
+        # previous compile may have left fragmented allocations; combined
+        # with the next tier's sub_poems and payload they have pushed the
+        # daily job past Railway's 8 GB ceiling on heavy days. del +
+        # gc.collect gives CPython a chance to coalesce slabs before the
+        # next tier inflates them again.
+        del sub_poems
+        gc.collect()
     return paths.get(DEFAULT_TIER) or next(iter(paths.values()))
 
 
