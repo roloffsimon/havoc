@@ -3628,8 +3628,13 @@ function clampViewport() {
   } else {
     viewport.centerRow = Math.max(halfH, Math.min(DISPLAY_ROWS - halfH, viewport.centerRow));
   }
-  // Longitude stays toroidal (wraps)
-  viewport.centerCol = ((viewport.centerCol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+  // Longitude is hard-clamped to the world bounds, mirroring the N/S clamp
+  const halfW = viewport.cellsWide / 2;
+  if (viewport.cellsWide >= DISPLAY_COLS) {
+    viewport.centerCol = DISPLAY_COLS / 2;
+  } else {
+    viewport.centerCol = Math.max(halfW, Math.min(DISPLAY_COLS - halfW, viewport.centerCol));
+  }
 }
 
 // ══════════════════════════════════════════════════
