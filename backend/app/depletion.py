@@ -35,10 +35,20 @@ log = logging.getLogger(__name__)
 
 
 def _rss_mb() -> int:
-    # Diagnostic for Railway OOM kills during the daily PDF job. ru_maxrss
-    # is peak RSS since process start; Linux reports kB, macOS reports bytes.
-    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return rss // 1024 if sys.platform.startswith("linux") else rss // (1024 * 1024)
+    # Current RSS — needs to drop after `del` to confirm the frees actually
+    # work. Linux: /proc/self/status:VmRSS in kB. Reading the pseudo-file
+    # is ~µs and we call this ~10x per daily job. macOS dev fallback:
+    # resource.ru_maxrss (which is *peak* in bytes on Darwin, not current —
+    # not great for diagnosis, but we deploy on Linux so it's fine).
+    if sys.platform.startswith("linux"):
+        try:
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        return int(line.split()[1]) // 1024
+        except OSError:
+            pass
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // (1024 * 1024)
 
 
 def build_display_bitmap(pool: OceanPool) -> bytes:

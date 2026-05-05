@@ -15,10 +15,10 @@ builder = "nixpacks"
 [deploy]
 startCommand = "sh start.sh"
 healthcheckPath = "/api/health"
-# The daily PDF render — a single Typst compile over thousands of
-# vessels — is CPU-hot for ~1 minute and starves the event loop briefly,
-# which can stall the healthcheck. 600s tolerance gives the render
-# plenty of room without losing the safety net for genuine hangs.
-healthcheckTimeout = 600
+# The daily PDF render starves the event loop briefly while typst
+# compiles. Measured runtime on 2026-05-05: 47s end-to-end. 120s gives
+# ~2.5× headroom for heavier days while catching genuine hangs much
+# faster than the previous 600s tolerance.
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
