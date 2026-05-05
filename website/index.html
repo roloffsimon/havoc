@@ -1472,6 +1472,20 @@
   .motto p { margin: 0 0 1.8em 0; text-indent: -0.35em; }
   .motto p::before { content: '\201C'; color: var(--cream); margin-right: 0.08em; }
   .motto p::after  { content: '\201D'; color: var(--cream); margin-left: 0.05em; }
+  /* German typographic quotes („…") on the splash motto. */
+  :root[lang="de"] #intro-splash .motto p::before { content: '\201E'; }
+  :root[lang="de"] #intro-splash .motto p::after  { content: '\201C'; }
+
+  /* Subtle highlight on the project-title phrase inside the motto:
+     a roman cut breaks the surrounding italic without shouting, plus
+     a hairline underline that nods to the title-card treatment. */
+  .motto .motto-title {
+    font-style: normal;
+    letter-spacing: 0.03em;
+    color: var(--cream);
+    border-bottom: 1px solid var(--cream-ghost);
+    padding-bottom: 0.05em;
+  }
 
   .motto footer {
     font-style: normal;
@@ -1482,6 +1496,15 @@
     text-transform: uppercase;
   }
   .motto footer cite { font-style: italic; }
+
+  /* Splash-only language toggle. Mirrors the header's position so the
+     two visually align as the splash fades out. Sits above the motto
+     because z-index is shared with the splash root. */
+  .splash-lang {
+    position: absolute;
+    top: 4vh;
+    right: 5vw;
+  }
 
   .splash-hint {
     position: absolute;
@@ -1880,9 +1903,16 @@
      INTRO SPLASH — Moby-Dick-Motto
      ════════════════════════════════════════════════════════════════════ -->
 <div id="intro-splash" role="dialog" aria-label="Motto" tabindex="0">
+  <!-- Reuses the .h-lang class so applyI18n's `.h-lang button[data-lang]`
+       selector picks up the active-state toggle for free. -->
+  <div class="splash-lang h-lang" role="group" aria-label="language">
+    <button type="button" data-lang="de">DE</button>
+    <span class="h-lang-sep">/</span>
+    <button type="button" data-lang="en" class="is-active">EN</button>
+  </div>
   <blockquote class="motto">
-    <p>Whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
-    <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, Chapter&nbsp;CV</footer>
+    <p data-i18n-html="splash.motto.text">The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
+    <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, <span data-i18n="splash.motto.chapter">Chapter&nbsp;CV</span></footer>
   </blockquote>
   <div class="splash-hint" data-i18n="splash.hint">click anywhere to enter</div>
 </div>
@@ -1988,20 +2018,26 @@
             are &ldquo;fish in the sea.&rdquo;
           </p>
           <p data-i18n-html="about.p3">
-            <em>Remorseless Havoc</em> takes that metaphor literally and maps the
-            combinatory ocean onto the real seas of the world. It transfers Montfort and
-            Strickland&rsquo;s stanzas into a grid spanning the whole globe with landmasses
-            spared. Each cell represents a space of about one square kilometre
-            (1.1 &times; 1.1&nbsp;km at the equator). This leaves out the majority of stanzas
-            from the originally generated trillions. Approximately 460 million stanzas remain,
-            with a subsequent second erasure following, driven by the real fishing operations
-            of real-world ships searching for actual fish in the sea.
-            <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>
-            tracks the movements and activities of tens of thousands of fishing vessels via AIS
-            transponder data; a daily retrieval translates their fishing hours into stanza
-            deletions on this website. This means that one day, all stanzas will have been
-            removed from the sea &mdash; just as the resources of the ocean on which we depend,
-            the store of language in this work is finite.
+            <em>Remorseless Havoc</em> takes the metaphor literally and transfers the stanzas
+            into a grid spanning the entire globe. Each cell of this grid represents an area
+            of about one square kilometre (1.1&nbsp;&times;&nbsp;1.1&nbsp;km at the equatorial
+            meridian). This results in 460 million cells and just as many stanzas, distributed
+            across the world&rsquo;s oceans. Gradually, the stanzas are then deleted by the
+            program based on the movement data of industrial fishing vessels.
+          </p>
+          <p data-i18n-html="about.p3a">
+            All technical details can also be found on this project&rsquo;s
+            <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub page</a>,
+            but the movement data comes from
+            <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>.
+            There, the transponder signals from vessels above a certain tonnage are analysed
+            using a machine-learning algorithm that recognises characteristic turning manoeuvres,
+            changes in speed, and dwell-time patterns. In this way, GFW identifies fishing
+            activity and calculates it in hours per vessel in conjunction with the GPS position.
+            The <em>Remorseless Havoc</em> algorithm then erases verses from the ocean for each
+            hour in near real time, as GFW requires 72&nbsp;hours to analyse the satellite data.
+            One day, all verses will be removed from the sea &mdash; the language used in this
+            work is finite, like the ocean&rsquo;s resources.
           </p>
           <p data-i18n-html="about.p3b">
             A note on the map. Its grid of one-square-kilometre stanza cells holds
@@ -2228,6 +2264,8 @@ const I18N = {
     'nav.about': 'About',
     'nav.catch': 'Catch of the Day',
     'splash.hint': 'click anywhere to enter',
+    'splash.motto.text': 'The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
+    'splash.motto.chapter': 'Chapter CV',
     'ocean.hint': 'scroll to zoom &middot; drag to pan<br>zoom in to read the stanzas',
     'ocean.hint.midzoom': '0.1\u00b0 display grid<br>zoom more to read stanzas',
     'ocean.hint.zoomed':  'stanzas visible in cells<br>depleted = dark',
@@ -2252,11 +2290,12 @@ const I18N = {
     'fleet.stanzas.singular': 'stanza',
     'fleet.stanzas.plural':   'stanzas',
     'about.h2': 'About',
-    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the dark tiles in the map, representing the watery regions of our planet, are generated by an algorithm developed for <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>, a digital literary work developed by Nick Montfort and Stephanie Strickland in 2010. It generates poetic stanzas assembled from language fragments by Emily Dickinson and Herman Melville. If you open <em>Sea and Spar Between</em> in a browser, about 225 trillion entries extend almost endlessly in every direction. Montfort and Strickland say their work contains as many stanzas as there are \u201cfish in the sea.\u201d',
-    'about.p3': '<em>Remorseless Havoc</em> takes this metaphor literally, mapping the combinatorial ocean onto the real seas of the world. It transfers the generated stanzas into a grid spanning the entire globe, sparing landmasses. Each cell represents an area of approximately one square kilometre (1.1 \u00d7 1.1\u00a0km at the equator). This leaves out the majority of stanzas from the originally generated trillions. Approximately 460 million stanzas remain, and a second erasure follows, driven by the real-world fishing operations. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> tracks the movements and activities of tens of thousands of fishing vessels via AIS transponder data. A daily retrieval translates their fishing hours into positions on our map and stanza deletions at this position. One day, all stanzas will have been removed from the sea \u2014 the language used in this work, like ocean resources, is finite.',
-    'about.p3b': 'Note on the map: To improve rendering efficiency, it uses a coarser grid of tiles, each measuring roughly 10 \u00d7 10\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. The three shades of the ocean indicate how many stanzas have been erased from each tile: intact (all 100 stanzas still alive), partially depleted (at least one stanza erased) and fully depleted (all 100 stanzas erased). When you zoom in, each tile reveals a stanza drawn from its centre cell. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes stanzas.',
+    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the dark tiles in the map, representing the watery regions of our planet, are generated by an algorithm that assembles poetic stanzas from language fragments by Emily Dickinson and Herman Melville. This algorithm can create as many stanzas as there are \u201cfish in the sea\u201d, according to Nick Montfort and Stephanie Strickland, who originally developed it for their digital literary work <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>.',
+    'about.p3': '<em>Remorseless Havoc</em> takes the metaphor literally and transfers the stanzas into a grid spanning the entire globe. Each cell of this grid represents an area of about one square kilometre (1.1\u00a0\u00d7\u00a01.1\u00a0km at the equatorial meridian). This results in 460 million cells and just as many stanzas, distributed across the world\u2019s oceans. Gradually, the stanzas are then deleted by the program based on the movement data of industrial fishing vessels.',
+    'about.p3a': 'All technical details can also be found on this project\u2019s <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub page</a>, but the movement data comes from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. There, the transponder signals from vessels above a certain tonnage are analysed using a machine-learning algorithm that recognises characteristic turning manoeuvres, changes in speed, and dwell-time patterns. In this way, GFW identifies fishing activity and calculates it in hours per vessel in conjunction with the GPS position. The <em>Remorseless Havoc</em> algorithm then erases verses from the ocean for each hour in near real time, as GFW requires 72\u00a0hours to analyse the satellite data. One day, all verses will be removed from the sea \u2014 the language used in this work is finite, like the ocean\u2019s resources.',
+    'about.p3b': 'A note on the map: to improve rendering efficiency it uses a coarser grid of tiles, each measuring roughly 10\u00a0\u00d7\u00a010\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. The three shades of the ocean indicate how many stanzas have been erased from each tile: intact (all 100 stanzas still alive), partially depleted (at least one stanza erased) and fully depleted (all 100 stanzas erased). When you zoom in, each tile reveals a stanza drawn from its centre cell. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes stanzas.',
     'about.p4': 'You can track the havoc on the map, browse today\u2019s erased stanzas in <em>Fleet</em> View, or download a random selection of the day\u2019s catch as a poetry volume. Each vessel compiles the stanzas it collects from the ocean on a given day into a poem, arranged from greatest to least lexical diversity.',
-    'about.p5': 'The project will run until the poetic ocean is empty, which is expected to be around the year 2030 based on current data. One final poem will then remain \u2014 the \u201cfinal puff\u201d of the Leviathan, as discussed in Chapter CV of Herman Melville\u2019s <em>Moby-Dick</em>, \u201cDoes the Whale\u2019s Magnitude Diminish?\u2014Will He Perish?\u201d, from which the project\u2019s title is also taken. The time and place of the emergence of this poem, and not least its text, are determined by the contingencies of the exploitation of the seas.',
+    'about.p5': 'The project will run until the poetic ocean is empty, which is expected to be around the year 2030 based on current data. Then one final poem will remain \u2014 in a place, at a time, and with words shaped by the contingencies of the exploitation of the seas. It will be the Leviathan\u2019s last breath, so to speak, on which Herman Melville had already speculated in Chapter\u00a0CV of <em>Moby-Dick</em> as the result of the systematic hunting of sea creatures: \u201cThe moot point is, whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.\u201d',
     'about.spec.grid': 'Grid',
     'about.spec.cells': 'Water cells',
     'about.spec.factor': 'Factor',
@@ -2333,6 +2372,8 @@ const I18N = {
     'nav.about': '\u00dcber',
     'nav.catch': 'Fang des Tages',
     'splash.hint': 'klicken zum eintreten',
+    'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so rücksichtsloses Gemetzel <span class="motto-title">[remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
+    'splash.motto.chapter': 'Kapitel CV',
     'ocean.hint': 'scrollen zum zoomen &middot; ziehen zum schwenken<br>heranzoomen, um die strophen zu lesen',
     'ocean.hint.midzoom': '0,1\u00b0-anzeigegitter<br>weiter heranzoomen, um die strophen zu lesen',
     'ocean.hint.zoomed':  'strophen in den zellen sichtbar<br>ersch\u00f6pft = dunkel',
@@ -2357,11 +2398,12 @@ const I18N = {
     'fleet.stanzas.singular': 'Strophe',
     'fleet.stanzas.plural':   'Strophen',
     'about.h2': '\u00dcber',
-    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die Strophen, die Sie sehen, wenn Sie die dunklen Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 vergr\u00f6\u00dfern, werden von einem Algorithmus generiert, der f\u00fcr <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> entwickelt wurde, ein digitales literarisches Werk von Nick Montfort und Stephanie Strickland aus dem Jahr 2010. Der Algorithmus generiert Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt sind. Wenn man <em>Sea and Spar Between</em> in einem Browser \u00f6ffnet, erstrecken sich etwa 225 Billionen Eintr\u00e4ge fast endlos in alle Richtungen. Montfort und Strickland sagen, ihr Werk enthalte so viele Strophen, wie es \u201eFische im Meer\u201c gibt.',
-    'about.p3': '<em>Remorseless Havoc</em> nimmt diese Metapher w\u00f6rtlich und bildet den kombinatorischen Ozean auf die realen Meere der Welt ab. Es \u00fcbertr\u00e4gt die generierten Strophen in ein Raster, das den gesamten Globus \u00fcberspannt, wobei Landmassen ausgespart werden. Jede Zelle repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quator). Dadurch f\u00e4llt der Gro\u00dfteil der urspr\u00fcnglich generierten Billionen von Strophen weg, es verbleiben etwa 460 Millionen Strophen. Dann folgt eine zweite L\u00f6schung, angetrieben durch reale Fischereiaktivit\u00e4t. <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a> verfolgt die Bewegungen und Aktivit\u00e4ten von Zehntausenden von industriellen Fangschiffen anhand von AIS-Transponderdaten. Durch eine t\u00e4gliche Abfrage werden ihre Fangzeiten in Positionen auf unserer Karte und in die L\u00f6schung von Strophen an dieser Position umgewandelt. Eines Tages werden alle Strophen aus dem Meer entfernt sein \u2013 die in diesem Werk verwendete Sprache ist, wie die Ressourcen des Ozeans, endlich.',
+    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die dunklen Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 enthalten algorithmisch generierte Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt wurden. Nach Nick Montfort und Stephanie Strickland, die den Algorithmus urspr\u00fcnglich f\u00fcr ihr digitalliterarisches Werk <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> geschrieben haben, kann der Generator so viele Strophen erzeugen, wie es \u201eFische im Meer\u201c gibt.',
+    'about.p3': '<em>Remorseless Havoc</em> nimmt die Metapher w\u00f6rtlich und \u00fcbertr\u00e4gt die Strophen in ein Raster, das den gesamten Globus \u00fcberspannt. Jede Zelle dieses Rasters repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quatorialmeridian). Das ergibt 460 Millionen Zellen und ebenso viele Strophen, verteilt \u00fcber die Weltmeere. Nach und nach werden die Strophen dann vom Programm wieder gel\u00f6scht, ausgehend von den Bewegungsdaten der industriellen Fischerei.',
+    'about.p3a': 'Alle technischen Details findet man auch auf der <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub-Seite</a> dieses Projekts, aber die Bewegungsdaten kommen von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Dort analysiert man die Transpondersignale von Schiffen ab einer bestimmten Tonnage mithilfe eines Machine-Learning-Algorithmus, der charakteristische Wendeman\u00f6ver, Geschwindigkeits\u00e4nderungen und Verweildauer-Muster erkennt. Auf diese Weise identifiziert GFW Fischfangt\u00e4tigkeit und berechnet sie in Stunden pro Schiff in Verbindung mit der GPS-Position. Der Algorithmus von <em>Remorseless Havoc</em> l\u00f6scht dann fast in Echtzeit f\u00fcr jede Stunde Strophen aus dem Ozean, da GFW 72 Stunden ben\u00f6tigt, um die Satellitendaten zu analysieren. Eines Tages werden alle Strophen aus dem Meer entfernt sein \u2013 die in dieser Arbeit verwendete Sprache ist so endlich wie die Ressourcen des Ozeans.',
     'about.p3b': 'Anmerkung zur Karte: Um die Darstellungsleistung zu verbessern, wird ein gr\u00f6beres Raster aus Kacheln verwendet, die jeweils etwa 10 \u00d7 10 km (0,1\u00b0) gro\u00df sind, wobei jede sichtbare Kachel 100 Strophenzellen umfasst. Die drei Farbt\u00f6ne des Ozeans zeigen an, wie viele Strophen aus jeder Kachel gel\u00f6scht wurden: intakt (alle 100 Strophen noch vorhanden), teilweise ersch\u00f6pft (mindestens eine Strophe gel\u00f6scht) und vollst\u00e4ndig ersch\u00f6pft (alle 100 Strophen gel\u00f6scht). Wenn man hineinzoomt, zeigt jede Kachel eine Strophe. Das vollst\u00e4ndige Strophenzellenraster wird vom Backend nur dann abgefragt, wenn ein Fischereivorgang Strophen l\u00f6scht.',
     'about.p4': 'Sie k\u00f6nnen die Zerst\u00f6rung auf der Karte verfolgen, die heute gel\u00f6schten Strophen in der <em>Flotte</em>-Ansicht durchst\u00f6bern oder eine zuf\u00e4llige Auswahl des Tagesfangs als Gedichtband herunterladen. Jedes Schiff fasst die Strophen, die es an einem bestimmten Tag aus dem Ozean sammelt, zu einem Gedicht zusammen, geordnet nach absteigender lexikalischer Vielfalt.',
-    'about.p5': 'Das Projekt l\u00e4uft so lange, bis der poetische Ozean leer ist, was nach aktuellen Daten voraussichtlich um das Jahr 2030 der Fall sein wird. Dann wird ein letztes Gedicht \u00fcbrig bleiben \u2013 der \u201eletzte Atemzug\u201c des Leviathan, wie er in Kapitel CV von Herman Melvilles <em>Moby-Dick</em>, \u201eDoes the Whale\u2019s Magnitude Diminish?\u2014Will He Perish?\u201c, beschrieben wird, aus dem auch der Titel des Projekts stammt. Der Zeitpunkt und Ort seines Entstehens und nicht zuletzt der Text dieses Gedichts werden von den Unw\u00e4gbarkeiten der Ausbeutung der Meere bestimmt.',
+    'about.p5': 'Das Projekt l\u00e4uft so lange, bis der poetische Ozean leer ist, was nach aktuellen Daten voraussichtlich um das Jahr 2030 der Fall sein wird. Dann wird ein letztes Gedicht stehen bleiben \u2013 an einem Ort, zu einer Zeit und mit einem Text, die von den Unw\u00e4gbarkeiten der Ausbeutung der Meere bestimmt sind. Es wird der letzte Atemzug des Leviathans sein, wenn man so will, \u00fcber den schon Herman Melville in Kapitel CV von <em>Moby-Dick</em> als Ergebnis der systematischen Jagd auf Meeresbewohner nachdachte: \u201eDer streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so r\u00fccksichtsloses Gemetzel [remorseless havoc] aushalten kann, ob er nicht schlie\u00dflich aus den Gew\u00e4ssern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen m\u00fcssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzul\u00f6sen.\u201c',
     'about.spec.grid': 'Gitter',
     'about.spec.cells': 'Wasserzellen',
     'about.spec.factor': 'Faktor',
@@ -2564,7 +2606,12 @@ document.addEventListener('srah:lang-change', () => {
     setTimeout(tryAgain, MIN_SPLASH_MS - elapsed);
   }
 
-  splash.addEventListener('click', dismiss);
+  splash.addEventListener('click', (e) => {
+    // Skip dismiss when the user is toggling the in-splash language
+    // selector — they're still reading.
+    if (e.target.closest('button[data-lang]')) return;
+    dismiss();
+  });
   document.addEventListener('keydown', function onKey(e) {
     if (e.key === 'Escape' || e.key === 'Enter') {
       dismiss();
