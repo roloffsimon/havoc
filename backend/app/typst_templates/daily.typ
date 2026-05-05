@@ -41,7 +41,13 @@
 )[#upper(it.body)]
 
 // ── Cover ──────────────────────────────────────────────────────────
-#cover-page(data.cover_path, stats.day_label, stats.long_date)
+#cover-page(
+  data.cover_path,
+  stats.day_label,
+  stats.long_date,
+  stats.strings.cover_byline,
+  stats.strings.cover_day_word,
+)
 
 // ── Body pagination: reset the page counter, set running header/footer
 #counter(page).update(1)
@@ -75,7 +81,7 @@
 
 // ── Index of vessels ───────────────────────────────────────────────
 #pagebreak()
-#vessel-index(poems)
+#vessel-index(poems, stats)
 
 // ── Colophon ───────────────────────────────────────────────────────
 #colophon(stats)

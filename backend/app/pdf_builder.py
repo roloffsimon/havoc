@@ -71,20 +71,27 @@ TIER_FRACTIONS: dict[str, int] = {
     "finecut": 100,
     "onepiece": 0,   # always exactly 1
 }
-TIER_LABELS: dict[str, str] = {
-    "selection": "Selection",
-    "finecut":   "Fine Cut",
-    "onepiece":  "One Piece",
+TIER_LABELS: dict[str, dict[str, str]] = {
+    "en": {
+        "selection": "Selection",
+        "finecut":   "Fine Cut",
+        "onepiece":  "One Piece",
+    },
+    "de": {
+        "selection": "Auswahl",
+        "finecut":   "Feiner Schnitt",
+        "onepiece":  "Einzelstück",
+    },
 }
 DEFAULT_TIER = "selection"
 
 # ── Language strings ─────────────────────────────────────────────────
-# Translatable labels passed into the Typst payload. The DE volume
-# substitutes these at render time and re-generates each catch's
-# stanza from `(col, row)` via stanza_de.generate_stanza_at — the
-# stored EN stanza is replaced. All other PDF prose (Introduction,
-# colophon credits, etc.) stays English in this iteration; only the
-# structural labels and the verse content are localised.
+# Translatable labels and prose framing passed into the Typst payload.
+# The DE volume substitutes these at render time and re-generates each
+# catch's stanza from `(col, row)` via stanza_de.generate_stanza_at —
+# the stored EN stanza is replaced. The Introduction body and Colophon
+# body in `_macros.typ` branch on `stats.language` directly; only the
+# structural labels (TOC entries, headings, cover byline) live here.
 DEFAULT_LANGUAGE = "en"
 SUPPORTED_LANGUAGES: tuple[str, ...] = ("en", "de")
 STRINGS: dict[str, dict[str, str]] = {
@@ -93,12 +100,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "section_opener":     "Catch of Day",
         "header_running":     "Catch of Day",
         "colophon_from":      "Catch of the Day from ",
+        "toc_contents":       "Contents",
+        "toc_introduction":   "Introduction",
+        "toc_vessel_index":   "Index of vessels",
+        "toc_colophon":       "Colophon",
+        "cover_byline":       "From Remorseless Havoc by Simon Roloff",
+        "cover_day_word":     "Day",
     },
     "de": {
         "title":              "Tagesfang",
         "section_opener":     "Tagesfang",
         "header_running":     "Tagesfang",
         "colophon_from":      "Tagesfang vom ",
+        "toc_contents":       "Inhalt",
+        "toc_introduction":   "Einleitung",
+        "toc_vessel_index":   "Verzeichnis der Schiffe",
+        "toc_colophon":       "Impressum",
+        "cover_byline":       "Aus Remorseless Havoc von Simon Roloff",
+        "cover_day_word":     "Tag",
     },
 }
 
@@ -135,9 +154,40 @@ def _vol_for(date_str: str) -> int:
     return (d - _day_0_date()).days + 1
 
 
-def _format_long_date(date_str: str) -> str:
-    """`2026-04-10` → `10 April 2026`."""
+_DE_MONTHS = (
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember",
+)
+
+
+_RUNTIME_YEARS_DEFAULT = {"en": "four", "de": "vier"}
+_RUNTIME_YEARS_EN_TO_DE = {
+    "one": "ein", "two": "zwei", "three": "drei", "four": "vier",
+    "five": "fünf", "six": "sechs", "seven": "sieben", "eight": "acht",
+    "nine": "neun", "ten": "zehn",
+}
+
+
+def _localize_runtime_years(value, language: str) -> str | int:
+    """Bridge for `runtime_years`, which can arrive as either an int or
+    a spelled-out English word (legacy default). DE volumes need the
+    German equivalent; everything else passes through unchanged."""
+    if value is None:
+        return _RUNTIME_YEARS_DEFAULT.get(language, _RUNTIME_YEARS_DEFAULT["en"])
+    if language == "de" and isinstance(value, str):
+        return _RUNTIME_YEARS_EN_TO_DE.get(value.strip().lower(), value)
+    return value
+
+
+def _format_long_date(date_str: str, language: str = DEFAULT_LANGUAGE) -> str:
+    """`2026-04-10` → `10 April 2026` (en) / `10. April 2026` (de).
+
+    DE uses native month names rather than relying on the system locale,
+    which is not guaranteed to have `de_DE` available on the deploy host.
+    """
     d = datetime.strptime(date_str, "%Y-%m-%d").date()
+    if language == "de":
+        return f"{d.day}. {_DE_MONTHS[d.month - 1]} {d.year}"
     return d.strftime("%-d %B %Y") if hasattr(d, "strftime") else date_str
 
 
@@ -1306,7 +1356,13 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
     cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
     day_n = _vol_for(stats["date"])
     day_label = f"{day_n:03d}"
-    long_date = _format_long_date(stats["date"])
+    long_date = _format_long_date(stats["date"], language=language)
+
+    # German thousands separator is `.` (period), not `,`. Format with
+    # commas first, then swap, so the source code stays portable.
+    def _fmt(n: int | float, *, decimals: int = 0) -> str:
+        s = f"{n:,.{decimals}f}" if decimals else f"{int(n):,}"
+        return s.replace(",", ".") if language == "de" else s
 
     poems_list: list[dict] = []
     for vkey, catches in poems.items():
@@ -1356,22 +1412,28 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
             "depletion_percent": float(stats["depletion_percent"]),
             "depletion_factor": int(stats.get("depletion_factor", DEPLETION_FACTOR)),
             "ocean_remaining_million": stats.get("ocean_remaining_million", 460),
-            "runtime_years": stats.get("runtime_years", "four"),
+            "runtime_years": _localize_runtime_years(
+                stats.get("runtime_years"), language,
+            ),
             "annual_depletion_pct": stats.get("annual_depletion_pct", 28),
             "rendered_utc": rendered,
-            "vessels_active_str": f"{int(stats['vessels_active']):,}",
-            "stanzas_caught_str": f"{int(stats['stanzas_caught']):,}",
-            "fishing_hours_str": f"{float(stats.get('fishing_hours', 0.0)):,.0f}",
-            "depletion_pct_str": f"{float(stats['depletion_percent']):.6f}",
+            "vessels_active_str": _fmt(stats["vessels_active"]),
+            "stanzas_caught_str": _fmt(stats["stanzas_caught"]),
+            "fishing_hours_str": _fmt(stats.get("fishing_hours", 0.0)),
+            "depletion_pct_str": (
+                f"{float(stats['depletion_percent']):.6f}".replace(".", ",")
+                if language == "de"
+                else f"{float(stats['depletion_percent']):.6f}"
+            ),
             # Tier metadata read by the introduction to explain the cut.
             "tier": tier,
-            "tier_label": TIER_LABELS.get(tier, tier.title()),
+            "tier_label": TIER_LABELS.get(language, TIER_LABELS[DEFAULT_LANGUAGE]).get(tier, tier.title()),
             "tier_fraction": TIER_FRACTIONS.get(tier, 1),
-            "fleet_total_str": f"{fleet_total:,}",
+            "fleet_total_str": _fmt(fleet_total),
             "selected_vessels": len(poems_list),
-            "selected_vessels_str": f"{len(poems_list):,}",
+            "selected_vessels_str": _fmt(len(poems_list)),
             "selected_stanzas": selected_stanzas,
-            "selected_stanzas_str": f"{selected_stanzas:,}",
+            "selected_stanzas_str": _fmt(selected_stanzas),
             # Localised structural labels — read by the Typst template
             # for the running header, section opener, and document title.
             "language": language,
