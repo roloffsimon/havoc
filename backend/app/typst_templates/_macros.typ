@@ -157,9 +157,11 @@
 ]
 
 // ── Introduction ───────────────────────────────────────────────────
-// Body leading set to 0.5em → 1.5× line-height (CSS line-height: 1.5),
-// per the document spec. The stanza blocks keep their tighter 1.30
-// line-height; this rule is local to the prose introduction.
+// Roman Newsreader at 1.5× line-height (CSS line-height: 1.5):
+// par.leading 0.5em on a 10pt body ≈ 15pt total leading. The body
+// stays unitalic so the day-specific stats fill in at the same visual
+// weight as the surrounding prose; project titles ride italic via
+// `_…_` markup as the only inline distinction.
 //
 // The macro branches on stats.language to render either the EN or DE
 // body; the section heading and prose styling are shared. Day-specific
@@ -169,11 +171,13 @@
   = #stats.strings.toc_introduction
   #label("intro")
 
-  #set text(font: FONT_BODY_ITALIC, weight: 300, size: 10pt,
-            fill: INK_SOFT, style: "italic")
+  #set text(font: FONT_BODY_ROMAN, weight: 400, size: 10pt,
+            fill: INK_SOFT)
   #set par(leading: 0.5em, justify: true, first-line-indent: 0pt)
-  #show emph: it => text(style: "normal", weight: 500, fill: INK,
-                          it.body)
+  // Project titles (Remorseless Havoc, Sea and Spar Between, Moby
+  // Dick) — italic only, no weight or size bump; the italic cut is
+  // the entire signal.
+  #show emph: it => text(style: "italic", fill: INK, it.body)
 
   // Tier-paragraph helpers — used by both language branches.
   #let _vessel-word-en(n) = if n == 1 [vessel] else [vessels]
@@ -433,16 +437,21 @@
 // The 4 lines render as a single paragraph with hard linebreaks so we
 // don't pick up Typst's between-paragraph spacing — within a stanza,
 // only line-leading separates the lines.
+//
+// Inner gap (`#v` between stanza and coords) and outer gap (`block.below`
+// to next stanza) are deliberately asymmetric: the coords float close
+// enough to read as the stanza's footer, but the next stanza sits a
+// noticeably larger gap below so the boundary stays unambiguous.
 #let stanza-block(s) = {
   set text(font: FONT_BODY_ITALIC, weight: 300, size: 8.5pt, style: "italic",
            fill: INK_SOFT)
   set par(leading: 0.30em, justify: false, first-line-indent: 0pt)
-  block(breakable: false, below: 3mm)[
+  block(breakable: false, below: 5mm)[
     #s.lines.at(0)\
     #s.lines.at(1)\
     #s.lines.at(2)\
     #s.lines.at(3)
-    #v(0.5mm, weak: true)
+    #v(2mm, weak: true)
     #text(font: FONT_MONO, style: "normal", size: 5.4pt, fill: INK_FAINT,
           tracking: 0.06em)[
       #calc.round(s.lat, digits: 2)°, #calc.round(s.lon, digits: 2)°
