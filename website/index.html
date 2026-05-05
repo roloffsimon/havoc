@@ -1521,6 +1521,57 @@
   }
   @keyframes hint-in { to { opacity: 0.6; } }
 
+  /* Three-stage progress indicator under the motto: shows the user that
+     the map is loading rather than just showing the static splash. Hidden
+     until at least one stage has resolved, so quick warm loads never
+     reveal it. Three labels: Map · Depths · Fleet. */
+  .splash-progress {
+    position: absolute;
+    bottom: 9vh;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cream-ghost);
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+    pointer-events: none;
+  }
+  .splash-progress.is-visible { opacity: 0.55; }
+  .splash-progress .sp-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.45;
+    transition: opacity 300ms ease-out;
+  }
+  .splash-progress .sp-step.is-loading { opacity: 0.85; }
+  .splash-progress .sp-step.is-done { opacity: 1; }
+  .splash-progress .sp-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--cream-faint);
+    transition: background 300ms ease-out, border-color 300ms ease-out;
+  }
+  .splash-progress .sp-step.is-loading .sp-dot {
+    border-color: var(--cream-ghost);
+    animation: sp-pulse 1.1s ease-in-out infinite;
+  }
+  .splash-progress .sp-step.is-done .sp-dot {
+    background: var(--cream);
+    border-color: var(--cream);
+    animation: none;
+  }
+  @keyframes sp-pulse {
+    0%, 100% { background: transparent; }
+    50%      { background: var(--cream-faint); }
+  }
+
   /* Loading-fallback unten links, falls Karte noch nicht fertig ist */
   .loading-fallback {
     position: absolute;
@@ -1914,6 +1965,11 @@
     <p data-i18n-html="splash.motto.text">The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
     <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, <span data-i18n="splash.motto.chapter">Chapter&nbsp;CV</span></footer>
   </blockquote>
+  <div class="splash-progress" id="splash-progress" aria-live="polite" aria-label="loading">
+    <div class="sp-step" data-stage="land"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.land">Map</span></div>
+    <div class="sp-step" data-stage="depletion"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.depletion">Depths</span></div>
+    <div class="sp-step" data-stage="vessels"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.vessels">Fleet</span></div>
+  </div>
   <div class="splash-hint" data-i18n="splash.hint">click anywhere to enter</div>
 </div>
 
@@ -2266,6 +2322,9 @@ const I18N = {
     'splash.hint': 'click anywhere to enter',
     'splash.motto.text': 'The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
     'splash.motto.chapter': 'Chapter CV',
+    'splash.progress.land': 'Map',
+    'splash.progress.depletion': 'Depths',
+    'splash.progress.vessels': 'Fleet',
     'ocean.hint': 'scroll to zoom &middot; drag to pan<br>zoom in to read the stanzas',
     'ocean.hint.midzoom': '0.1\u00b0 display grid<br>zoom more to read stanzas',
     'ocean.hint.zoomed':  'stanzas visible in cells<br>depleted = dark',
@@ -2374,6 +2433,9 @@ const I18N = {
     'splash.hint': 'klicken zum eintreten',
     'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so rücksichtsloses Gemetzel <span class="motto-title">[remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
     'splash.motto.chapter': 'Kapitel CV',
+    'splash.progress.land': 'Karte',
+    'splash.progress.depletion': 'Tiefen',
+    'splash.progress.vessels': 'Flotte',
     'ocean.hint': 'scrollen zum zoomen &middot; ziehen zum schwenken<br>heranzoomen, um die strophen zu lesen',
     'ocean.hint.midzoom': '0,1\u00b0-anzeigegitter<br>weiter heranzoomen, um die strophen zu lesen',
     'ocean.hint.zoomed':  'strophen in den zellen sichtbar<br>ersch\u00f6pft = dunkel',
@@ -2557,6 +2619,30 @@ document.addEventListener('srah:lang-change', () => {
 // INTRO SPLASH — Moby-Dick-Motto
 // ══════════════════════════════════════════════════
 
+// Three-stage readiness state. init() flips these as each asset arrives;
+// the splash dismissal logic and the progress indicator both read from
+// here. _havocMapReady is kept as a back-compat alias for any external
+// consumer that already listens for `srah:map-ready` (the dispatch
+// happens once the land mask is up — earliest moment a usable canvas
+// exists).
+window._havocReady = { land: false, depletion: false, vessels: false };
+
+function _havocMarkReady(stage) {
+  if (!window._havocReady || window._havocReady[stage]) return;
+  window._havocReady[stage] = true;
+  const step = document.querySelector('.splash-progress .sp-step[data-stage="' + stage + '"]');
+  if (step) {
+    step.classList.remove('is-loading');
+    step.classList.add('is-done');
+  }
+  document.dispatchEvent(new CustomEvent('srah:stage-ready', { detail: { stage } }));
+}
+
+function _havocMarkLoading(stage) {
+  const step = document.querySelector('.splash-progress .sp-step[data-stage="' + stage + '"]');
+  if (step && !step.classList.contains('is-done')) step.classList.add('is-loading');
+}
+
 (function initSplash() {
   const splash = document.getElementById('intro-splash');
   if (!splash) return;
@@ -2574,7 +2660,22 @@ document.addEventListener('srah:lang-change', () => {
 
   const splashShownAt = Date.now();
   const MIN_SPLASH_MS = 1500;
+  // Hard cap so a cold Railway start (depletion + vessels can take 5-10 s)
+  // never traps the user on the splash. After this, fade out regardless;
+  // the canvas degrades cleanly to mock vessels until the API arrives.
+  const MAX_SPLASH_MS = 7000;
   let dismissPending = false;
+
+  function allReady() {
+    const r = window._havocReady || {};
+    return r.land && r.depletion && r.vessels;
+  }
+
+  function shouldFade() {
+    const elapsed = Date.now() - splashShownAt;
+    if (elapsed < MIN_SPLASH_MS) return false;
+    return allReady() || elapsed >= MAX_SPLASH_MS;
+  }
 
   function actuallyDismiss() {
     if (splash.classList.contains('is-leaving')) return;
@@ -2588,23 +2689,38 @@ document.addEventListener('srah:lang-change', () => {
 
   function dismiss() {
     if (dismissPending || splash.classList.contains('is-leaving')) return;
-    const elapsed = Date.now() - splashShownAt;
-    const ready = !!window._havocMapReady;
-    if (ready && elapsed >= MIN_SPLASH_MS) {
+    if (shouldFade()) {
       actuallyDismiss();
       return;
     }
-    // Click came too early — wait for both conditions and then leave.
+    // User clicked early or stages still loading — keep watching, fade
+    // as soon as the next condition (all-ready OR hard-cap) is met.
     dismissPending = true;
     const tryAgain = () => {
-      if (window._havocMapReady && Date.now() - splashShownAt >= MIN_SPLASH_MS) {
+      if (shouldFade()) {
         actuallyDismiss();
-        document.removeEventListener('srah:map-ready', tryAgain);
+        document.removeEventListener('srah:stage-ready', tryAgain);
       }
     };
-    document.addEventListener('srah:map-ready', tryAgain);
-    setTimeout(tryAgain, MIN_SPLASH_MS - elapsed);
+    document.addEventListener('srah:stage-ready', tryAgain);
+    const elapsed = Date.now() - splashShownAt;
+    setTimeout(tryAgain, Math.max(0, MIN_SPLASH_MS - elapsed));
+    setTimeout(tryAgain, Math.max(0, MAX_SPLASH_MS - elapsed));
   }
+
+  // Auto-dismiss without a click once everything's ready and the min
+  // dwell has elapsed — keeps the splash from outstaying its welcome on
+  // warm reloads where land+depletion+vessels arrive within 1-2 s.
+  document.addEventListener('srah:stage-ready', () => {
+    if (shouldFade()) actuallyDismiss();
+  });
+  setTimeout(() => { if (shouldFade()) actuallyDismiss(); }, MAX_SPLASH_MS);
+
+  // Reveal the progress indicator after a short grace period — on a fast
+  // warm load the splash leaves before this fires, so the user never
+  // sees loading dots on a near-instant page open.
+  const progress = document.getElementById('splash-progress');
+  if (progress) setTimeout(() => progress.classList.add('is-visible'), 700);
 
   splash.addEventListener('click', (e) => {
     // Skip dismiss when the user is toggling the in-splash language
@@ -3422,7 +3538,7 @@ async function loadLandMask() {
 async function loadDepletionBitmap() {
   if (!HAVOC_HAS_API) return;
   try {
-    const r = await fetch(`${HAVOC_API_BASE}/api/depletion-grid`, { cache: 'no-cache' });
+    const r = await fetch(`${HAVOC_API_BASE}/api/depletion-grid`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const buf = await r.arrayBuffer();
     // Each bit = one display cell. 3600×1800/8 = 810 000 bytes. Served
@@ -3438,7 +3554,7 @@ async function loadDepletionBitmap() {
 async function loadStatus() {
   if (!HAVOC_HAS_API) return null;
   try {
-    const r = await fetch(`${HAVOC_API_BASE}/api/status`, { cache: 'no-cache' });
+    const r = await fetch(`${HAVOC_API_BASE}/api/status`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   } catch (e) {
@@ -3450,7 +3566,7 @@ async function loadStatus() {
 async function loadVessels() {
   if (!HAVOC_HAS_API) return null;
   try {
-    const r = await fetch(`${HAVOC_API_BASE}/api/vessels`, { cache: 'no-cache' });
+    const r = await fetch(`${HAVOC_API_BASE}/api/vessels`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     if (!Array.isArray(data.vessels) || data.vessels.length === 0) return null;
@@ -3474,6 +3590,12 @@ async function loadVessels() {
         currentLang
       ),
       catches: Array.isArray(v.catches) ? v.catches : [],
+      // Backend now sends only the first catch per vessel + a separate
+      // catch_count for the on-card "N stanzas" label (full inlining
+      // pushed the response past 40 MB on real-fleet days).
+      catchCount: typeof v.catch_count === 'number'
+        ? v.catch_count
+        : (Array.isArray(v.catches) ? v.catches.length : 0),
       entropy: null,    // computed server-side, not needed for the cards
       vesselId: v.vessel_id,
     }));
@@ -3486,7 +3608,7 @@ async function loadVessels() {
 async function loadFinalPoem() {
   if (!HAVOC_HAS_API) return null;
   try {
-    const r = await fetch(`${HAVOC_API_BASE}/api/final-poem`, { cache: 'no-cache' });
+    const r = await fetch(`${HAVOC_API_BASE}/api/final-poem`);
     if (r.status === 404) return null;    // ocean not yet exhausted
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
@@ -4647,10 +4769,16 @@ function renderFleetStanzas(card, v) {
   const entropyVal = (typeof v.entropy === 'number')
     ? v.entropy
     : computeStanzaEntropy(stanza);
-  const word = stanzas.length === 1
+  // Total catches per vessel comes from the API as catchCount; stanzas[]
+  // only ever has 1 entry now (the API trim), so we can't infer the
+  // count from the locally-rendered list.
+  const totalCatches = (typeof v.catchCount === 'number' && v.catchCount > 0)
+    ? v.catchCount
+    : stanzas.length;
+  const word = totalCatches === 1
     ? t('fleet.stanzas.singular')
     : t('fleet.stanzas.plural');
-  const countTxt = `${stanzas.length} ${word}`;
+  const countTxt = `${totalCatches} ${word}`;
   entropy.textContent = `${countTxt}  \u00b7  ${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${entropyVal.toFixed(2)}`;
   const mapLink = document.createElement('button');
   mapLink.type = 'button';
@@ -4876,18 +5004,28 @@ async function init() {
   updateStatusBar();
 
   // Land mask is the only mandatory file for the canvas renderer.
-  // Depletion bitmap comes from Railway and would block first paint
-  // for 5–10 s on a cold start, so it loads in the background and
-  // triggers an extra render once it arrives.
+  // Depletion bitmap + vessels come from Railway and block first paint
+  // for 5–10 s on a cold start, so both load in the background and
+  // trigger extra renders once they arrive. Each stage flips its
+  // _havocReady flag so the splash progress indicator reflects state
+  // and the splash can auto-fade once everything's in.
+  _havocMarkLoading('land');
+  _havocMarkLoading('depletion');
+  _havocMarkLoading('vessels');
+
   await loadLandMask();
   hideLoadingFallback();
   clampViewport();
   scheduleRender();
   updateHint();
-  window._havocMapReady = true;
+  _havocMarkReady('land');
+  window._havocMapReady = true;     // back-compat alias
   document.dispatchEvent(new CustomEvent('srah:map-ready'));
 
-  loadDepletionBitmap().then(() => scheduleRender());
+  loadDepletionBitmap().then(() => {
+    scheduleRender();
+    _havocMarkReady('depletion');
+  });
 
   // Fleet + status in the background — they update the UI when they arrive.
   (async () => {
@@ -4911,6 +5049,7 @@ async function init() {
       scheduleRender();
     }
     if (status) applyStatusToUI(status);
+    _havocMarkReady('vessels');
     if (status && status.is_final) {
       const poem = await loadFinalPoem();
       if (poem) applyFinalState(poem);

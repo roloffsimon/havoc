@@ -66,7 +66,8 @@ _preload_pdf_libs()
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from . import db, depletion, scheduler
 from .ocean_pool import OceanPool
@@ -150,8 +151,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# JSON responses (notably /api/vessels at ~42 MB unkomprimiert) compress
+# 8–12× — without this the frontend stalls for ~10 s before the live
+# fleet replaces the mock vessels on first paint.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 # ── Endpoints ────────────────────────────────────────────────────────
+
+_PUBLIC_CACHE_5MIN = {"Cache-Control": "public, max-age=300"}
+
 
 @app.get("/api/status")
 def status():
@@ -190,19 +199,34 @@ def status():
             "fishing_hours": round(fh, 2),
             "depletion_pct": latest["depletion_pct"],
         }
-    return out
+    return JSONResponse(content=out, headers=_PUBLIC_CACHE_5MIN)
 
 
 @app.get("/api/vessels")
 def vessels():
     day = db.latest_day()
     if not day:
-        return {"date": None, "vessels": []}
+        return JSONResponse(
+            content={"date": None, "vessels": []},
+            headers=_PUBLIC_CACHE_5MIN,
+        )
     rows = db.vessels_for(day["date"])
     catches_by_id = db.catches_by_vessel(day["date"])
+    # The renderer only checks `catches.length > 0` to decide whether to
+    # paint a vessel, and the Fleet card only ever displays the first
+    # stanza of the day — so one representative catch per vessel is all
+    # the frontend actually consumes. `catch_count` carries the real
+    # total for the "N stanzas" label. Without this trim the response is
+    # ~42 MB for ~10k vessels with 444k inlined catches (visibly stalls
+    # first paint by ~9 s on warm Railway).
     for v in rows:
-        v["catches"] = catches_by_id.get(v["vessel_id"], [])
-    return {"date": day["date"], "vessels": rows}
+        cs = catches_by_id.get(v["vessel_id"], [])
+        v["catches"] = cs[:1]
+        v["catch_count"] = len(cs)
+    return JSONResponse(
+        content={"date": day["date"], "vessels": rows},
+        headers=_PUBLIC_CACHE_5MIN,
+    )
 
 
 @app.get("/api/depletion-grid")

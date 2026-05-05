@@ -1,0 +1,6 @@
+# Cloudflare Pages — long-cache static assets that don't change between
+# deploys. The land mask is generated once from NOAA GLOBE; if it ever
+# changes we'll rename or hash-suffix the file rather than mutating it
+# in place, so `immutable` is safe and saves the 6.4 MB on every reload.
+/public/land_mask_3600x1800.bin
+  Cache-Control: public, max-age=31536000, immutable
