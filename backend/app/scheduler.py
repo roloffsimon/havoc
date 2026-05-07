@@ -1,26 +1,31 @@
 """
 Scheduled jobs — one depletion step per day.
 
-APScheduler runs alongside the FastAPI process. On Railway, this is
-the simplest topology that still lets the site update without a
-separate worker. The daily step is idempotent: it's skipped if the
-day is already recorded.
+The depletion + render runs in a subprocess (`scripts.run_daily`), not
+inline in the FastAPI process. typst.compile()'s Rust allocator never
+returns slabs to the OS, so an in-process daily render leaks ~5 GB per
+day and OOM-kills the container on day 2. Spawning a subprocess gives
+us a guaranteed full reclaim on its exit. The subprocess and the web
+worker share state only through `/data` (SQLite WAL + pool_mask.bin),
+both of which support concurrent multi-process access.
+
+After the subprocess exits cleanly we re-read the pool from disk so
+`/api/status` and friends reflect the new catch_count without waiting
+for a worker restart.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+import subprocess
+import sys
+from typing import Callable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from . import db, depletion, gfw_client
-
-if TYPE_CHECKING:
-    from .ocean_pool import OceanPool
+from . import db, gfw_client
 
 log = logging.getLogger(__name__)
 
@@ -28,24 +33,55 @@ log = logging.getLogger(__name__)
 DAILY_HOUR_UTC = int(os.environ.get("HAVOC_SCHEDULE_HOUR_UTC", "14"))
 DAILY_MINUTE_UTC = int(os.environ.get("HAVOC_SCHEDULE_MINUTE_UTC", "15"))
 
+# Hard cap on the daily render. Measured runtime ~50s on a 500k-catch
+# day; 600s is 12× that — anything past it is a genuine hang and we'd
+# rather kill the subprocess than let it pile up against tomorrow's run.
+SUBPROCESS_TIMEOUT_S = 600
+
 
 def _already_processed(date: str) -> bool:
     day = db.latest_day()
     return bool(day and day.get("date") == date)
 
 
-def make_job(pool_provider: Callable[[], OceanPool], project_day_0: str,
-             fallback_json: Path | None = None) -> Callable[[], None]:
+def make_job(reload_pool: Callable[[], None]) -> Callable[[], None]:
+    """Return the scheduled callable. After a successful subprocess run
+    invokes `reload_pool` so the web worker's in-memory OceanPool picks
+    up the fresh mask and catch_count from disk."""
     def _job():
+        # Pre-check in the worker, not the subprocess: lets us skip the
+        # ~1-2s of subprocess Python boot when the day is already done.
+        # The subprocess does its own check too as a defensive duplicate.
         start, _ = gfw_client.last_available_window()
         if _already_processed(start):
             log.info("Day %s already processed — skipping.", start)
             return
-        pool = pool_provider()
+
+        cmd = [sys.executable, "-m", "scripts.run_daily"]
+        log.info("Spawning daily render subprocess: %s", " ".join(cmd))
         try:
-            depletion.run_latest(pool, project_day_0, fallback_json=fallback_json)
+            result = subprocess.run(
+                cmd,
+                timeout=SUBPROCESS_TIMEOUT_S,
+                check=False,  # we handle non-zero exit explicitly
+            )
+        except subprocess.TimeoutExpired:
+            log.exception("Daily render subprocess timed out after %ds",
+                          SUBPROCESS_TIMEOUT_S)
+            return
         except Exception as exc:  # noqa: BLE001
-            log.exception("Daily depletion failed: %s", exc)
+            log.exception("Daily render subprocess failed to launch: %s", exc)
+            return
+
+        if result.returncode != 0:
+            log.error("Daily render subprocess exited %d", result.returncode)
+            return
+
+        log.info("Daily render subprocess completed cleanly; reloading pool")
+        try:
+            reload_pool()
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Pool reload after daily run failed: %s", exc)
     return _job
 
 

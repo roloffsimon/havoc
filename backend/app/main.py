@@ -130,10 +130,10 @@ async def lifespan(app: FastAPI):
     db.init_db()
     _load_pool()
     sched = AsyncIOScheduler(timezone="UTC")
-    fallback = Path(os.environ.get("HAVOC_FALLBACK_JSON", "")) or None
-    if fallback and not fallback.exists():
-        fallback = None
-    scheduler.attach(sched, scheduler.make_job(_get_pool, _project_day_0, fallback))
+    # The daily render runs in a subprocess (see scripts/run_daily.py and
+    # the rationale in scheduler.py). After it succeeds the worker's
+    # in-memory pool is stale, so we hand the scheduler our reload hook.
+    scheduler.attach(sched, scheduler.make_job(_load_pool))
     sched.start()
     try:
         yield
