@@ -232,14 +232,15 @@ def vessels():
 @app.get("/api/depletion-grid")
 def depletion_grid():
     """
-    Packed bitmap, 3600×1800 = 810 000 bytes, LSB-first, row-major.
-    1 bit = 'at least one backend cell in this display block is alive'.
+    Packed bitmap, 3600×1800 tiles × 2 bits = 1 620 000 bytes, LSB-first,
+    row-major. Two bits per tile encode the three frontend states
+    (see depletion.build_display_bitmap for the bit layout).
     """
     path = db.depletion_bitmap_path()
-    if not path.exists():
-        # Synthesise one on the fly from the current pool so the very
-        # first boot — before any daily run has happened — still serves
-        # a consistent grid to the frontend.
+    # Rebuild on first boot AND when a stale 1-bit bitmap (810 000 B)
+    # from the pre-2-bit deploy is still on disk — first request after
+    # rollout regenerates it.
+    if not path.exists() or path.stat().st_size != depletion.DISPLAY_BITMAP_BYTES:
         pool = _get_pool()
         bitmap = depletion.build_display_bitmap(pool)
         db.save_depletion_bitmap(bitmap)

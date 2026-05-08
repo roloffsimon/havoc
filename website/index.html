@@ -178,12 +178,12 @@
     --ship-glow:      var(--vessel-glow);
   }
   */
-  /* Begleitwerte für das Canvas-Rendering (GRID_COLORS) zu "Night Graphite":
+  /* Begleitwerte für das Canvas-Rendering (GRID_COLORS):
      land:             [184, 188, 194]       // --land  #b8bcc2
      landEdge:         [141, 145, 152]       // --land-edge #8d9198
-     oceanAlive Basis: (3, 10, 24) + kleiner Hash-Jitter — siehe Funktion
-     depletedPartial:  [2, 5, 16]
-     depletedFull:     [1, 3, 8]
+     oceanAlive Basis: (16–22, 44–56, 88–108) per-cell Hash-Jitter — STATE_INTACT (blau)
+     depletedPartial:  [96, 58, 32]          // STATE_PARTIAL — braun ("befischt")
+     depletedFull:     [6, 6, 8]             // STATE_DEPLETED — schwarz ("leer")
      ship:             [255, 240, 102]       // --vessel-hot #fff066
      stanzaAlive:      'rgba(216, 220, 226, 0.92)'
      stanzaGhost:      'rgba(216, 220, 226, 0.08)'
@@ -3434,11 +3434,12 @@ function generateStanzaForLang(col, row, lang) {
  *
  *  Each display tile covers a 10 × 10 block of backend stanza cells (see the
  *  "A note on the map" paragraph in the About view). The bitmap arrives as
- *  one bit per display tile (3600 × 1800 = 810 000 bytes, packed LSB-first,
- *  row-major) from /api/depletion-grid: `1 = at least one stanza cell still
- *  alive in this tile`, `0 = fully depleted`. Until a 2-bit encoding lands
- *  on the backend, the wire format only distinguishes INTACT from DEPLETED;
- *  PARTIAL is reserved for the mock mode below and for a future extension.
+ *  TWO bits per display tile from /api/depletion-grid (3600 × 1800 × 2 / 8 =
+ *  1 620 000 bytes, packed LSB-first, row-major). For tile N at bit offset
+ *  2N: low bit = "all alive" (min over the 10×10 block), high bit =
+ *  "any alive" (max). The reachable bit pairs are 0b11 = INTACT,
+ *  0b10 = PARTIAL, 0b00 = DEPLETED. (0b01 is impossible by construction:
+ *  if min = 1 then max = 1.)
  *
  *  The bitmap IS the project: a finite, enumerable, consumable state that
  *  only ever transitions from alive to gone. Combinatorial abundance meets
@@ -3453,10 +3454,14 @@ let depletionBitmap = null;            // Uint8Array, packed bits, LSB-first
 function isDepleted(col, row) {
   if (col < 0 || col >= DISPLAY_COLS || row < 0 || row >= DISPLAY_ROWS) return STATE_INTACT;
   if (depletionBitmap) {
-    const bitIndex = row * DISPLAY_COLS + col;
+    const bitIndex = (row * DISPLAY_COLS + col) * 2;
     const byte = depletionBitmap[bitIndex >> 3];
-    const aliveInTile = (byte >> (bitIndex & 7)) & 1;
-    return aliveInTile ? STATE_INTACT : STATE_DEPLETED;
+    const shift = bitIndex & 7;                    // even (0, 2, 4, 6) — pair stays in one byte
+    const allAlive = (byte >> shift) & 1;          // min over the 10×10 block
+    const anyAlive = (byte >> (shift + 1)) & 1;    // max over the 10×10 block
+    if (!anyAlive) return STATE_DEPLETED;
+    if (!allAlive) return STATE_PARTIAL;
+    return STATE_INTACT;
   }
   // Mock fallback when no backend is configured — sparse pseudo-random pattern,
   // distinct PARTIAL + DEPLETED bands so the map stays visually legible.
@@ -3475,31 +3480,33 @@ function isDepleted(col, row) {
 const DISPLAY_COLS = 3600;
 const DISPLAY_ROWS = 1800;
 
-// Grid colors as RGB triplets for ImageData rendering — "Night Graphite" palette
+// Grid colors as RGB triplets for ImageData rendering.
 // Palette for the three tile states + land + vessels + stanza text layers.
 // The three depletion tones are the visible side of `isDepleted()` (see above):
 //   oceanAlive       → STATE_INTACT     all 100 stanza cells in the tile alive
+//                                        ("unangetastet"  — blue)
 //   depletedPartial  → STATE_PARTIAL    at least one stanza cell erased
+//                                        ("befischt"      — brown, matches the
+//                                         active-vessel overlay so today's
+//                                         fleet reads as the same class)
 //   depletedFull     → STATE_DEPLETED   all 100 stanza cells erased
-// The three tones are intentionally close in value: as the ocean empties,
-// the map gets darker, not more colourful. No green/red "health" bar —
-// just the material subtraction of stanzas.
+//                                        ("leer"          — near-black)
 const GRID_COLORS = {
   land: [184, 188, 194],              // --land #b8bcc2 — hellgrau
   landEdge: [141, 145, 152],          // --land-edge #8d9198
   oceanAlive: function(cellIndex) {
-    // Subtle per-cell variation around --ocean #030a18
+    // STATE_INTACT — blue, with subtle per-cell variation so wide swaths
+    // don't read as flat fill at world view.
     const hash = ((cellIndex * 2654435761) >>> 0) & 0xFF;
     const t = hash / 255;
     return [
-      Math.round(3 + t * 4),
-      Math.round(10 + t * 6),
-      Math.round(24 + t * 10),
+      Math.round(16 + t * 6),         // 16–22
+      Math.round(44 + t * 12),        // 44–56
+      Math.round(88 + t * 20),        // 88–108
     ];
   },
-  // Depletion — minimal darker than the living ocean.
-  depletedPartial: [2, 5, 16],        // STATE_PARTIAL   — one+ stanza cells gone
-  depletedFull:    [1, 3, 8],         // STATE_DEPLETED  — all 100 stanza cells gone
+  depletedPartial: [96, 58, 32],      // STATE_PARTIAL  — warm brown ("befischt")
+  depletedFull:    [6, 6, 8],         // STATE_DEPLETED — near-black ("leer")
   ship: [255, 240, 102],              // --vessel-hot #fff066
   stanzaAlive: 'rgba(216, 220, 226, 0.92)',  // --cream #d8dce2
   stanzaGhost: 'rgba(216, 220, 226, 0.08)',
@@ -3922,7 +3929,11 @@ function collectActiveVesselCells() {
 function renderActiveVesselCells(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
   if (!cells || !cells.size) return;
   const cellH = cellW;
-  ctx.fillStyle = 'rgba(132, 96, 58, 0.36)';   // warm brown overlay, distinct from rust depletion
+  // Same brown as STATE_PARTIAL so today's fleet and historically-fished
+  // tiles read as one visual class ("befischt"). Painted opaque so a ship
+  // on a fully-depleted (black) tile still reads as brown — a current
+  // ship's presence trumps the persistent state.
+  ctx.fillStyle = 'rgb(96, 58, 32)';
   // Min draw size keeps the tint visible at world view, where a single
   // 0.1° cell is sub-pixel and would otherwise alpha-out to nothing —
   // active regions then read as coherent brown swathes that resolve

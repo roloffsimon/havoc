@@ -51,35 +51,41 @@ def _rss_mb() -> int:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // (1024 * 1024)
 
 
+DISPLAY_BITMAP_BYTES = DISPLAY_COLS * DISPLAY_ROWS * 2 // 8  # 1 620 000
+
+
 def build_display_bitmap(pool: OceanPool) -> bytes:
     """
     Collapse the 36 000 × 18 000 backend stanza mask into a 3 600 × 1 800
     display bitmap. Each display tile aggregates a 10 × 10 block of stanza
-    cells; one bit per tile is written to the wire:
+    cells; **two bits per tile** are written to the wire, low bit first:
 
-        1 = tile is still *alive* (at least one stanza cell in the block
-            has not yet been erased; the tile renders as INTACT or
-            PARTIALLY DEPLETED in the frontend palette)
-        0 = tile is *fully depleted* (all 100 stanza cells in the block
-            have been erased; renders as the darkest tone)
+        bit 0 (low)  = all 100 sub-cells alive   (min over block)
+        bit 1 (high) = any sub-cell still alive  (max over block)
 
-    This single-bit encoding collapses INTACT and PARTIALLY DEPLETED into
-    one value on the wire. A future 2-bit encoding can split them out so
-    "partially depleted" becomes observable on the map directly; the
-    frontend already has the third state reserved (STATE_PARTIAL in
-    website/index.html).
+    The four possible bit pairs map to three frontend states (the fourth
+    is unreachable by construction):
 
-    Size on the wire: 3 600 × 1 800 / 8 = 810 000 bytes ≈ 790 KB.
+        0b11 → INTACT     (all 100 alive)        — frontend "unangetastet"
+        0b10 → PARTIAL    (some alive, some gone) — frontend "befischt"
+        0b00 → DEPLETED   (all 100 erased)        — frontend "leer"
+        0b01 → impossible (min=1 ⇒ max=1)
+
+    Size on the wire: 3 600 × 1 800 × 2 / 8 = 1 620 000 bytes ≈ 1.55 MB.
+    Gzip on the wire collapses the runs of identical tiles to a few
+    hundred kB; FastAPI/Cloudflare apply that automatically.
     """
     mask2d = pool.mask.reshape(GRID_ROWS, GRID_COLS)
-    # "alive block" if any of the 100 sub-cells is still alive. Using a
-    # reshape + max avoids a Python loop.
     blocks = mask2d.reshape(
         DISPLAY_ROWS, DISPLAY_FACTOR, DISPLAY_COLS, DISPLAY_FACTOR
-    ).max(axis=(1, 3))
-    alive = blocks.astype(np.uint8, copy=False).ravel()
-    # Pack bits: 1 = alive, 0 = fully depleted.
-    packed = np.packbits(alive, bitorder="little")
+    )
+    any_alive = blocks.max(axis=(1, 3)).astype(np.uint8, copy=False)
+    all_alive = blocks.min(axis=(1, 3)).astype(np.uint8, copy=False)
+    # Interleave [tile0_min, tile0_max, tile1_min, tile1_max, …] so that
+    # np.packbits(bitorder="little") puts (min, max) of tile N into bits
+    # 2N and 2N+1 of the output stream — four tiles per byte.
+    interleaved = np.stack((all_alive, any_alive), axis=-1).ravel()
+    packed = np.packbits(interleaved, bitorder="little")
     return packed.tobytes()
 
 
