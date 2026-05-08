@@ -84,8 +84,17 @@ def build_display_bitmap(pool: OceanPool) -> bytes:
 
 
 def run_day(pool: OceanPool, events: list[dict],
-            date: str, project_day_0: str) -> dict:
-    """Process one day of events. Mutates the pool in place."""
+            date: str, project_day_0: str,
+            *, languages: tuple[str, ...] = ("en", "de")) -> dict:
+    """Process one day of events. Mutates the pool in place.
+
+    `languages` controls which PDF volumes are rendered inline. Default
+    renders both EN and DE (legacy behaviour). The Railway daily job
+    splits these across two subprocess calls — `("en",)` for the first
+    pass (events + persist + EN) and a separate re-render path for DE
+    (`pdf_builder.render_persisted_day`) — so the typst Rust heap from
+    one language never coexists with the next.
+    """
     log.info("run_day %s start: %d events, rss=%dMB", date, len(events), _rss_mb())
     # Chronological order. The ocean doesn't sort by anything else.
     events_sorted = sorted(events, key=lambda e: e.get("start", ""))
@@ -153,17 +162,19 @@ def run_day(pool: OceanPool, events: list[dict],
     # only by filesystem presence (looked up via pdf_builder.latest_pdf
     # at request time). Either render is allowed to fail without
     # taking the day's persistence with it.
-    try:
-        pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
-        pdf_path_str = str(pdf_path) if pdf_path else None
-    except Exception as exc:  # noqa: BLE001
-        log.exception("PDF render failed for %s, continuing without PDF: %s", date, exc)
-        pdf_path_str = None
-    try:
-        pdf_builder.render_daily_pdf(stats, per_vessel, language="de")
-    except Exception as exc:  # noqa: BLE001
-        log.exception("DE PDF render failed for %s, continuing: %s", date, exc)
-    log.info("PDF render done, rss=%dMB", _rss_mb())
+    pdf_path_str: str | None = None
+    if "en" in languages:
+        try:
+            pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
+            pdf_path_str = str(pdf_path) if pdf_path else None
+        except Exception as exc:  # noqa: BLE001
+            log.exception("PDF render failed for %s, continuing without PDF: %s", date, exc)
+    if "de" in languages:
+        try:
+            pdf_builder.render_daily_pdf(stats, per_vessel, language="de")
+        except Exception as exc:  # noqa: BLE001
+            log.exception("DE PDF render failed for %s, continuing: %s", date, exc)
+    log.info("PDF render done (langs=%s), rss=%dMB", ",".join(languages), _rss_mb())
 
     db.record_day(stats, list(vessels_meta.values()), all_catches, pdf_path_str)
 
@@ -191,7 +202,8 @@ def run_day(pool: OceanPool, events: list[dict],
 
 
 def run_latest(pool: OceanPool, project_day_0: str,
-               fallback_json: Path | None = None) -> dict:
+               fallback_json: Path | None = None,
+               *, languages: tuple[str, ...] = ("en", "de")) -> dict:
     """Fetch the last-available day from GFW (or fallback) and run it."""
     start, end = gfw_client.last_available_window()
     try:
@@ -202,4 +214,5 @@ def run_latest(pool: OceanPool, project_day_0: str,
             raise
         log.info("Falling back to %s", fallback_json)
         events = gfw_client.load_events_from_file(str(fallback_json))
-    return run_day(pool, events, date=start, project_day_0=project_day_0)
+    return run_day(pool, events, date=start, project_day_0=project_day_0,
+                   languages=languages)

@@ -1656,6 +1656,59 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]],
     return _write_daily_artefacts(stats, capped_poems)
 
 
+def render_persisted_day(date: str, *,
+                         language: str = DEFAULT_LANGUAGE) -> Path | None:
+    """Re-render the PDFs for a day already persisted in the DB.
+
+    The Railway daily job splits EN and DE into two subprocess calls so
+    each typst.compile() run starts with a fresh process address space —
+    a single process holding all six tier compiles peaks at ~7 GB on
+    heavy days (646k catches), close enough to the 8 GB ceiling to
+    OOM-kill. The first subprocess processes events and renders EN; this
+    function is what the second subprocess calls to render DE without
+    re-fetching GFW or re-mutating the pool.
+
+    Stats and the per-vessel catch list are reconstructed from the DB
+    rows written by `db.record_day`. Returns the canonical Selection
+    PDF path (in whatever language was rendered), or None if `date` is
+    not in the DB.
+    """
+    with db.connect() as c:
+        row = c.execute(
+            "SELECT * FROM days WHERE date = ?", (date,)
+        ).fetchone()
+    if row is None:
+        log.warning("render_persisted_day: no row for %s", date)
+        return None
+    d = dict(row)
+    stats = {
+        "date": d["date"],
+        "events_processed": d["events"],
+        "vessels_active": d["vessels"],
+        "stanzas_caught": d["stanzas_caught"],
+        "gps_catches": d["gps_catches"],
+        "pool_catches": d["pool_catches"],
+        "depletion_percent": d["depletion_pct"],
+        "depletion_factor": DEPLETION_FACTOR,
+        # Live ocean_alive isn't stored per-day; the cover/footer copy
+        # falls back gracefully when None, and the PDF doesn't otherwise
+        # need it. Keeping the key so the dict shape matches run_day.
+        "ocean_alive": None,
+        "fishing_hours": 0.0,
+    }
+    catches = db.catches_for(date)
+    poems: dict[str, list[dict]] = {}
+    for ct in catches:
+        key = ct.get("vessel_id") or (
+            f'{ct.get("vessel_name") or "UNKNOWN"}'
+            f'::{ct.get("flag") or "??"}'
+        )
+        poems.setdefault(key, []).append(ct)
+    log.info("render_persisted_day: %s, language=%s, vessels=%d, catches=%d",
+             date, language, len(poems), len(catches))
+    return render_daily_pdf(stats, poems, language=language)
+
+
 # ── Public lookups (used by main.py) ─────────────────────────────────
 
 def latest_pdf(tier: str | None = None,

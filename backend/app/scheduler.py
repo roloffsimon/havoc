@@ -1,17 +1,32 @@
 """
 Scheduled jobs — one depletion step per day.
 
-The depletion + render runs in a subprocess (`scripts.run_daily`), not
-inline in the FastAPI process. typst.compile()'s Rust allocator never
-returns slabs to the OS, so an in-process daily render leaks ~5 GB per
-day and OOM-kills the container on day 2. Spawning a subprocess gives
-us a guaranteed full reclaim on its exit. The subprocess and the web
-worker share state only through `/data` (SQLite WAL + pool_mask.bin),
-both of which support concurrent multi-process access.
+The depletion + render runs in TWO subprocess passes (one per language),
+not inline in the FastAPI process. Two reasons:
 
-After the subprocess exits cleanly we re-read the pool from disk so
-`/api/status` and friends reflect the new catch_count without waiting
-for a worker restart.
+1. typst.compile()'s Rust allocator never returns slabs to the OS, so
+   an in-process daily render leaks ~5 GB per day and OOM-kills the
+   container on day 2. A subprocess gets a full reclaim on exit.
+
+2. Even within a single subprocess, six tier compiles (3 tiers × 2
+   languages) accumulate Rust-heap fragments. On a 646k-catch day
+   (2026-05-04) one process holding all six pushed past 7 GB and got
+   SIGKILLed by the kernel. Splitting the languages into separate
+   subprocess invocations means each only does 3 compiles and peaks
+   around 4 GB.
+
+Pass 1 (`--lang en`) is the canonical daily: load pool, fetch GFW
+events, mutate the pool, persist DB + new mask, render EN PDFs.
+
+Pass 2 (`--lang de`) is a re-render only: it reads the latest day's
+catches from the DB and renders DE PDFs. No GFW, no pool mutation.
+
+After Pass 1 we reload the worker's in-memory pool regardless of how
+Pass 2 went — Pass 1 already changed the truth on disk.
+
+Subprocess and web worker share state only through `/data`
+(SQLite WAL + pool_mask.bin), which supports concurrent multi-process
+access.
 """
 
 from __future__ import annotations
@@ -44,10 +59,34 @@ def _already_processed(date: str) -> bool:
     return bool(day and day.get("date") == date)
 
 
+def _spawn(lang: str) -> int | None:
+    """Run one pass of `scripts.run_daily --lang <lang>` as a subprocess.
+    Returns the subprocess exit code, or None on launch error / timeout
+    (already logged)."""
+    cmd = [sys.executable, "-m", "scripts.run_daily", "--lang", lang]
+    log.info("Spawning subprocess: %s", " ".join(cmd))
+    try:
+        result = subprocess.run(
+            cmd,
+            timeout=SUBPROCESS_TIMEOUT_S,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        log.exception("Subprocess (lang=%s) timed out after %ds",
+                      lang, SUBPROCESS_TIMEOUT_S)
+        return None
+    except Exception as exc:  # noqa: BLE001
+        log.exception("Subprocess (lang=%s) failed to launch: %s", lang, exc)
+        return None
+    if result.returncode != 0:
+        log.error("Subprocess (lang=%s) exited %d", lang, result.returncode)
+    return result.returncode
+
+
 def make_job(reload_pool: Callable[[], None]) -> Callable[[], None]:
-    """Return the scheduled callable. After a successful subprocess run
-    invokes `reload_pool` so the web worker's in-memory OceanPool picks
-    up the fresh mask and catch_count from disk."""
+    """Return the scheduled callable. Runs the EN pass, reloads the pool
+    (Pass 1 already mutated /data, so the worker should refresh even if
+    the DE pass later fails), then runs the DE pass."""
     def _job():
         # Pre-check in the worker, not the subprocess: lets us skip the
         # ~1-2s of subprocess Python boot when the day is already done.
@@ -57,31 +96,23 @@ def make_job(reload_pool: Callable[[], None]) -> Callable[[], None]:
             log.info("Day %s already processed — skipping.", start)
             return
 
-        cmd = [sys.executable, "-m", "scripts.run_daily"]
-        log.info("Spawning daily render subprocess: %s", " ".join(cmd))
-        try:
-            result = subprocess.run(
-                cmd,
-                timeout=SUBPROCESS_TIMEOUT_S,
-                check=False,  # we handle non-zero exit explicitly
-            )
-        except subprocess.TimeoutExpired:
-            log.exception("Daily render subprocess timed out after %ds",
-                          SUBPROCESS_TIMEOUT_S)
-            return
-        except Exception as exc:  # noqa: BLE001
-            log.exception("Daily render subprocess failed to launch: %s", exc)
+        # Pass 1: events + DB persist + EN render
+        en_rc = _spawn("en")
+        if en_rc == 0:
+            log.info("EN pass completed cleanly; reloading pool")
+            try:
+                reload_pool()
+            except Exception as exc:  # noqa: BLE001
+                log.exception("Pool reload after EN pass failed: %s", exc)
+        else:
+            log.error("EN pass did not complete cleanly; skipping DE pass")
             return
 
-        if result.returncode != 0:
-            log.error("Daily render subprocess exited %d", result.returncode)
-            return
-
-        log.info("Daily render subprocess completed cleanly; reloading pool")
-        try:
-            reload_pool()
-        except Exception as exc:  # noqa: BLE001
-            log.exception("Pool reload after daily run failed: %s", exc)
+        # Pass 2: DE re-render from the day Pass 1 just persisted
+        de_rc = _spawn("de")
+        if de_rc != 0:
+            log.warning("DE pass failed (rc=%s); EN PDFs are in /data/pdfs",
+                        de_rc)
     return _job
 
 
