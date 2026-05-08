@@ -23,11 +23,11 @@ Two rules make this into a dramaturgy rather than a mere accounting:
 
     (1) GPS-first, then global pool. The first stanza of each fishing
         event is deleted at the ship's actual location. The remaining
-        stanzas (DEPLETION_FACTOR per fishing hour) are drawn from a
-        cursor that sweeps boustrophedon across the whole ocean. So a
-        trawler in the North Sea can consume a verse in the Indian
-        Ocean: industrial fishing is a planetary system, and local
-        over-extraction has global consequences.
+        stanzas (DEPLETION_FACTOR per fishing hour) are drawn at random
+        from anywhere in the surviving pool. So a trawler in the North
+        Sea can consume a verse in the Indian Ocean: industrial fishing
+        is a planetary system, and local over-extraction has global
+        consequences.
 
     (2) FINAL_FLOOR = 1. Exactly one water cell is held back from
         depletion. When the pool drops to one living cell, the
@@ -93,8 +93,18 @@ class OceanPool:
         self.water_cells = int(self.mask.sum())
         self.total = int(self.mask.size)
         self.catch_count = catch_count
+        # `cursor` and `direction` are vestiges of an earlier
+        # boustrophedon-sweep policy. Pool draws now use random
+        # sampling (see `next_from_pool`); these fields are kept on the
+        # instance only so older checkpoints still load. They are not
+        # consulted by any code path.
         self.cursor = cursor
-        self.direction = direction  # +1 = SW→NE sweep, -1 = NE→SW sweep
+        self.direction = direction
+        # Drawn fresh per process. The depletion *state* lives in the
+        # mask (which is checkpointed); the order in which doomed cells
+        # are picked is not part of the work's identity, so a non-seeded
+        # generator is fine.
+        self._rng = np.random.default_rng()
 
     # ── Accessors ────────────────────────────────────────────────────
 
@@ -124,23 +134,26 @@ class OceanPool:
         return generate_stanza_at(col, row)
 
     def next_from_pool(self) -> Optional[tuple[int, int, list[str]]]:
-        """Draw the next living cell using the boustrophedon cursor."""
+        """Draw a random living cell from anywhere in the pool.
+
+        Rejection sampling against the flat mask: pull a uniform index
+        in [0, total) and retry until we land on a live cell. Land
+        cells are mask=0 from initialisation and are rejected the same
+        way as already-erased water cells. The acceptance rate is
+        `remaining / total`; even at 1 % water remaining the expected
+        attempt count per draw is ~100 — microseconds at numpy speed.
+        """
         if self.is_exhausted:
             return None
 
-        while 0 <= self.cursor < self.total:
-            idx = self.cursor
-            self.cursor += self.direction
+        # `np.flatnonzero(self.mask)` would be O(total) per draw; rejection
+        # sampling stays O(1) in expectation as long as the pool is not
+        # near-empty. FINAL_FLOOR=1 stops depletion before the worst case.
+        while True:
+            idx = int(self._rng.integers(0, self.total))
             if self.mask[idx]:
                 col, row = self._idx_to_colrow(idx)
                 return col, row, self.deplete(col, row)
-
-        # End of sweep — flip direction and clamp the cursor.
-        if not self.is_exhausted:
-            self.direction *= -1
-            self.cursor = max(0, min(self.total - 1, self.cursor))
-            return self.next_from_pool()
-        return None
 
     def process_event(self, lat: float, lon: float, fishing_hours: float) -> list[dict]:
         """
