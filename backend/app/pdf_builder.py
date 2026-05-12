@@ -7,7 +7,7 @@ Page 1   — full-bleed cover, the "Grid-Glyph" design from
            archive/design_drafts/16_pdf_cover_b_grid_glyph.html: the page's
            Night-Graphite blue with a fine 2 mm grid running unbroken
            through both the ocean and the Instrument-Sans title.
-Page 2+  — body, white paper, two-column stanzas. Each vessel becomes a
+Page 2+  — body, white paper, three-column stanzas. Each vessel becomes a
            poem in the volume: a right-aligned motto with the day's flag
            and stats, then the vessel name as the poem's heading, then
            the stanzas the ship erased that day, sorted high-to-low
@@ -16,9 +16,6 @@ Page 2+  — body, white paper, two-column stanzas. Each vessel becomes a
 Why split colour from B/W? File size. The cover carries the project's
 visual identity in colour; the rest is type only, so the body pages
 compress well and stay light when WeasyPrint flattens to PDF.
-
-Sizing tiers were dropped on 2026-04-25: the website serves only the
-day's full document.
 """
 
 from __future__ import annotations
@@ -1632,7 +1629,7 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]],
         return None
 
     language = _normalise_language(language)
-    engine = os.environ.get("HAVOC_PDF_ENGINE", "weasy").strip().lower()
+    engine = os.environ.get("HAVOC_PDF_ENGINE", "typst").strip().lower()
     if engine == "typst":
         return _write_daily_artefacts_typst(stats, poems, language=language)
 
