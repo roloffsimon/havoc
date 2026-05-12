@@ -8,6 +8,7 @@ GET /api/vessels           last-known positions of active vessels
 GET /api/depletion-grid    packed bitmap, 3600×1800 bits, display-aligned
 GET /api/final-poem        only populated once the pool is exhausted
 GET /api/catch-of-the-day  the day's PDF (or HTML fallback)
+GET /api/catch-info        per-tier metadata for the download modal
 
 The frontend lives on Cloudflare Pages / GitHub Pages; this service
 runs on Railway. CORS is wide-open for GET because nothing here is
@@ -295,6 +296,68 @@ def catch_of_the_day(size: str = "selection", lang: str = "en"):
         raise HTTPException(status_code=404, detail="No catch rendered yet.")
     media = "application/pdf" if path.suffix == ".pdf" else "text/html"
     return FileResponse(path, media_type=media, filename=path.name)
+
+
+@app.get("/api/catch-info")
+def catch_info(size: str = "selection", lang: str = "en"):
+    """Metadata for the download confirmation modal.
+
+    Returns the actual on-disk size, page count, and date for the
+    chosen tier+language so the website can replace its mock figures.
+    The page count is read from the PDF trailer via pypdf (xref-only,
+    no full-content parse) — fast even for the largest tier.
+    """
+    from . import pdf_builder
+    aliases = {
+        "selection": "selection", "full": "selection", "digest": "selection",
+        "finecut": "finecut",     "excerpt": "finecut",
+        "onepiece": "onepiece",   "vessel": "onepiece",
+    }
+    tier = aliases.get(size.lower().strip(), pdf_builder.DEFAULT_TIER)
+    lang_aliases = {"en": "en", "english": "en", "de": "de", "deutsch": "de", "german": "de"}
+    language = lang_aliases.get(lang.lower().strip(), "en")
+    path = pdf_builder.latest_pdf(tier, language=language)
+    if path is None:
+        raise HTTPException(status_code=404, detail="No catch rendered yet.")
+
+    bytes_ = path.stat().st_size
+    pages: int | None = None
+    if path.suffix == ".pdf":
+        try:
+            from pypdf import PdfReader
+            pages = len(PdfReader(str(path)).pages)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger(__name__).warning("pypdf page count failed for %s: %r", path, exc)
+
+    # Date — prefer the filename ("catch_<YYYY-MM-DD>_<tier>[_de].pdf")
+    # since that's the date the volume was rendered for; fall back to
+    # the most recent persisted day.
+    date: str | None = None
+    stem = path.stem
+    if stem.startswith("catch_"):
+        parts = stem.split("_")
+        if len(parts) >= 2:
+            date = parts[1]
+
+    stanzas = None
+    latest = db.latest_day()
+    if latest:
+        if not date:
+            date = latest["date"]
+        stanzas = latest["stanzas_caught"]
+
+    return JSONResponse(
+        content={
+            "date": date,
+            "tier": tier,
+            "language": language,
+            "filename": path.name,
+            "bytes": bytes_,
+            "pages": pages,
+            "stanzas": stanzas,
+        },
+        headers=_PUBLIC_CACHE_5MIN,
+    )
 
 
 @app.get("/api/health")

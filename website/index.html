@@ -2424,7 +2424,7 @@
 <div class="catch-modal-backdrop" id="download-modal">
   <div class="catch-modal">
     <div class="cm-title" data-i18n="catch.modal.title">Generating your catch</div>
-    <div class="cm-text">&hellip;</div>
+    <div class="cm-text" id="dl-meta">&hellip;</div>
     <div class="cm-bar"><div class="cm-bar-fill" id="dl-bar"></div></div>
     <div class="cm-status" id="dl-status" data-i18n="catch.modal.preparing">Preparing&hellip;</div>
   </div>
@@ -2518,9 +2518,9 @@ const I18N = {
     'catch.cta.without': 'Download (English)',
     'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Generating your catch',
-    'catch.modal.text.selection': '{date} \u2014 about {stanzas} stanzas (a random tenth of the day\u2019s fleet).<br>Takes about 40 seconds.',
-    'catch.modal.text.finecut':   '{date} \u2014 about {stanzas} stanzas (a random hundredth).<br>Takes about 10 seconds.',
-    'catch.modal.text.onepiece':  '{date} \u2014 the catch of one randomly chosen vessel.<br>Takes about 3 seconds.',
+    'catch.modal.text.selection': '{date} \u2014 {stanzas}&thinsp;stanzas, {pages}&thinsp;pages, ~{mb}&thinsp;MB (a random tenth of the day\u2019s fleet).<br>Takes about 40 seconds.',
+    'catch.modal.text.finecut':   '{date} \u2014 {stanzas}&thinsp;stanzas, {pages}&thinsp;pages, ~{mb}&thinsp;MB (a random hundredth).<br>Takes about 10 seconds.',
+    'catch.modal.text.onepiece':  '{date} \u2014 {stanzas}&thinsp;stanzas from one randomly chosen vessel, {pages}&thinsp;pages, ~{mb}&thinsp;MB.<br>Takes about 3 seconds.',
     'catch.modal.text.fallback':  'Preparing today\u2019s catch.<br>Takes a few seconds.',
     'catch.modal.preparing': 'Preparing\u2026',
     'catch.modal.rendering': 'Rendering stanzas \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
@@ -2633,9 +2633,9 @@ const I18N = {
     'catch.cta.without': 'Download (Englisch)',
     'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Dein Fang wird erzeugt',
-    'catch.modal.text.selection': '{date} \u2014 etwa {stanzas} Strophen (ein zuf\u00e4lliges Zehntel der Tagesflotte).<br>Dauert etwa 40 Sekunden.',
-    'catch.modal.text.finecut':   '{date} \u2014 etwa {stanzas} Strophen (ein zuf\u00e4lliges Hundertstel).<br>Dauert etwa 10 Sekunden.',
-    'catch.modal.text.onepiece':  '{date} \u2014 der Fang eines zuf\u00e4llig gezogenen Schiffs.<br>Dauert etwa 3 Sekunden.',
+    'catch.modal.text.selection': '{date} \u2014 {stanzas}&thinsp;Strophen, {pages}&thinsp;Seiten, ~{mb}&thinsp;MB (ein zuf\u00e4lliges Zehntel der Tagesflotte).<br>Dauert etwa 40 Sekunden.',
+    'catch.modal.text.finecut':   '{date} \u2014 {stanzas}&thinsp;Strophen, {pages}&thinsp;Seiten, ~{mb}&thinsp;MB (ein zuf\u00e4lliges Hundertstel).<br>Dauert etwa 10 Sekunden.',
+    'catch.modal.text.onepiece':  '{date} \u2014 {stanzas}&thinsp;Strophen aus einem zuf\u00e4llig gezogenen Schiff, {pages}&thinsp;Seiten, ~{mb}&thinsp;MB.<br>Dauert etwa 3 Sekunden.',
     'catch.modal.text.fallback':  'Der Tagesfang wird vorbereitet.<br>Dauert ein paar Sekunden.',
     'catch.modal.preparing': 'Wird vorbereitet\u2026',
     'catch.modal.rendering': 'Strophen werden gesetzt \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
@@ -3752,6 +3752,25 @@ async function loadVessels() {
     }));
   } catch (e) {
     console.warn('Vessels unavailable — keeping static fallback set.', e);
+    return null;
+  }
+}
+
+// Per-tier metadata for the download modal: actual on-disk file size,
+// page count and stanza total for the chosen size + language. The
+// backend reads these from the rendered PDF (st_size + pypdf) so the
+// modal can replace its placeholder figures with real ones.
+async function loadCatchInfo(size, lang) {
+  if (!HAVOC_HAS_API) return null;
+  try {
+    const params = new URLSearchParams();
+    if (size) params.set('size', size);
+    if (lang) params.set('lang', lang);
+    const r = await fetch(`${HAVOC_API_BASE}/api/catch-info?${params.toString()}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.warn('Catch-info unavailable.', e);
     return null;
   }
 }
@@ -5121,46 +5140,73 @@ function animateCatchCounter() {
 // DOWNLOAD MODAL
 // ══════════════════════════════════════════════════
 
-// Roughly one third of all stanzas come from One-Piece picks (single
-// vessel); used to estimate the One-Piece body line. Selection/Fine Cut
-// scale by the documented tier fraction (see TIER_FRACTIONS in
-// backend/app/pdf_builder.py).
+// Selection / Fine Cut scale by the documented tier fraction (see
+// TIER_FRACTIONS in backend/app/pdf_builder.py); One Piece is one
+// random vessel, so its stanza count comes from /api/catch-info.
 const TIER_FRACTIONS = { selection: 10, finecut: 100, onepiece: 1 };
 
-function renderModalText(status, tier, lang) {
-  // Fallback: status not yet loaded (modal opened before /api/status
-  // returned). Keep the legacy i18n line so the modal isn't blank.
-  if (!status || !status.latest_day) return t('catch.modal.text.fallback', lang);
-
-  const latest = status.latest_day;
-  const locale = lang === 'de' ? 'de-DE' : 'en-GB';
-  const dateStr = status.now_utc || latest.date;
-  const d = dateStr ? new Date(dateStr) : new Date();
-  const longDate = new Intl.DateTimeFormat(locale, {
-    day: 'numeric', month: 'long', year: 'numeric',
-  }).format(d);
-
-  // Same thin-space grouping the status bar uses.
-  const fmt = n => Number(n).toLocaleString(locale, { useGrouping: true })
-    .replace(/,/g, ' ').replace(/\./g, ' ');
-
-  // For Selection (1/10) and Fine Cut (1/100) the per-PDF stanza count
-  // is the day's catch divided by the tier. One Piece is one random
-  // vessel, so we don't have a deterministic stanza count — leave the
-  // template to phrase it without a number.
-  const baseStanzas = latest.stanzas_caught || 0;
-  let stanzasStr = '';
-  if (tier === 'selection') stanzasStr = fmt(Math.round(baseStanzas / 10));
-  else if (tier === 'finecut') stanzasStr = fmt(Math.round(baseStanzas / 100));
-
-  const key = 'catch.modal.text.' + (tier in TIER_FRACTIONS ? tier : 'selection');
-  return t(key, lang).replace('{date}', longDate).replace('{stanzas}', stanzasStr);
+// Format a byte count as MB with one decimal place under 100, whole
+// numbers above — matches the modal's "~51 MB" style.
+function formatMB(bytes) {
+  if (typeof bytes !== 'number' || !isFinite(bytes) || bytes <= 0) return '?';
+  const mb = bytes / (1024 * 1024);
+  return mb >= 100 ? Math.round(mb).toString() : mb.toFixed(1);
 }
 
+// Modal body renderer. Combines two data sources:
+//
+//   - `status` (window._havocStatus, cached from /api/status) gives
+//     us today's UTC date and the day's full stanza count. Present
+//     as soon as the front-page status fetch resolves.
+//
+//   - `info` (from /api/catch-info, fetched on modal open) gives us
+//     the exact PDF metadata for the chosen tier + language: real
+//     page count via pypdf, real on-disk size, and the date the PDF
+//     was rendered for. May be null if the endpoint hasn't responded
+//     yet or that tier hasn't been produced. `info` wins where it
+//     overlaps with status; page/MB placeholders fall back to "?"
+//     when neither source supplies them.
+function renderModalText(status, info, tier, lang) {
+  if (!status && !info) return t('catch.modal.text.fallback', lang);
+
+  const locale = lang === 'de' ? 'de-DE' : 'en-GB';
+  const dateStr = info?.date || status?.now_utc || status?.latest_day?.date;
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const longDate = isNaN(d) ? (dateStr || '')
+    : new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+
+  const fmt = n => Number(n).toLocaleString(locale, { useGrouping: true })
+    .replace(/,/g, ' ').replace(/\./g, ' ');
+
+  // Stanzas: prefer the catch-info value (real count in the PDF).
+  // Fall back to a tier-fraction estimate while catch-info is in
+  // flight — close enough for the modal preview.
+  let stanzasStr = '?';
+  if (info?.stanzas != null) stanzasStr = fmt(info.stanzas);
+  else if (status?.latest_day) {
+    const base = status.latest_day.stanzas_caught || 0;
+    if (tier === 'selection') stanzasStr = fmt(Math.round(base / 10));
+    else if (tier === 'finecut') stanzasStr = fmt(Math.round(base / 100));
+  }
+
+  const pagesStr = info?.pages != null ? fmt(info.pages) : '?';
+  const mbStr = formatMB(info?.bytes);
+
+  const key = 'catch.modal.text.' + (tier in TIER_FRACTIONS ? tier : 'selection');
+  return t(key, lang)
+    .replace('{date}', longDate)
+    .replace('{stanzas}', stanzasStr)
+    .replace('{pages}', pagesStr)
+    .replace('{mb}', mbStr);
+}
 function openDownloadModal(lang) {
   const mod = document.getElementById('download-modal');
   const bar = document.getElementById('dl-bar');
   const status = document.getElementById('dl-status');
+  const meta = document.getElementById('dl-meta');
+  const dd = document.getElementById('catch-size');
+  const size = dd?.dataset?.value || 'selection';
+
   mod.classList.add('is-open');
   // The modal's status text and body both follow the PDF's target
   // language, not the surrounding UI — clicking "Download (English)"
@@ -5169,9 +5215,21 @@ function openDownloadModal(lang) {
   mod.dataset.lang = lang;
   const tier = document.getElementById('catch-size')?.dataset?.value || 'selection';
   const body = mod.querySelector('.cm-text');
-  if (body) body.innerHTML = renderModalText(window._havocStatus, tier, lang);
+  // First paint: render the body with whatever status we already have
+  // and no catch-info yet. The catch-info fetch below upgrades the
+  // line as soon as the real pages/MB land.
+  if (body) body.innerHTML = renderModalText(window._havocStatus, null, tier, lang);
   bar.style.width = '0%';
   status.textContent = t('catch.modal.preparing', lang);
+
+  // Fetch /api/catch-info in parallel with the fake progress
+  // animation; once we have real bytes + page count, re-render the
+  // body line so the user sees the actual size of the PDF they're
+  // about to receive.
+  loadCatchInfo(tier, lang).then(info => {
+    if (!info || !body) return;
+    body.innerHTML = renderModalText(window._havocStatus, info, tier, lang);
+  });
 
   setTimeout(() => { bar.style.width = '35%'; status.innerHTML = t('catch.modal.rendering', lang); }, 800);
   setTimeout(() => { bar.style.width = '72%'; status.innerHTML = t('catch.modal.paginating', lang); }, 1800);
