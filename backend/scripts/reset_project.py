@@ -48,8 +48,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("reset_project")
 
 
-REPO = Path(__file__).resolve().parents[2]
-DEFAULT_MASK = REPO / "backend" / "ocean_mask.npz"
+# The mask sits next to the `app/` package, i.e. one level above this
+# `scripts/` directory. Same anchor in the dev layout (`backend/`) and
+# the production container (`/app/`), where the deploy flattens away
+# the `backend/` segment.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_MASK = BACKEND_ROOT / "ocean_mask.npz"
 
 
 def wipe_tables() -> None:
