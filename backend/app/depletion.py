@@ -5,8 +5,7 @@ Flow
 ----
 1. Pull the last available day of GFW events.
 2. Feed them into the OceanPool, chronologically.
-3. Annotate each catch with Shannon entropy (reading metric, measured
-   at catch time but not used to re-order the catch log).
+3. Annotate each catch with GPS Position.
 4. Persist: day stats, vessels, catches.
 5. Rebuild and save the 3600×1800 depletion bitmap for the frontend.
 6. Render the Catch-of-the-Day PDF.

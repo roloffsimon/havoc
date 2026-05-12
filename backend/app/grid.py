@@ -1,9 +1,9 @@
 """
-Grid constants and coordinate conversions.
+Next: Grid constants and coordinate conversions.
 
 The grid is pinned to GFW's native 0.01° resolution, so one GFW data
 cell, one geographic cell, and one stanza position coincide. This is
-what lets a fishing event — detected from AIS signals — address a
+what lets a fishing event in the GFW API — detected from AIS signals — address a
 stanza directly.
 """
 
@@ -55,12 +55,13 @@ def grid_to_lattice(col: int, row: int) -> tuple[int, int]:
     than the grid, so each of the 648 million geographic cells lands on
     a distinct lattice position. Collisions are practically impossible.
 
-    Conceptual anchor — this is the hinge of the whole project.
+    This is the hinge of the whole project.
     Montfort & Strickland wrote that their work "contains as many
-    verses as there are fish in the sea." *Remorseless Havoc*
-    takes that metaphor literally: every square kilometre of real
-    ocean is assigned one of those verses, and industrial fishing
-    erases them the same way it erases fish.
+    verses as there are fish in the sea." Remorseless Havoc
+    takes that metaphor literally: every stanza is assigned to a square kilometre of real
+    ocean and the movement data of industrial fishing
+    erases them. Language becomes much more finite than in the original project.
+    Like the oceans resources, like the energy we use for computing.
     """
     i = int(col * (LATTICE_SIZE - 1) / (GRID_COLS - 1))
     j = int(row * (LATTICE_SIZE - 1) / (GRID_ROWS - 1))
