@@ -1506,89 +1506,184 @@
     right: 5vw;
   }
 
-  /* Enter button — the only way out of the splash. Disabled while any of
-     the three load stages is still pending; the JS counter rewrites the
-     caption every second so the user can see the wait. Once ready, the
-     button lights up to full cream and accepts click / Enter / Esc. */
+  /* ── Splash loader ──────────────────────────────────────────────
+     Instrument-calibration aesthetic. Three thin tracks fill amber as
+     each load stage resolves; the active stage shimmers like a sonar
+     sweep. Everything sits in a narrow band below the motto so the
+     loader reads as telemetry under the quotation, not as a separate
+     widget competing for attention. */
+  .splash-loader {
+    position: absolute;
+    bottom: 9vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, 64vw);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    opacity: 1;
+    transition: opacity 400ms ease-out, visibility 0s linear 0s;
+    pointer-events: none;
+  }
+
+  .splash-loader-headline {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--amber);
+    text-align: center;
+    line-height: 1;
+    animation: amber-breath 2.6s ease-in-out infinite;
+    /* The two flanking glyphs are sentinel marks, evoking a status
+       prefix from a telemetry readout. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .splash-loader-headline::before,
+  .splash-loader-headline::after {
+    content: '';
+    width: 6px;
+    height: 1px;
+    background: var(--amber);
+    opacity: 0.55;
+  }
+  @keyframes amber-breath {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1; }
+  }
+
+  .splash-loader-track {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .splash-loader-seg {
+    height: 2px;
+    background: var(--cream-ghost);
+    position: relative;
+    overflow: hidden;
+    border-radius: 1px;
+    transition: background 400ms ease-out;
+  }
+  .splash-loader-seg.is-loading {
+    background: rgba(255, 210, 58, 0.18);
+  }
+  .splash-loader-seg.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--amber) 35%,
+      var(--amber-hot) 50%,
+      var(--amber) 65%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: amber-sweep 1.6s ease-in-out infinite;
+  }
+  .splash-loader-seg.is-done {
+    background: var(--amber);
+    box-shadow: 0 0 6px 0 var(--amber-glow);
+  }
+  @keyframes amber-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .splash-loader-meta {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+  }
+  .splash-loader-meta .splash-loader-elapsed {
+    color: var(--cream-dim);
+    font-variant-numeric: tabular-nums;
+    min-width: 3.5em;
+    text-align: right;
+  }
+  .splash-loader-meta .splash-loader-sep {
+    color: var(--cream-faint);
+    opacity: 0.5;
+  }
+  .splash-loader-meta .splash-loader-stage {
+    color: var(--cream-dim);
+    min-width: 4.5em;
+    text-align: left;
+  }
+
+  /* When the splash flips to ready, fade the loader out and let the
+     enter button take over the same screen real estate. The animation
+     reset is required: `loader-in forwards` keeps opacity at 1
+     otherwise, and the transition never fires. */
+  #intro-splash.is-ready .splash-loader {
+    animation: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 400ms ease-out, visibility 0s linear 400ms;
+  }
+  #intro-splash.is-ready .splash-loader-headline {
+    animation: none;
+  }
+  #intro-splash.is-ready .splash-loader-seg.is-loading::after {
+    animation: none;
+  }
+
+  /* ── Enter button ───────────────────────────────────────────────
+     Amber, glowing, only visible once all stages resolve. The border
+     ripples outward in a slow pulse so the eye is drawn to it
+     without it ever feeling pushy. */
   .splash-enter {
     position: absolute;
-    bottom: 5vh;
+    bottom: 7vh;
     left: 50%;
     transform: translateX(-50%);
     appearance: none;
     background: transparent;
-    border: 1px solid var(--cream-faint);
-    padding: 10px 22px;
+    border: 1px solid var(--amber);
+    padding: 14px 36px;
     font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.24em;
-    color: var(--cream-ghost);
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    color: var(--amber);
     text-transform: uppercase;
     white-space: nowrap;
-    cursor: default;
-    opacity: 0;
-    animation: hint-in 600ms ease-out 1200ms forwards;
-    transition: opacity 300ms ease-out, color 300ms ease-out,
-                border-color 300ms ease-out, background 200ms ease-out;
-  }
-  .splash-enter:not([disabled]) {
     cursor: pointer;
-    color: var(--cream);
-    border-color: var(--cream);
-    opacity: 1;
-  }
-  .splash-enter:not([disabled]):hover {
-    background: rgba(216, 220, 226, 0.08);
-  }
-  @keyframes hint-in { to { opacity: 0.55; } }
-
-  /* Three-stage progress indicator under the motto: shows the user that
-     the map is loading rather than just showing the static splash.
-     Visible from the start so the user always sees what's still
-     pending. Three labels: Map · Depths · Fleet. */
-  .splash-progress {
-    position: absolute;
-    bottom: 11vh;
-    left: 0; right: 0;
-    display: flex;
-    justify-content: center;
-    gap: 28px;
-    font-family: 'DM Mono', monospace;
-    font-size: 9.5px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--cream-ghost);
-    opacity: 0.55;
+    opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition: background 220ms ease-out, color 220ms ease-out;
   }
-  .splash-progress .sp-step {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    opacity: 0.45;
-    transition: opacity 300ms ease-out;
+  #intro-splash.is-ready .splash-enter {
+    visibility: visible;
+    pointer-events: auto;
+    animation:
+      enter-in 600ms ease-out 320ms forwards,
+      amber-pulse-border 2.4s ease-in-out 900ms infinite;
   }
-  .splash-progress .sp-step.is-loading { opacity: 0.85; }
-  .splash-progress .sp-step.is-done { opacity: 1; }
-  .splash-progress .sp-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: transparent;
-    border: 1px solid var(--cream-faint);
-    transition: background 300ms ease-out, border-color 300ms ease-out;
+  @keyframes enter-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
-  .splash-progress .sp-step.is-loading .sp-dot {
-    border-color: var(--cream-ghost);
-    animation: sp-pulse 1.1s ease-in-out infinite;
+  @keyframes amber-pulse-border {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 210, 58, 0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(255, 210, 58, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 210, 58, 0); }
   }
-  .splash-progress .sp-step.is-done .sp-dot {
-    background: var(--cream);
-    border-color: var(--cream);
-    animation: none;
-  }
-  @keyframes sp-pulse {
-    0%, 100% { background: transparent; }
-    50%      { background: var(--cream-faint); }
+  .splash-enter:hover {
+    background: rgba(255, 210, 58, 0.08);
+    color: var(--amber-hot);
   }
 
   /* Loading-fallback unten links, falls Karte noch nicht fertig ist */
@@ -1984,13 +2079,21 @@
     <p data-i18n-html="splash.motto.text">The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
     <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, <span data-i18n="splash.motto.chapter">Chapter&nbsp;CV</span></footer>
   </blockquote>
-  <div class="splash-progress" id="splash-progress" aria-live="polite" aria-label="loading">
-    <div class="sp-step" data-stage="land"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.land">Map</span></div>
-    <div class="sp-step" data-stage="depletion"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.depletion">Depths</span></div>
-    <div class="sp-step" data-stage="vessels"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.vessels">Fleet</span></div>
+  <div class="splash-loader" id="splash-loader" aria-live="polite" aria-label="loading">
+    <div class="splash-loader-headline" data-i18n="splash.loader.headline">Loading the ocean</div>
+    <div class="splash-loader-track">
+      <div class="splash-loader-seg" data-stage="land"></div>
+      <div class="splash-loader-seg" data-stage="depletion"></div>
+      <div class="splash-loader-seg" data-stage="vessels"></div>
+    </div>
+    <div class="splash-loader-meta">
+      <span class="splash-loader-elapsed">0&thinsp;s</span>
+      <span class="splash-loader-sep">·</span>
+      <span class="splash-loader-stage" data-i18n="splash.progress.land">Map</span>
+    </div>
   </div>
-  <button type="button" id="splash-enter" class="splash-enter" disabled
-          data-i18n="splash.button.loading">Loading map&hellip;</button>
+  <button type="button" id="splash-enter" class="splash-enter"
+          data-i18n="splash.button.ready">Enter</button>
 </div>
 
 <div class="page">
@@ -2321,7 +2424,7 @@
 <div class="catch-modal-backdrop" id="download-modal">
   <div class="catch-modal">
     <div class="cm-title" data-i18n="catch.modal.title">Generating your catch</div>
-    <div class="cm-text" data-i18n-html="catch.modal.text">10 April 2026 &mdash; 291&thinsp;723 stanzas, 2&thinsp;450 pages, ~51&thinsp;MB.<br>This takes about 40 seconds.</div>
+    <div class="cm-text">&hellip;</div>
     <div class="cm-bar"><div class="cm-bar-fill" id="dl-bar"></div></div>
     <div class="cm-status" id="dl-status" data-i18n="catch.modal.preparing">Preparing&hellip;</div>
   </div>
@@ -2339,7 +2442,7 @@ const I18N = {
     'nav.fleet': 'Fleet',
     'nav.about': 'About',
     'nav.catch': 'Catch of the Day',
-    'splash.button.loading': 'Loading map…',
+    'splash.loader.headline': 'Loading the ocean',
     'splash.button.ready': 'Enter',
     'splash.motto.text': 'The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
     'splash.motto.chapter': 'Chapter CV',
@@ -2415,7 +2518,10 @@ const I18N = {
     'catch.cta.without': 'Download (English)',
     'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Generating your catch',
-    'catch.modal.text': '10 April 2026 \u2014 291&thinsp;723 stanzas, 2&thinsp;450 pages, ~51&thinsp;MB.<br>This takes about 40 seconds.',
+    'catch.modal.text.selection': '{date} \u2014 about {stanzas} stanzas (a random tenth of the day\u2019s fleet).<br>Takes about 40 seconds.',
+    'catch.modal.text.finecut':   '{date} \u2014 about {stanzas} stanzas (a random hundredth).<br>Takes about 10 seconds.',
+    'catch.modal.text.onepiece':  '{date} \u2014 the catch of one randomly chosen vessel.<br>Takes about 3 seconds.',
+    'catch.modal.text.fallback':  'Preparing today\u2019s catch.<br>Takes a few seconds.',
     'catch.modal.preparing': 'Preparing\u2026',
     'catch.modal.rendering': 'Rendering stanzas \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
     'catch.modal.paginating': 'Paginating \u2014 630\u2009/\u2009872 pp',
@@ -2451,7 +2557,7 @@ const I18N = {
     'nav.fleet': 'Flotte',
     'nav.about': '\u00dcber',
     'nav.catch': 'Fang des Tages',
-    'splash.button.loading': 'Karte lädt…',
+    'splash.loader.headline': 'Der Ozean lädt',
     'splash.button.ready': 'Eintreten',
     'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so rücksichtsloses Gemetzel <span class="motto-title">[remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
     'splash.motto.chapter': 'Kapitel CV',
@@ -2527,7 +2633,10 @@ const I18N = {
     'catch.cta.without': 'Download (Englisch)',
     'catch.cta.without.de': 'Download (Deutsch)',
     'catch.modal.title': 'Dein Fang wird erzeugt',
-    'catch.modal.text': '10. April 2026 \u2014 291&thinsp;723 Strophen, 2&thinsp;450 Seiten, ~51&thinsp;MB.<br>Das dauert etwa 40 Sekunden.',
+    'catch.modal.text.selection': '{date} \u2014 etwa {stanzas} Strophen (ein zuf\u00e4lliges Zehntel der Tagesflotte).<br>Dauert etwa 40 Sekunden.',
+    'catch.modal.text.finecut':   '{date} \u2014 etwa {stanzas} Strophen (ein zuf\u00e4lliges Hundertstel).<br>Dauert etwa 10 Sekunden.',
+    'catch.modal.text.onepiece':  '{date} \u2014 der Fang eines zuf\u00e4llig gezogenen Schiffs.<br>Dauert etwa 3 Sekunden.',
+    'catch.modal.text.fallback':  'Der Tagesfang wird vorbereitet.<br>Dauert ein paar Sekunden.',
     'catch.modal.preparing': 'Wird vorbereitet\u2026',
     'catch.modal.rendering': 'Strophen werden gesetzt \u2014 100&thinsp;000&thinsp;/&thinsp;291&thinsp;723',
     'catch.modal.paginating': 'Seiten werden umbrochen \u2014 630\u2009/\u2009872 S.',
@@ -2627,14 +2736,15 @@ function refreshDynamicI18n() {
     dlStatus.textContent = t('catch.modal.preparing', modalLang);
   }
 
-  // Splash button caption: while still loading the JS ticker rewrites
-  // the text every second, but on a snappy load the ticker may not have
-  // fired between language toggles. Rewrite the caption immediately so
-  // the user always sees the active language without waiting a beat.
-  const splashBtn = document.getElementById('splash-enter');
-  if (splashBtn) {
-    const key = splashBtn.disabled ? 'splash.button.loading' : 'splash.button.ready';
-    splashBtn.textContent = t(key);
+  // Splash loader's stage caption is rewritten by the JS ticker once a
+  // second, but a language toggle should take effect immediately rather
+  // than after a beat. The headline + button text follow data-i18n via
+  // applyI18n() naturally; only the current-stage label needs manual
+  // attention because its key is set dynamically.
+  const stageEl = document.querySelector('#splash-loader .splash-loader-stage');
+  if (stageEl) {
+    const key = stageEl.getAttribute('data-i18n') || 'splash.progress.land';
+    stageEl.textContent = t(key);
   }
 
   // Hint overlay holds raw HTML (no data-i18n attribute), so we need to
@@ -2664,20 +2774,25 @@ document.addEventListener('srah:lang-change', () => {
 // exists).
 window._havocReady = { land: false, depletion: false, vessels: false };
 
+// Order matters: the meta caption follows the order the stages resolve,
+// so the user reads "12 s · Map" → "Depths" → "Fleet" rather than a
+// random label flip each second.
+const _HAVOC_STAGES = ['land', 'depletion', 'vessels'];
+
 function _havocMarkReady(stage) {
   if (!window._havocReady || window._havocReady[stage]) return;
   window._havocReady[stage] = true;
-  const step = document.querySelector('.splash-progress .sp-step[data-stage="' + stage + '"]');
-  if (step) {
-    step.classList.remove('is-loading');
-    step.classList.add('is-done');
+  const seg = document.querySelector('.splash-loader-seg[data-stage="' + stage + '"]');
+  if (seg) {
+    seg.classList.remove('is-loading');
+    seg.classList.add('is-done');
   }
   document.dispatchEvent(new CustomEvent('srah:stage-ready', { detail: { stage } }));
 }
 
 function _havocMarkLoading(stage) {
-  const step = document.querySelector('.splash-progress .sp-step[data-stage="' + stage + '"]');
-  if (step && !step.classList.contains('is-done')) step.classList.add('is-loading');
+  const seg = document.querySelector('.splash-loader-seg[data-stage="' + stage + '"]');
+  if (seg && !seg.classList.contains('is-done')) seg.classList.add('is-loading');
 }
 
 (function initSplash() {
@@ -2697,10 +2812,18 @@ function _havocMarkLoading(stage) {
 
   const splashShownAt = Date.now();
   const enterBtn = document.getElementById('splash-enter');
+  const elapsedEl = splash.querySelector('.splash-loader-elapsed');
+  const stageEl = splash.querySelector('.splash-loader-stage');
 
   function allReady() {
     const r = window._havocReady || {};
     return r.land && r.depletion && r.vessels;
+  }
+
+  function currentStage() {
+    // First stage that isn't done yet — what the user is waiting for.
+    const r = window._havocReady || {};
+    return _HAVOC_STAGES.find(s => !r[s]) || _HAVOC_STAGES[_HAVOC_STAGES.length - 1];
   }
 
   function actuallyDismiss() {
@@ -2713,28 +2836,37 @@ function _havocMarkLoading(stage) {
     }, 500);
   }
 
-  // While loading: tick the button caption every second so the user can
-  // see real-time progress next to the three-stage indicator.
-  const tickButton = () => {
-    if (!enterBtn || allReady() || splash.classList.contains('is-leaving')) return;
-    const s = Math.floor((Date.now() - splashShownAt) / 1000);
-    enterBtn.textContent = t('splash.button.loading') + ' (' + s + ' s)';
-  };
-  const tickTimer = setInterval(tickButton, 1000);
-  tickButton();
+  // Telemetry tick: elapsed seconds + name of the stage currently
+  // resolving. Both update once per second so the loader reads as
+  // live instrumentation rather than a static placeholder.
+  function tickLoader() {
+    if (splash.classList.contains('is-leaving')) return;
+    if (elapsedEl) {
+      const s = Math.floor((Date.now() - splashShownAt) / 1000);
+      elapsedEl.textContent = s + ' s';
+    }
+    if (stageEl && !allReady()) {
+      const stage = currentStage();
+      stageEl.setAttribute('data-i18n', 'splash.progress.' + stage);
+      stageEl.textContent = t('splash.progress.' + stage);
+    }
+  }
+  const tickTimer = setInterval(tickLoader, 1000);
+  tickLoader();
 
-  function syncButtonReady() {
-    if (!enterBtn || !allReady()) return;
+  function syncReady() {
+    if (!allReady()) return;
     clearInterval(tickTimer);
-    enterBtn.disabled = false;
-    enterBtn.setAttribute('data-i18n', 'splash.button.ready');
-    enterBtn.textContent = t('splash.button.ready');
+    splash.classList.add('is-ready');
   }
 
-  document.addEventListener('srah:stage-ready', syncButtonReady);
+  document.addEventListener('srah:stage-ready', () => {
+    tickLoader();
+    syncReady();
+  });
   // Cover the race where one or more stages flipped ready before we
   // attached the listener (warm reloads can resolve in <100 ms).
-  syncButtonReady();
+  syncReady();
 
   if (enterBtn) {
     enterBtn.addEventListener('click', actuallyDismiss);
@@ -4989,15 +5121,55 @@ function animateCatchCounter() {
 // DOWNLOAD MODAL
 // ══════════════════════════════════════════════════
 
+// Roughly one third of all stanzas come from One-Piece picks (single
+// vessel); used to estimate the One-Piece body line. Selection/Fine Cut
+// scale by the documented tier fraction (see TIER_FRACTIONS in
+// backend/app/pdf_builder.py).
+const TIER_FRACTIONS = { selection: 10, finecut: 100, onepiece: 1 };
+
+function renderModalText(status, tier, lang) {
+  // Fallback: status not yet loaded (modal opened before /api/status
+  // returned). Keep the legacy i18n line so the modal isn't blank.
+  if (!status || !status.latest_day) return t('catch.modal.text.fallback', lang);
+
+  const latest = status.latest_day;
+  const locale = lang === 'de' ? 'de-DE' : 'en-GB';
+  const dateStr = status.now_utc || latest.date;
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const longDate = new Intl.DateTimeFormat(locale, {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(d);
+
+  // Same thin-space grouping the status bar uses.
+  const fmt = n => Number(n).toLocaleString(locale, { useGrouping: true })
+    .replace(/,/g, ' ').replace(/\./g, ' ');
+
+  // For Selection (1/10) and Fine Cut (1/100) the per-PDF stanza count
+  // is the day's catch divided by the tier. One Piece is one random
+  // vessel, so we don't have a deterministic stanza count — leave the
+  // template to phrase it without a number.
+  const baseStanzas = latest.stanzas_caught || 0;
+  let stanzasStr = '';
+  if (tier === 'selection') stanzasStr = fmt(Math.round(baseStanzas / 10));
+  else if (tier === 'finecut') stanzasStr = fmt(Math.round(baseStanzas / 100));
+
+  const key = 'catch.modal.text.' + (tier in TIER_FRACTIONS ? tier : 'selection');
+  return t(key, lang).replace('{date}', longDate).replace('{stanzas}', stanzasStr);
+}
+
 function openDownloadModal(lang) {
   const mod = document.getElementById('download-modal');
   const bar = document.getElementById('dl-bar');
   const status = document.getElementById('dl-status');
   mod.classList.add('is-open');
-  // The modal's status text follows the PDF's target language, not the
-  // surrounding UI — clicking "Download (English)" on a German session
-  // should still announce "Preparing…" in English.
+  // The modal's status text and body both follow the PDF's target
+  // language, not the surrounding UI — clicking "Download (English)"
+  // on a German session should still announce "Preparing…" in English
+  // and the body should describe the EN volume.
   mod.dataset.lang = lang;
+  const tier = document.getElementById('catch-size')?.dataset?.value || 'selection';
+  const body = mod.querySelector('.cm-text');
+  if (body) body.innerHTML = renderModalText(window._havocStatus, tier, lang);
   bar.style.width = '0%';
   status.textContent = t('catch.modal.preparing', lang);
 
@@ -5140,6 +5312,10 @@ async function init() {
 // Kept defensive: any missing element is silently skipped, so the hook
 // survives markup tweaks.
 function applyStatusToUI(s) {
+  // Cache the full status payload so other parts of the UI (notably the
+  // download modal's live-data body) can read latest_day / now_utc
+  // without re-fetching or re-parsing DOM strings.
+  window._havocStatus = s;
   const fmt = n => Number(n).toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   if (s.cells_alive != null) set('hs-cells-alive', fmt(s.cells_alive));
