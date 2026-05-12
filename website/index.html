@@ -1506,28 +1506,49 @@
     right: 5vw;
   }
 
-  .splash-hint {
+  /* Enter button — the only way out of the splash. Disabled while any of
+     the three load stages is still pending; the JS counter rewrites the
+     caption every second so the user can see the wait. Once ready, the
+     button lights up to full cream and accepts click / Enter / Esc. */
+  .splash-enter {
     position: absolute;
     bottom: 5vh;
-    left: 0; right: 0;
-    text-align: center;
+    left: 50%;
+    transform: translateX(-50%);
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--cream-faint);
+    padding: 10px 22px;
     font-family: 'DM Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.24em;
     color: var(--cream-ghost);
     text-transform: uppercase;
+    white-space: nowrap;
+    cursor: default;
     opacity: 0;
-    animation: hint-in 600ms ease-out 2400ms forwards;
+    animation: hint-in 600ms ease-out 1200ms forwards;
+    transition: opacity 300ms ease-out, color 300ms ease-out,
+                border-color 300ms ease-out, background 200ms ease-out;
   }
-  @keyframes hint-in { to { opacity: 0.6; } }
+  .splash-enter:not([disabled]) {
+    cursor: pointer;
+    color: var(--cream);
+    border-color: var(--cream);
+    opacity: 1;
+  }
+  .splash-enter:not([disabled]):hover {
+    background: rgba(216, 220, 226, 0.08);
+  }
+  @keyframes hint-in { to { opacity: 0.55; } }
 
   /* Three-stage progress indicator under the motto: shows the user that
-     the map is loading rather than just showing the static splash. Hidden
-     until at least one stage has resolved, so quick warm loads never
-     reveal it. Three labels: Map · Depths · Fleet. */
+     the map is loading rather than just showing the static splash.
+     Visible from the start so the user always sees what's still
+     pending. Three labels: Map · Depths · Fleet. */
   .splash-progress {
     position: absolute;
-    bottom: 9vh;
+    bottom: 11vh;
     left: 0; right: 0;
     display: flex;
     justify-content: center;
@@ -1537,11 +1558,9 @@
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--cream-ghost);
-    opacity: 0;
-    transition: opacity 400ms ease-out;
+    opacity: 0.55;
     pointer-events: none;
   }
-  .splash-progress.is-visible { opacity: 0.55; }
   .splash-progress .sp-step {
     display: flex;
     align-items: center;
@@ -1970,7 +1989,8 @@
     <div class="sp-step" data-stage="depletion"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.depletion">Depths</span></div>
     <div class="sp-step" data-stage="vessels"><span class="sp-dot"></span><span class="sp-label" data-i18n="splash.progress.vessels">Fleet</span></div>
   </div>
-  <div class="splash-hint" data-i18n="splash.hint">click anywhere to enter</div>
+  <button type="button" id="splash-enter" class="splash-enter" disabled
+          data-i18n="splash.button.loading">Loading map&hellip;</button>
 </div>
 
 <div class="page">
@@ -2319,7 +2339,8 @@ const I18N = {
     'nav.fleet': 'Fleet',
     'nav.about': 'About',
     'nav.catch': 'Catch of the Day',
-    'splash.hint': 'click anywhere to enter',
+    'splash.button.loading': 'Loading map…',
+    'splash.button.ready': 'Enter',
     'splash.motto.text': 'The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.',
     'splash.motto.chapter': 'Chapter CV',
     'splash.progress.land': 'Map',
@@ -2430,7 +2451,8 @@ const I18N = {
     'nav.fleet': 'Flotte',
     'nav.about': '\u00dcber',
     'nav.catch': 'Fang des Tages',
-    'splash.hint': 'klicken zum eintreten',
+    'splash.button.loading': 'Karte lädt…',
+    'splash.button.ready': 'Eintreten',
     'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so rücksichtsloses Gemetzel <span class="motto-title">[remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
     'splash.motto.chapter': 'Kapitel CV',
     'splash.progress.land': 'Karte',
@@ -2596,8 +2618,23 @@ function refreshDynamicI18n() {
   try { if (activeVesselPopups) activeVesselPopups.length = 0; } catch (_) {}
 
   const dlStatus = document.getElementById('dl-status');
-  if (dlStatus && document.getElementById('download-modal')?.classList.contains('is-open')) {
-    dlStatus.textContent = t('catch.modal.preparing');
+  const dlModal = document.getElementById('download-modal');
+  if (dlStatus && dlModal && dlModal.classList.contains('is-open')) {
+    // Use the modal's target download language rather than currentLang
+    // — the modal's status text follows the PDF it's about to fetch,
+    // not the surrounding UI language.
+    const modalLang = dlModal.dataset.lang || currentLang;
+    dlStatus.textContent = t('catch.modal.preparing', modalLang);
+  }
+
+  // Splash button caption: while still loading the JS ticker rewrites
+  // the text every second, but on a snappy load the ticker may not have
+  // fired between language toggles. Rewrite the caption immediately so
+  // the user always sees the active language without waiting a beat.
+  const splashBtn = document.getElementById('splash-enter');
+  if (splashBtn) {
+    const key = splashBtn.disabled ? 'splash.button.loading' : 'splash.button.ready';
+    splashBtn.textContent = t(key);
   }
 
   // Hint overlay holds raw HTML (no data-i18n attribute), so we need to
@@ -2659,22 +2696,11 @@ function _havocMarkLoading(stage) {
   splash.focus();
 
   const splashShownAt = Date.now();
-  const MIN_SPLASH_MS = 1500;
-  // Hard cap so a cold Railway start (depletion + vessels can take 5-10 s)
-  // never traps the user on the splash. After this, fade out regardless;
-  // the canvas degrades cleanly to mock vessels until the API arrives.
-  const MAX_SPLASH_MS = 7000;
-  let dismissPending = false;
+  const enterBtn = document.getElementById('splash-enter');
 
   function allReady() {
     const r = window._havocReady || {};
     return r.land && r.depletion && r.vessels;
-  }
-
-  function shouldFade() {
-    const elapsed = Date.now() - splashShownAt;
-    if (elapsed < MIN_SPLASH_MS) return false;
-    return allReady() || elapsed >= MAX_SPLASH_MS;
   }
 
   function actuallyDismiss() {
@@ -2687,50 +2713,36 @@ function _havocMarkLoading(stage) {
     }, 500);
   }
 
-  function dismiss() {
-    if (dismissPending || splash.classList.contains('is-leaving')) return;
-    if (shouldFade()) {
-      actuallyDismiss();
-      return;
-    }
-    // User clicked early or stages still loading — keep watching, fade
-    // as soon as the next condition (all-ready OR hard-cap) is met.
-    dismissPending = true;
-    const tryAgain = () => {
-      if (shouldFade()) {
-        actuallyDismiss();
-        document.removeEventListener('srah:stage-ready', tryAgain);
-      }
-    };
-    document.addEventListener('srah:stage-ready', tryAgain);
-    const elapsed = Date.now() - splashShownAt;
-    setTimeout(tryAgain, Math.max(0, MIN_SPLASH_MS - elapsed));
-    setTimeout(tryAgain, Math.max(0, MAX_SPLASH_MS - elapsed));
+  // While loading: tick the button caption every second so the user can
+  // see real-time progress next to the three-stage indicator.
+  const tickButton = () => {
+    if (!enterBtn || allReady() || splash.classList.contains('is-leaving')) return;
+    const s = Math.floor((Date.now() - splashShownAt) / 1000);
+    enterBtn.textContent = t('splash.button.loading') + ' (' + s + ' s)';
+  };
+  const tickTimer = setInterval(tickButton, 1000);
+  tickButton();
+
+  function syncButtonReady() {
+    if (!enterBtn || !allReady()) return;
+    clearInterval(tickTimer);
+    enterBtn.disabled = false;
+    enterBtn.setAttribute('data-i18n', 'splash.button.ready');
+    enterBtn.textContent = t('splash.button.ready');
   }
 
-  // Auto-dismiss without a click once everything's ready and the min
-  // dwell has elapsed — keeps the splash from outstaying its welcome on
-  // warm reloads where land+depletion+vessels arrive within 1-2 s.
-  document.addEventListener('srah:stage-ready', () => {
-    if (shouldFade()) actuallyDismiss();
-  });
-  setTimeout(() => { if (shouldFade()) actuallyDismiss(); }, MAX_SPLASH_MS);
+  document.addEventListener('srah:stage-ready', syncButtonReady);
+  // Cover the race where one or more stages flipped ready before we
+  // attached the listener (warm reloads can resolve in <100 ms).
+  syncButtonReady();
 
-  // Reveal the progress indicator after a short grace period — on a fast
-  // warm load the splash leaves before this fires, so the user never
-  // sees loading dots on a near-instant page open.
-  const progress = document.getElementById('splash-progress');
-  if (progress) setTimeout(() => progress.classList.add('is-visible'), 700);
-
-  splash.addEventListener('click', (e) => {
-    // Skip dismiss when the user is toggling the in-splash language
-    // selector — they're still reading.
-    if (e.target.closest('button[data-lang]')) return;
-    dismiss();
-  });
+  if (enterBtn) {
+    enterBtn.addEventListener('click', actuallyDismiss);
+  }
   document.addEventListener('keydown', function onKey(e) {
+    if (!allReady()) return;
     if (e.key === 'Escape' || e.key === 'Enter') {
-      dismiss();
+      actuallyDismiss();
     }
   });
 })();
@@ -4107,6 +4119,40 @@ function renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW) {
   ctx.stroke();
 }
 
+// Wrap a single stanza line so it fits the visible cell width without
+// canvas auto-compression. Prefers a split at the mid-line ` -- `
+// separator (the natural break in DE `ssbDeOneNoun` / EN `ssbRiseAndGo`
+// + `ssbDeBut` patterns); falls back to the space closest to the
+// middle, then to the original line if neither helps.
+function wrapStanzaLine(line, maxW) {
+  if (ctx.measureText(line).width <= maxW) return [line];
+  const mid = line.length / 2;
+  const dashIdx = (() => {
+    const all = [];
+    let i = line.indexOf(' -- ');
+    while (i >= 0) { all.push(i); i = line.indexOf(' -- ', i + 1); }
+    if (!all.length) return -1;
+    return all.reduce((best, idx) =>
+      Math.abs(idx - mid) < Math.abs(best - mid) ? idx : best, all[0]);
+  })();
+  if (dashIdx >= 0) {
+    // Drop the entire ` -- ` separator at the break: the dash made
+    // sense in the unbroken phrase, but it reads as a stranded marker
+    // when it leads the wrapped line.
+    return [line.slice(0, dashIdx).trimEnd(), line.slice(dashIdx + 4).trimStart()];
+  }
+  // Closest space to the middle.
+  let bestSpace = -1;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] !== ' ') continue;
+    if (bestSpace < 0 || Math.abs(i - mid) < Math.abs(bestSpace - mid)) bestSpace = i;
+  }
+  if (bestSpace > 0) {
+    return [line.slice(0, bestSpace), line.slice(bestSpace + 1)];
+  }
+  return [line];
+}
+
 function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
   const cellH = cellW;
   const colStart = Math.floor(startCol);
@@ -4114,15 +4160,15 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
   const rowStart = Math.floor(startRow);
   const rowEnd = Math.ceil(startRow + cellsHigh);
 
-  // Scale the verse with the cell so it reads as a stanza at every zoom
-  // level instead of a fixed 8 px block that floats lost inside large
-  // cells or crowds smaller ones. Clamped so it never falls below 7 px
-  // (illegible) or grows past 14 px (pushes lines out of the cell).
-  const fontSize = Math.max(7, Math.min(14, cellW * 0.18));
+  // Fixed font size at every zoom level — the cell-relative scaling was
+  // making the stanza shrink with the cell at outer zooms, and growing
+  // it past the cell's width at inner zooms. A constant size reads
+  // consistently and overflow is now resolved by `wrapStanzaLine`.
+  const fontSize = 10;
   const prevAlign = ctx.textAlign;
   const prevBaseline = ctx.textBaseline;
   ctx.font = `500 ${fontSize}px 'DM Mono', monospace`;
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
   const lineH = fontSize * 1.45;
@@ -4144,17 +4190,25 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW) {
       else if (deplState === 1) ctx.fillStyle = GRID_COLORS.stanzaPartial;
       else ctx.fillStyle = GRID_COLORS.stanzaGhost;
 
-      // Block size from the actual line count (not 4) so a short stanza
-      // sits in the visual centre instead of the top of the cell.
-      const lineCount = Math.min(4, stanza.filter(Boolean).length || 4);
-      const totalH = lineCount * lineH;
-      const startY = py + (cellH - totalH) / 2;
-      const cx = px + cellW / 2;
       const maxW = cellW * 0.92;
-
+      // Resolve each logical stanza line into 1 or 2 physical rows so
+      // we can centre the whole block vertically once we know its real
+      // height. `wrapStanzaLine` returns a 1- or 2-entry array.
+      const lineCount = Math.min(4, stanza.filter(Boolean).length || 4);
+      const wrapped = [];
       for (let i = 0; i < lineCount; i++) {
-        if (!stanza[i]) continue;
-        ctx.fillText(stanza[i].trim(), cx, startY + i * lineH, maxW);
+        const raw = stanza[i];
+        if (!raw) continue;
+        const parts = wrapStanzaLine(raw.trim(), maxW);
+        for (const p of parts) wrapped.push(p);
+      }
+
+      const totalH = wrapped.length * lineH;
+      const startY = py + (cellH - totalH) / 2;
+      const xLeft = px + cellW * 0.04;
+
+      for (let i = 0; i < wrapped.length; i++) {
+        ctx.fillText(wrapped[i], xLeft, startY + i * lineH);
       }
     }
   }
@@ -4940,12 +4994,16 @@ function openDownloadModal(lang) {
   const bar = document.getElementById('dl-bar');
   const status = document.getElementById('dl-status');
   mod.classList.add('is-open');
+  // The modal's status text follows the PDF's target language, not the
+  // surrounding UI — clicking "Download (English)" on a German session
+  // should still announce "Preparing…" in English.
+  mod.dataset.lang = lang;
   bar.style.width = '0%';
-  status.textContent = t('catch.modal.preparing');
+  status.textContent = t('catch.modal.preparing', lang);
 
-  setTimeout(() => { bar.style.width = '35%'; status.innerHTML = t('catch.modal.rendering'); }, 800);
-  setTimeout(() => { bar.style.width = '72%'; status.innerHTML = t('catch.modal.paginating'); }, 1800);
-  setTimeout(() => { bar.style.width = '100%'; status.textContent = t('catch.modal.done'); }, 2800);
+  setTimeout(() => { bar.style.width = '35%'; status.innerHTML = t('catch.modal.rendering', lang); }, 800);
+  setTimeout(() => { bar.style.width = '72%'; status.innerHTML = t('catch.modal.paginating', lang); }, 1800);
+  setTimeout(() => { bar.style.width = '100%'; status.textContent = t('catch.modal.done', lang); }, 2800);
   setTimeout(() => {
     mod.classList.remove('is-open');
     const url = catchDownloadUrl(lang);
