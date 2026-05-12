@@ -1351,9 +1351,16 @@ def _build_daily_payload(stats: dict, poems: dict[str, list[dict]],
     intentionally-random sample.
     """
     cover_rel = cover_path.resolve().relative_to(TYPST_TEMPLATE_DIR.resolve())
-    day_n = _vol_for(stats["date"])
+    # Cover, header and intro all advertise the *rendering* date rather
+    # than `stats["date"]`. GFW catches sit 72 h behind, so the data date
+    # is always a few days old — using it on the cover desynchronises the
+    # PDF from the live site's "Day N" counter, which counts forward
+    # from project day 0 to today's UTC date. The catches themselves
+    # remain unchanged: only the display date follows the render moment.
+    display_date = datetime.now(timezone.utc).date().isoformat()
+    day_n = _vol_for(display_date)
     day_label = f"{day_n:03d}"
-    long_date = _format_long_date(stats["date"], language=language)
+    long_date = _format_long_date(display_date, language=language)
 
     # German thousands separator is `.` (period), not `,`. Format with
     # commas first, then swap, so the source code stays portable.

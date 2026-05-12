@@ -96,6 +96,12 @@
 // ── TOC (custom; we don't use #outline so we control which entries
 //     appear and how page numbers render). ─────────────────────────
 #let toc(stats) = titlepage[
+  // Push the Contents block down on the page — the heading sat too
+  // close to the top, leaving the entries hanging in the upper third
+  // of the spread. ~28 mm of leading whitespace lets the section
+  // breathe and matches the visual weight of the larger entry type.
+  #v(28mm)
+
   // "Contents" is rendered as a real level-1 heading so it bookmarks;
   // the show rule (set in daily.typ) styles it via small-heading-block.
   = #stats.strings.toc_contents
@@ -108,22 +114,22 @@
       (stats.strings.toc_vessel_index,                              <vessel-index>),
       (stats.strings.toc_colophon,                                  <colophon>),
     )
-    set text(font: FONT_BODY_ROMAN, size: 11pt, fill: INK_SOFT,
+    set text(font: FONT_BODY_ROMAN, size: 12.5pt, fill: INK_SOFT,
              style: "italic", weight: 300)
     for (name, lbl) in entries {
       let hits = query(lbl)
       if hits.len() == 0 { continue }
       let page-num = counter(page).at(hits.first().location()).first()
       block(
-        above: 1.6mm, below: 1.6mm,
+        above: 2.2mm, below: 2.2mm,
         stroke: (bottom: 0.05pt + rgb(0, 0, 0, 46)),
-        inset: (bottom: 1.6mm),
+        inset: (bottom: 2.2mm),
       )[
         #grid(
           columns: (1fr, auto),
           align: (left + bottom, right + bottom),
           name,
-          text(font: FONT_MONO, size: 8pt, fill: INK_RULE,
+          text(font: FONT_MONO, size: 9pt, fill: INK_RULE,
                style: "normal", weight: 400, tracking: 0.06em)[#page-num],
         )
       ]
@@ -173,7 +179,7 @@
   = #stats.strings.toc_introduction
   #label("intro")
 
-  #set text(font: FONT_BODY_ROMAN, weight: 400, size: 10pt,
+  #set text(font: FONT_BODY_ROMAN, weight: 400, size: 12.5pt,
             fill: INK_SOFT)
   #set par(leading: 1em, justify: true, first-line-indent: 0pt)
   // Project titles (Remorseless Havoc, Sea and Spar Between, Moby
