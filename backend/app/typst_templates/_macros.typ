@@ -157,8 +157,10 @@
 ]
 
 // ── Introduction ───────────────────────────────────────────────────
-// Roman Newsreader at 1.5× line-height (CSS line-height: 1.5):
-// par.leading 0.5em on a 10pt body ≈ 15pt total leading. The body
+// Roman Newsreader at generous line-height. par.leading is the gap
+// ADDED on top of the font's natural line metric, so 1em on a 10pt
+// body gives the airy 1.5-line-spacing feel familiar from Word/LaTeX
+// — Typst's default 0.65em reads as single-spacing here. The body
 // stays unitalic so the day-specific stats fill in at the same visual
 // weight as the surrounding prose; project titles ride italic via
 // `_…_` markup as the only inline distinction.
@@ -173,7 +175,7 @@
 
   #set text(font: FONT_BODY_ROMAN, weight: 400, size: 10pt,
             fill: INK_SOFT)
-  #set par(leading: 0.5em, justify: true, first-line-indent: 0pt)
+  #set par(leading: 1em, justify: true, first-line-indent: 0pt)
   // Project titles (Remorseless Havoc, Sea and Spar Between, Moby
   // Dick) — italic only, no weight or size bump; the italic cut is
   // the entire signal.
