@@ -1,34 +1,11 @@
 """
-OceanPool — the single source of material truth.
+The pool is a bitmap of the state of the work after the Sea-Spar-Grid
+has been created. It follows two rules:
 
-============================================================================
-  Conceptual anchor — computation has a material floor
-============================================================================
-
-The pool holds one bit per grid cell: alive or erased. That bitmap is the
-entire state of the work. Every fishing event mutates it and is gone; what
-remains is simply the shape of the survivors. There is no "stanza
-database" — each cell's verse is recomputed from its lattice coordinates
-whenever it is needed (`stanza.generate_stanza_at`). What the pool tracks
-is only which cells still exist.
-
-This is the project's counter-move to the combinatorial sublime.
-Sea and Spar Between presents a lattice of 225 trillion stanzas — an
-arithmetic that feels, in the browser, like an inexhaustible resource.
-The pool reduces that feeling back to the physics of the ocean: finite,
-enumerable, consumable. The seemingly unbounded computation is grounded
-in a bit-array whose contents only ever go from True to False.
-
-Two rules make this into a dramaturgy rather than a mere accounting:
-
-    (1) GPS-first, then global pool. The first stanza of each fishing
+    (1) GPS-first, then global pool at random: The first stanza of each fishing
         event is deleted at the ship's actual location. The remaining
-        stanzas (DEPLETION_FACTOR per fishing hour) are drawn at random
-        from anywhere in the surviving pool. So a trawler in the North
-        Sea can consume a verse in the Indian Ocean: industrial fishing
-        is a planetary system, and local over-extraction has global
-        consequences.
-
+        stanzas (DEPLETION_FACTOR per fishing hour) are drawn from a
+        random selection in the pool.
     (2) FINAL_FLOOR = 1. Exactly one water cell is held back from
         depletion. When the pool drops to one living cell, the
         depletion algorithm halts and the project comes to rest. That
@@ -36,8 +13,6 @@ Two rules make this into a dramaturgy rather than a mere accounting:
         gives the work its title. It is the counterpart to the
         computational infinity of the source material: of 225 trillion
         possible stanzas, one is allowed to remain.
-
-See `Konzepttext Website.md`, §5, for the dramaturgical framing.
 ============================================================================
 """
 
@@ -56,17 +31,14 @@ from .stanza import generate_stanza_at
 # fishing events — it under-counts the total fishing effort visible in
 # the parallel 4Wings Stats API (which aggregates every AIS position
 # classified as fishing) by roughly a factor of 3.4. We round that
-# empirical ratio to exactly 3 and take the communicable sentence as
-# the rule of the work: one fishing hour deletes three stanzas. The
-# precision loss (~3.5 → ~4 years projected runtime) is deliberate,
-# in exchange for a factor that reads without a footnote.
-# See generation/README.md §3 for the derivation and trade-off.
+# empirical ratio to exactly 3 so one fishing hour deletes three stanzas.
+
 DEPLETION_FACTOR = 3.0
 
 
 class OceanPool:
     """
-    The live bitmap of surviving water cells.
+    The live bitmap of water cells where stanzas have not been erased.
 
     Invariants
     ----------

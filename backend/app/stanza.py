@@ -2,43 +2,26 @@
 Stanza generator — Python port of *Sea and Spar Between*.
 
 ======================================================================
-  Conceptual anchor — the site of the appropriation
+  Conceptual notes
 ======================================================================
-
-The word lists and line-generation functions below are a 1:1 port of
+The word lists and line-generation functions below are taken from
 the JavaScript source of Nick Montfort and Stephanie Strickland's
-*Sea and Spar Between* (2010, BSD licence). They must remain byte-for-
-byte identical so that lattice coordinate (i, j) yields exactly the
-same four-line stanza here and on the frontend, and so the
-correspondence between a GPS hit and a deletable verse is well-
-defined.
-
-This is where *Remorseless Havoc* takes over their code and
-turns it against itself. *Sea and Spar Between* produces an
+Sea and Spar Between (2010, BSD licence). This algorithm produces an
 apparently inexhaustible combinatorial ocean — over 225 trillion
 stanzas on a toroidal lattice, generated on the fly, navigable
 endlessly in the browser. The authors write that their work contains
-as many verses as there are "fish in the sea." This project takes
+as many verses as there are "fish in the sea." Remorseless Havoc takes
 that metaphor literally: it maps every cell of that lattice onto a
-real square kilometre of ocean (see `grid.grid_to_lattice`), and then
-lets the industrial fishing fleet do what it does — catch after
-catch, hour after hour — until the poetic ocean is empty.
-
-The procedure makes visible what pure combinatorics usually hides:
-that algorithmic abundance, the vertigo of Borges' Library of Babel
-or of Leibniz's combinatorial plenum, is bought at the cost of a
-finite material substrate. On a real ocean floor, one trawl is one
-trawl; in a database of stanzas, one delete is one delete. The
-website enforces that equivalence.
-
-See also: `Konzepttext Website.md`, `About this Document.md`.
+real square kilometre of ocean (see `grid.grid_to_lattice`) and lets the
+world's industrial fishing fleet gradually erase the stanzas through
+API calls to Global Fishing Watch.
 ======================================================================
 """
 
 from .grid import LATTICE_SIZE, grid_to_lattice
 
 # ── WORD LISTS (verbatim from the original JavaScript) ───────────────
-# Source: Dickinson's poems, Melville's Moby-Dick. Do not edit.
+# Source: Dickinson's poems, Melville's Moby-Dick.
 
 SHORT_PHRASE = [
     'circle on', 'dash on', 'let them', 'listen now', 'loop on',
@@ -196,8 +179,7 @@ def generate_stanza(i: int, j: int) -> list[str]:
     Mirrors the `drawPair` logic of the original JavaScript: two
     couplets built from (i, 2j) and (i, 2j+1). The output is
     deterministic — the same (i, j) always returns the same four
-    lines — which is what makes it sensible to think of a cell as a
-    verse that can be "deleted."
+    lines."
     """
     j2 = _canonical(j * 2)
     j2_next = _canonical(j2 + 1)
