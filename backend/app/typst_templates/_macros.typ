@@ -467,10 +467,16 @@
   ]
 }
 
-// ── One vessel poem: heading + 3-column stanza flow ─────────────────
+// ── One vessel poem: heading + 3-column stanza grid ─────────────────
 // `sticky: true` keeps the heading attached to whichever block follows;
-// the columns container can break across pages. The heading itself is
+// the grid can break across pages between rows. The heading itself is
 // a real level-2 heading so it appears in the PDF outline (bookmarks).
+//
+// We use `grid` instead of `columns` so stanzas flow row-major: the
+// reading order is left-to-right across the three columns first, then
+// down to the next row. `columns()` would balance column heights and
+// fill column 1 top-to-bottom before column 2, which reads as three
+// parallel mini-poems rather than one sequence.
 #let render-poem(poem) = {
   block(sticky: true, below: 4.5mm)[
     == #poem.name #label("vessel-" + poem.vkey)
@@ -479,9 +485,12 @@
           tracking: 0.18em, baseline: -0.15em)[#upper(poem.flag)]
   ]
   block(below: 8mm)[
-    #columns(3, gutter: 6mm)[
-      #for s in poem.stanzas [#stanza-block(s)]
-    ]
+    #grid(
+      columns: (1fr, 1fr, 1fr),
+      column-gutter: 6mm,
+      row-gutter: 5mm,
+      ..poem.stanzas.map(stanza-block),
+    )
   ]
 }
 

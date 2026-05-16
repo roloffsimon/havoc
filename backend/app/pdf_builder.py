@@ -1470,9 +1470,16 @@ def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
     """
     from . import typst_renderer
 
-    date = stats["date"]
+    # Filename and cover both reflect the *render* date, not the GFW data
+    # date in `stats["date"]`. GFW catches sit ~72 h behind, so naming the
+    # artefact after the data date desynchronises it from the cover, the
+    # site's "Day N" counter, and the user's expectation when downloading.
+    # The data-provenance date still travels through the payload as
+    # `stats.date`, and the sampling seed still uses `stats["date"]` so
+    # late re-renders of the same day stay reproducible.
+    render_date = datetime.now(timezone.utc).date().isoformat()
     TYPST_TMP_DIR.mkdir(parents=True, exist_ok=True)
-    cover_path = TYPST_TMP_DIR / f"cover_{date}_{tier}{_lang_suffix(language)}.png"
+    cover_path = TYPST_TMP_DIR / f"cover_{render_date}_{tier}{_lang_suffix(language)}.png"
     cover_path.write_bytes(cover_bytes)
     try:
         payload = _build_daily_payload(
@@ -1483,7 +1490,7 @@ def _write_tier_artefact(stats: dict, poems: dict[str, list[dict]],
     finally:
         cover_path.unlink(missing_ok=True)
 
-    pdf_path = out_dir / f"catch_{date}_{tier}{_lang_suffix(language)}.pdf"
+    pdf_path = out_dir / f"catch_{render_date}_{tier}{_lang_suffix(language)}.pdf"
     pdf_path.write_bytes(pdf_bytes)
     pdf_size = len(pdf_bytes)
     sample_size = len(poems)
