@@ -457,6 +457,107 @@ def debug_run_day_status(request: Request):
         return dict(_runday_state)
 
 
+# Same background-task pattern as run-day, but for re-rendering a
+# specific historic day from persisted catches. Used to rebuild PDFs
+# wiped by an earlier emergency cleanup while the catch rows are still
+# in the DB. Goes through scripts.run_daily as separate subprocess
+# calls (EN, DE) so each typst.compile() run starts with a fresh Rust
+# heap — same memory rationale as the scheduler (see scheduler.py).
+_rerender_lock = __import__("threading").Lock()
+_rerender_state: dict = {"running": False, "result": None,
+                          "started_at": None, "finished_at": None,
+                          "date": None}
+
+
+def _rerender_day_worker(date: str):
+    import subprocess
+    import sys
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    runs: list[dict] = []
+    try:
+        for lang in ("en", "de"):
+            cmd = [sys.executable, "-m", "scripts.run_daily",
+                   "--lang", lang, "--date", date]
+            log.info("rerender subprocess: %s", " ".join(cmd))
+            try:
+                proc = subprocess.run(cmd, timeout=900, check=False)
+                runs.append({"lang": lang, "rc": proc.returncode})
+            except subprocess.TimeoutExpired:
+                runs.append({"lang": lang, "rc": None, "timeout": True})
+                break
+            if proc.returncode != 0:
+                # Don't proceed to DE if EN failed — the EN render
+                # writes days.pdf_path, which the DE pass doesn't need
+                # but the rest of the pipeline does.
+                break
+        # Worker's in-memory pool wasn't touched (rerender skips the
+        # pool path) but reload defensively so we never serve a stale
+        # pool after a debug action.
+        try:
+            _load_pool()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("rerender: pool reload skipped (%s)", exc)
+        ok = all(r.get("rc") == 0 for r in runs)
+        with _rerender_lock:
+            _rerender_state["result"] = {"ok": ok, "runs": runs}
+    except Exception as exc:  # noqa: BLE001
+        with _rerender_lock:
+            _rerender_state["result"] = {
+                "ok": False,
+                "error": repr(exc),
+                "traceback": traceback.format_exc(),
+                "runs": runs,
+            }
+    finally:
+        with _rerender_lock:
+            _rerender_state["running"] = False
+            _rerender_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/rerender-day")
+def debug_rerender_day(request: Request):
+    """Rebuild EN + DE PDFs for `?date=YYYY-MM-DD` from the DB's
+    persisted catches. Spawns two subprocesses (one per language) the
+    same way the scheduler does, so a heavy day (~600k+ catches) won't
+    push the worker process past Railway's 8 GB ceiling.
+
+    Returns immediately; poll /api/debug/rerender-day-status for the
+    outcome (typst can run for a minute on heavy days)."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    date = request.query_params.get("date")
+    if not date:
+        raise HTTPException(status_code=400, detail="provide ?date=YYYY-MM-DD")
+    try:
+        datetime.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="bad date format (need YYYY-MM-DD)")
+    with _rerender_lock:
+        if _rerender_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _rerender_state["started_at"],
+                    "date": _rerender_state["date"]}
+        _rerender_state["running"] = True
+        _rerender_state["result"] = None
+        _rerender_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _rerender_state["finished_at"] = None
+        _rerender_state["date"] = date
+    threading.Thread(target=_rerender_day_worker, args=(date,), daemon=True).start()
+    return {"started": True,
+            "started_at": _rerender_state["started_at"],
+            "date": date,
+            "poll": "/api/debug/rerender-day-status"}
+
+
+@app.get("/api/debug/rerender-day-status")
+def debug_rerender_day_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _rerender_lock:
+        return dict(_rerender_state)
+
+
 @app.get("/api/debug/weasyprint")
 def debug_weasyprint(request: Request):
     """Probe WeasyPrint import + a tiny render so we can see precisely

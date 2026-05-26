@@ -1737,7 +1737,23 @@ def render_persisted_day(date: str, *,
         poems.setdefault(key, []).append(ct)
     log.info("render_persisted_day: %s, language=%s, vessels=%d, catches=%d",
              date, language, len(poems), len(catches))
-    return render_daily_pdf(stats, poems, language=language)
+    result = render_daily_pdf(stats, poems, language=language)
+    # The EN selection path is what `days.pdf_path` records and what
+    # latest_pdf / _active_render_date key off. After a rebuild that
+    # writes the artefact under a new render_date, refresh the row so
+    # downstream consumers find the new file rather than the stale
+    # (possibly deleted) one. DE renders don't drive pdf_path.
+    if result is not None and _normalise_language(language) == DEFAULT_LANGUAGE:
+        try:
+            with db.connect() as c:
+                c.execute("UPDATE days SET pdf_path = ? WHERE date = ?",
+                          (str(result), date))
+                c.commit()
+            log.info("render_persisted_day: days.pdf_path updated for %s → %s",
+                     date, result)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("render_persisted_day: pdf_path update failed: %s", exc)
+    return result
 
 
 # ── Public lookups (used by main.py) ─────────────────────────────────

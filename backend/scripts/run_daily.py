@@ -107,16 +107,38 @@ def _run_en(log: logging.Logger) -> int:
     return 0
 
 
-def _run_de(log: logging.Logger) -> int:
-    """Re-render only: read latest day from DB, render DE PDFs."""
+def _run_en_rerender(log: logging.Logger, date: str) -> int:
+    """Re-render an arbitrary past day's EN PDFs from the persisted
+    catches. Skips GFW + pool mutation entirely — used to rebuild
+    artefacts that an earlier emergency cleanup wiped from disk, while
+    the catches themselves are still in the DB."""
     from app import db, pdf_builder
 
     db.init_db()
-    latest = db.latest_day()
-    if not latest:
-        log.error("No recorded day in DB — cannot render DE")
-        return 2
-    date = latest["date"]
+    log.info("Re-rendering EN for %s", date)
+    try:
+        result = pdf_builder.render_persisted_day(date, language="en")
+    except Exception as exc:  # noqa: BLE001
+        log.exception("EN re-render failed: %s", exc)
+        return 1
+    if result is None:
+        log.error("render_persisted_day returned None for %s", date)
+        return 1
+    return 0
+
+
+def _run_de(log: logging.Logger, date: str | None = None) -> int:
+    """Re-render only: render DE PDFs from a specific day's persisted
+    catches. Without `--date` falls back to db.latest_day()."""
+    from app import db, pdf_builder
+
+    db.init_db()
+    if not date:
+        latest = db.latest_day()
+        if not latest:
+            log.error("No recorded day in DB — cannot render DE")
+            return 2
+        date = latest["date"]
     log.info("Re-rendering DE for %s", date)
     try:
         result = pdf_builder.render_persisted_day(date, language="de")
@@ -134,10 +156,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--lang", choices=("en", "de"), default="en",
                     help="Which language pass to run (default: en)")
+    ap.add_argument("--date", default=None,
+                    help="Re-render this specific date from persisted "
+                         "catches instead of fetching from GFW. Required "
+                         "to invoke EN's rerender path.")
     args = ap.parse_args()
     if args.lang == "en":
+        if args.date:
+            return _run_en_rerender(log, args.date)
         return _run_en(log)
-    return _run_de(log)
+    return _run_de(log, args.date)
 
 
 if __name__ == "__main__":
