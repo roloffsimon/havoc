@@ -231,6 +231,19 @@ def latest_day() -> dict | None:
     return dict(row) if row else None
 
 
+def latest_active_day() -> dict | None:
+    """Most recent day with at least one event recorded. Used by the API
+    to keep serving the last real catch when GFW has been silent for
+    several days (publication-lag stretches, the 5/21–5/26 gap, etc.)
+    instead of flipping the site to 0 vessels / 0 stanzas. Returns
+    None when no day with events > 0 exists yet."""
+    with connect() as c:
+        row = c.execute(
+            "SELECT * FROM days WHERE events > 0 ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def vessels_for(date: str) -> list[dict]:
     with connect() as c:
         rows = c.execute(

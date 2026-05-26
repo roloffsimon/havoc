@@ -1651,6 +1651,17 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]],
         log.info("PDF: skipped (HAVOC_PDF_SKIP=1)")
         return None
 
+    # Skip rendering empty days entirely. During GFW publication-lag
+    # stretches the scheduler still produces a day row with 0 events,
+    # and rendering it yields a ~426 KB cover-only PDF that has no
+    # content. Worse, the latest empty PDF would mask the previous
+    # real catch from /api/catch-of-the-day. record_day still runs in
+    # the caller, so the empty day stays visible in /api/debug/db.
+    if not poems or stats.get("stanzas_caught", 0) == 0:
+        log.info("PDF: skipped (0 catches for %s, lang=%s)",
+                 stats.get("date"), language)
+        return None
+
     language = _normalise_language(language)
     engine = os.environ.get("HAVOC_PDF_ENGINE", "typst").strip().lower()
     if engine == "typst":
@@ -1731,20 +1742,57 @@ def render_persisted_day(date: str, *,
 
 # ── Public lookups (used by main.py) ─────────────────────────────────
 
+def _active_render_date() -> _date | None:
+    """Render-date of the PDF written for the latest day that had any
+    catches. Parsed from `days.pdf_path` (which is the canonical EN
+    Selection path); returns None when no active day exists yet, or
+    its pdf_path isn't a canonical-name file."""
+    try:
+        from . import db
+        active = db.latest_active_day()
+    except Exception:
+        return None
+    if not active:
+        return None
+    pp = active.get("pdf_path")
+    if not pp:
+        return None
+    parsed = _parse_pdf_name(Path(pp).name)
+    return parsed[0] if parsed is not None else None
+
+
 def latest_pdf(tier: str | None = None,
                language: str | None = None) -> Path | None:
     """Newest daily artefact for the given tier (default: selection).
 
+    Resolution order:
+    1. The PDF rendered for the most recent active day (i.e. the day
+       `db.latest_active_day()` points at). Keeps the Catch-of-the-Day
+       download working through GFW publication-lag stretches where the
+       newest day on disk has 0 events.
+    2. Otherwise the newest tier-matching PDF by mtime (legacy path).
+    3. Then any `catch_*.pdf` by mtime (EN only).
+    4. Then an HTML fallback if a pre-typst deploy left one behind.
+
     EN files match `catch_*_{tier}.pdf`; DE files match
-    `catch_*_{tier}_de.pdf`. Falls back to any `catch_*.pdf` if no
-    tier-specific match exists, and finally to an HTML fallback if
-    WeasyPrint left one behind on a prior deploy. The DE lookup is
-    strict — there is no EN fallback for missing DE files (the caller
-    sees a 404 and the user knows the DE volume isn't ready).
+    `catch_*_{tier}_de.pdf`. The DE lookup is strict — there is no EN
+    fallback for missing DE files (the caller sees a 404 and the user
+    knows the DE volume isn't ready).
     """
     tier = tier or DEFAULT_TIER
     language = _normalise_language(language)
     suffix = _lang_suffix(language)
+
+    # Step 1 — prefer the active day's PDF (in PDF_DIR or ARCHIVE_DIR).
+    active = _active_render_date()
+    if active is not None:
+        want = f"catch_{active.isoformat()}_{tier}{suffix}.pdf"
+        for parent in (PDF_DIR, ARCHIVE_DIR):
+            candidate = parent / want
+            if candidate.exists():
+                return candidate
+
+    # Step 2 — mtime-newest tier-matching PDF in PDF_DIR.
     tier_pdfs = sorted(PDF_DIR.glob(f"catch_*_{tier}{suffix}.pdf"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
     if tier_pdfs:
@@ -1910,6 +1958,17 @@ def prune_pdfs(*, is_final: bool = False,
     first_date = all_dates[0]
     latest_date = all_dates[-1]
 
+    # Protected render_dates: always kept (or copied, not moved, on
+    # milestones) so the API can keep serving. Includes:
+    #   - the latest render_date on disk (today's render);
+    #   - the render_date of the most recent active day's PDF (the
+    #     fallback /api/catch-of-the-day serves when the latest render
+    #     is empty due to GFW publication lag).
+    protected: set[_date] = {latest_date}
+    active_d = _active_render_date()
+    if active_d is not None:
+        protected.add(active_d)
+
     def _is_milestone(d: _date) -> bool:
         if d == first_date:
             return True
@@ -1929,14 +1988,15 @@ def prune_pdfs(*, is_final: bool = False,
             kept.append(f"archive/{p.name}")
             continue
 
-        is_latest = (d == latest_date)
+        is_protected = d in protected
         archive_this = _is_milestone(d) and tier == DEFAULT_TIER
 
         if archive_this:
             target = ARCHIVE_DIR / p.name
-            if is_latest:
-                # Latest day: copy into the archive but keep the original
-                # in PDF_DIR so /api/catch-of-the-day stays live.
+            if is_protected:
+                # Protected render_date: copy into the archive but keep
+                # the original in PDF_DIR so /api/catch-of-the-day stays
+                # live.
                 if not target.exists():
                     shutil.copy2(p, target)
                     archived.append(p.name)
@@ -1953,7 +2013,7 @@ def prune_pdfs(*, is_final: bool = False,
                     archived.append(p.name)
             continue
 
-        if is_latest:
+        if is_protected:
             kept.append(p.name)
             continue
 
@@ -1970,6 +2030,8 @@ def prune_pdfs(*, is_final: bool = False,
         "archive_dir": str(ARCHIVE_DIR),
         "first_date": first_date.isoformat(),
         "latest_date": latest_date.isoformat(),
+        "active_render_date": active_d.isoformat() if active_d else None,
+        "protected_dates": sorted(d.isoformat() for d in protected),
         "is_final": is_final,
         "archive_interval_days": archive_interval_days,
     }

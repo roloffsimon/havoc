@@ -178,10 +178,14 @@ def status():
         "is_final": pool.is_exhausted,
     }
     # Latest-day stats — what the website's "Catch of the Day" card and
-    # the bottom HUD's vessel/stanza counters need. Comes from the
-    # `days` row written by the most recent successful daily job;
+    # the bottom HUD's vessel/stanza counters need. Prefer the most
+    # recent day that actually had events: GFW's publication lag has
+    # been known to stretch from the documented ~72 h to 5–6 days, and
+    # during those gaps the site would otherwise flip to 0 vessels /
+    # 0 stanzas. The empty days still exist in the table for record-
+    # keeping; they just don't drive the surface. `latest_day` is
     # absent on a fresh deploy where no day has been processed yet.
-    latest = db.latest_day()
+    latest = db.latest_active_day() or db.latest_day()
     if latest:
         # fishing_hours isn't stored on the days row directly — sum it
         # from the vessels_active rows for this date.
@@ -205,7 +209,9 @@ def status():
 
 @app.get("/api/vessels")
 def vessels():
-    day = db.latest_day()
+    # Same fallback as /api/status — keep the fleet card pinned to the
+    # last day with real catches when GFW has been silent.
+    day = db.latest_active_day() or db.latest_day()
     if not day:
         return JSONResponse(
             content={"date": None, "vessels": []},
@@ -340,7 +346,7 @@ def catch_info(size: str = "selection", lang: str = "en"):
             date = parts[1]
 
     stanzas = None
-    latest = db.latest_day()
+    latest = db.latest_active_day() or db.latest_day()
     if latest:
         if not date:
             date = latest["date"]
