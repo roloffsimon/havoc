@@ -572,6 +572,16 @@ def debug_cleanup_pdfs(request: Request):
     this endpoint exists for the initial backfill and for ad-hoc resets
     when the volume gets tight."""
     _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import traceback
     from . import pdf_builder
-    pool = _get_pool()
-    return pdf_builder.prune_pdfs(is_final=pool.is_exhausted)
+    try:
+        pool = _get_pool()
+        is_final = bool(pool.is_exhausted)
+    except Exception as exc:  # noqa: BLE001
+        is_final = False
+        log.warning("cleanup-pdfs: pool lookup failed (%s), assuming is_final=False", exc)
+    try:
+        return pdf_builder.prune_pdfs(is_final=is_final)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": repr(exc),
+                "traceback": traceback.format_exc()}
