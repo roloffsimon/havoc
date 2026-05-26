@@ -1816,6 +1816,38 @@ def _collect_dated_pdfs() -> list[tuple[_date, str, str, Path]]:
     return out
 
 
+def _delete_non_latest_in_pdf_dir() -> dict:
+    """Delete every canonical-name PDF in PDF_DIR top level except those
+    from the latest render_date. Used as the ENOSPC fallback inside
+    prune_pdfs when the volume is too full to even create ARCHIVE_DIR.
+    The latest day's files are preserved so the API keeps serving."""
+    flat: list[tuple[_date, str, str, Path]] = []
+    for p in PDF_DIR.iterdir():
+        if not p.is_file() or p.suffix != ".pdf":
+            continue
+        parsed = _parse_pdf_name(p.name)
+        if parsed is None:
+            continue
+        flat.append((parsed[0], parsed[1], parsed[2], p))
+    if not flat:
+        return {"deleted": [], "kept": [], "freed_bytes": 0,
+                "latest_date": None}
+    latest = max(d for (d, _, _, _) in flat)
+    deleted: list[str] = []
+    kept: list[str] = []
+    freed = 0
+    for d, _t, _l, p in flat:
+        if d == latest:
+            kept.append(p.name)
+            continue
+        size = p.stat().st_size
+        p.unlink()
+        freed += size
+        deleted.append(p.name)
+    return {"deleted": sorted(deleted), "kept": sorted(kept),
+            "freed_bytes": freed, "latest_date": latest.isoformat()}
+
+
 def prune_pdfs(*, is_final: bool = False,
                archive_interval_days: int = ARCHIVE_INTERVAL_DAYS) -> dict:
     """Move milestone Selection PDFs into ARCHIVE_DIR and delete the rest.
@@ -1838,7 +1870,33 @@ def prune_pdfs(*, is_final: bool = False,
     """
     import shutil
 
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        if exc.errno != 28:  # not ENOSPC — let it propagate
+            raise
+        # Volume so full that even allocating the archive directory
+        # inode fails. Run an emergency delete of every non-latest PDF
+        # to free space, then retry. The historical milestones we
+        # would have archived this round are lost; the next daily
+        # render anchors the archive going forward.
+        log.warning(
+            "prune_pdfs: ARCHIVE_DIR mkdir hit ENOSPC — emergency-deleting "
+            "non-latest PDFs first")
+        emergency = _delete_non_latest_in_pdf_dir()
+        ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+        return {
+            "mode": "emergency_drop",
+            "archived": [],
+            "deleted": emergency["deleted"],
+            "kept": emergency["kept"],
+            "freed_bytes": emergency["freed_bytes"],
+            "archive_dir": str(ARCHIVE_DIR),
+            "first_date": None,
+            "latest_date": emergency["latest_date"],
+            "is_final": is_final,
+            "archive_interval_days": archive_interval_days,
+        }
     all_pdfs = _collect_dated_pdfs()
     if not all_pdfs:
         return {"archived": [], "deleted": [], "kept": [],
