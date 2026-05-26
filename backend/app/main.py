@@ -553,6 +553,69 @@ def debug_db(request: Request):
     return out
 
 
+@app.get("/api/debug/gfw-probe")
+def debug_gfw_probe(request: Request):
+    """Direct probe of the Global Fishing Watch Events API. Pass
+    `?start=YYYY-MM-DD&end=YYYY-MM-DD` (defaults to gfw_client's
+    last_available_window). Returns the raw HTTP status, the API's
+    reported `total`, the number of entries received in the first
+    page, and a single sample entry. No depletion math — just the
+    upstream answer, so we can tell whether 0-event days are GFW's
+    truth or our problem."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import requests
+    from . import gfw_client
+
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+    if not start or not end:
+        start, end = gfw_client.last_available_window()
+
+    try:
+        token = gfw_client._token()
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"token: {exc!r}"}
+
+    params = {
+        "datasets[0]": "public-global-fishing-events:latest",
+        "start-date": start,
+        "end-date": end,
+        "limit": 5,
+        "offset": 0,
+    }
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        r = requests.get(f"{gfw_client.BASE_URL}/events",
+                         headers=headers, params=params, timeout=60)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"request: {exc!r}",
+                "url": f"{gfw_client.BASE_URL}/events", "params": params}
+
+    out: dict = {
+        "ok": r.ok,
+        "status": r.status_code,
+        "url": r.url.split("?")[0],
+        "params": params,
+    }
+    body_text = r.text
+    try:
+        data = r.json()
+    except Exception:  # noqa: BLE001
+        data = None
+    if isinstance(data, dict):
+        entries = data.get("entries") or data.get("events") or []
+        out["total"] = data.get("total")
+        out["nextOffset"] = data.get("nextOffset")
+        out["entries_returned"] = len(entries) if isinstance(entries, list) else None
+        out["sample_entry_keys"] = sorted(entries[0].keys()) if entries else None
+        out["sample_entry"] = entries[0] if entries else None
+        out["other_top_level_keys"] = sorted(k for k in data.keys()
+                                              if k not in {"entries", "events", "total", "nextOffset"})
+    else:
+        out["body_preview"] = body_text[:1000]
+    return out
+
+
 @app.get("/api/debug/pdfs-list")
 def debug_pdfs_list(request: Request):
     """Diagnostic — list every Catch-of-the-Day PDF on the volume, grouped
