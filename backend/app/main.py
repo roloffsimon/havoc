@@ -551,3 +551,27 @@ def debug_db(request: Request):
     except Exception as e:  # noqa: BLE001
         out["connect_error"] = str(e)
     return out
+
+
+@app.get("/api/debug/pdfs-list")
+def debug_pdfs_list(request: Request):
+    """Diagnostic — list every Catch-of-the-Day PDF on the volume, grouped
+    by location (PDF_DIR top level vs. archive subdirectory)."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    from . import pdf_builder
+    return pdf_builder.list_pdfs()
+
+
+@app.get("/api/debug/cleanup-pdfs")
+def debug_cleanup_pdfs(request: Request):
+    """Apply the archive/prune policy now: keep the latest render_date in
+    PDF_DIR (so the API still serves), move the first + every-50th-day
+    Selection PDFs into ARCHIVE_DIR, delete everything else.
+
+    The daily pipeline runs this automatically after each new render;
+    this endpoint exists for the initial backfill and for ad-hoc resets
+    when the volume gets tight."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    from . import pdf_builder
+    pool = _get_pool()
+    return pdf_builder.prune_pdfs(is_final=pool.is_exhausted)

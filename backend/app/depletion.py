@@ -197,6 +197,19 @@ def run_day(pool: OceanPool, events: list[dict],
     gc.collect()
     log.info("buffers freed, rss=%dMB", _rss_mb())
 
+    # Prune older PDFs now that the new day's renders are on disk.
+    # Freeing space here keeps the bitmap save (a ~648 MB tmp file +
+    # rename) from tripping ENOSPC on the volume once the catches
+    # table and historic PDFs have piled up.
+    try:
+        prune_stats = pdf_builder.prune_pdfs(is_final=pool.is_exhausted)
+        log.info("prune_pdfs: archived=%d deleted=%d kept=%d freed=%.1fMB",
+                 len(prune_stats["archived"]), len(prune_stats["deleted"]),
+                 len(prune_stats["kept"]),
+                 prune_stats["freed_bytes"] / (1024 * 1024))
+    except Exception as exc:  # noqa: BLE001
+        log.exception("prune_pdfs failed (continuing): %s", exc)
+
     bitmap = build_display_bitmap(pool)
     db.save_depletion_bitmap(bitmap)
     db.save_pool_state(pool, project_day_0)

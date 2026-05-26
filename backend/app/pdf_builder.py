@@ -127,6 +127,15 @@ def _normalise_language(language: str | None) -> str:
 PDF_DIR = DATA_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 
+# Milestone archive — only the Selection-tier Catch-of-the-Day from the
+# project's first render, every Nth day after that, and the final render
+# are preserved here. Everything else in PDF_DIR gets pruned once a newer
+# day has rendered; otherwise the volume fills up after ~2 weeks of
+# heavy-day renders and the daily bitmap save crashes with ENOSPC.
+ARCHIVE_DIR = PDF_DIR / "archive"
+ARCHIVE_INTERVAL_DAYS = 50
+_PDF_NAME_RE = re.compile(r"^catch_(\d{4}-\d{2}-\d{2})_([a-z]+)(_de)?\.pdf$")
+
 # Typst-only scratch directory for the cover PNG. Sits inside the
 # template tree so it's always inside the renderer's `root` and the
 # image() call resolves without granting Typst access to the data
@@ -1763,5 +1772,179 @@ def latest_date() -> str | None:
         return None
     stem = p.stem
     return stem.replace("catch_", "", 1) if stem.startswith("catch_") else None
+
+
+# ── PDF archive / prune ──────────────────────────────────────────────
+#
+# Daily renders pile up at ~50-200 MB/day across six tier+language files
+# and would exhaust the Railway data volume within two weeks. Policy:
+# only the canonical Selection PDF (EN + DE) from the project's first
+# render, every ARCHIVE_INTERVAL_DAYS days after that, and the final
+# render are archived to ARCHIVE_DIR. Everything else in the top level
+# of PDF_DIR is deleted once a newer day has been rendered. The latest
+# render_date is always kept in PDF_DIR — that's what the API serves.
+
+
+def _parse_pdf_name(name: str) -> tuple[_date, str, str] | None:
+    """`catch_2026-05-22_selection.pdf` → (date(2026,5,22), 'selection', 'en')."""
+    m = _PDF_NAME_RE.match(name)
+    if not m:
+        return None
+    try:
+        d = _date.fromisoformat(m.group(1))
+    except ValueError:
+        return None
+    return d, m.group(2), "de" if m.group(3) else "en"
+
+
+def _collect_dated_pdfs() -> list[tuple[_date, str, str, Path]]:
+    """All canonical-name PDFs in PDF_DIR top level and ARCHIVE_DIR,
+    as (render_date, tier, lang, path). Non-matching files (legacy
+    names, html fallbacks, debug artefacts) are skipped — prune_pdfs
+    never touches them."""
+    out: list[tuple[_date, str, str, Path]] = []
+    for d in (PDF_DIR, ARCHIVE_DIR):
+        if not d.exists():
+            continue
+        for p in d.iterdir():
+            if not p.is_file() or p.suffix != ".pdf":
+                continue
+            parsed = _parse_pdf_name(p.name)
+            if parsed is None:
+                continue
+            out.append((parsed[0], parsed[1], parsed[2], p))
+    return out
+
+
+def prune_pdfs(*, is_final: bool = False,
+               archive_interval_days: int = ARCHIVE_INTERVAL_DAYS) -> dict:
+    """Move milestone Selection PDFs into ARCHIVE_DIR and delete the rest.
+
+    Milestones (Selection tier only, both languages):
+    - the earliest render_date observed across PDF_DIR + ARCHIVE_DIR,
+    - every `archive_interval_days` days after that earliest date,
+    - the latest render_date when `is_final` is True.
+
+    The latest render_date is always kept in PDF_DIR (so the API can
+    keep serving the current Catch of the Day); when that latest day
+    is also a milestone, the file is copied into ARCHIVE_DIR rather
+    than moved.
+
+    Non-Selection tiers (`finecut`, `onepiece`) are never archived —
+    they're kept in PDF_DIR only on the latest render_date and deleted
+    everywhere else.
+
+    Already-archived files inside ARCHIVE_DIR are left untouched.
+    """
+    import shutil
+
+    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    all_pdfs = _collect_dated_pdfs()
+    if not all_pdfs:
+        return {"archived": [], "deleted": [], "kept": [],
+                "freed_bytes": 0,
+                "archive_dir": str(ARCHIVE_DIR),
+                "first_date": None, "latest_date": None,
+                "is_final": is_final,
+                "archive_interval_days": archive_interval_days}
+
+    all_dates = sorted({t[0] for t in all_pdfs})
+    first_date = all_dates[0]
+    latest_date = all_dates[-1]
+
+    def _is_milestone(d: _date) -> bool:
+        if d == first_date:
+            return True
+        if (d - first_date).days % archive_interval_days == 0:
+            return True
+        if is_final and d == latest_date:
+            return True
+        return False
+
+    archived: list[str] = []
+    deleted: list[str] = []
+    kept: list[str] = []
+    freed_bytes = 0
+
+    for d, tier, _lang, p in all_pdfs:
+        if p.parent == ARCHIVE_DIR:
+            kept.append(f"archive/{p.name}")
+            continue
+
+        is_latest = (d == latest_date)
+        archive_this = _is_milestone(d) and tier == DEFAULT_TIER
+
+        if archive_this:
+            target = ARCHIVE_DIR / p.name
+            if is_latest:
+                # Latest day: copy into the archive but keep the original
+                # in PDF_DIR so /api/catch-of-the-day stays live.
+                if not target.exists():
+                    shutil.copy2(p, target)
+                    archived.append(p.name)
+                kept.append(p.name)
+            else:
+                # Older milestone: move (the API doesn't need it).
+                if target.exists():
+                    size = p.stat().st_size
+                    p.unlink()
+                    freed_bytes += size
+                    deleted.append(p.name)
+                else:
+                    p.rename(target)
+                    archived.append(p.name)
+            continue
+
+        if is_latest:
+            kept.append(p.name)
+            continue
+
+        size = p.stat().st_size
+        p.unlink()
+        freed_bytes += size
+        deleted.append(p.name)
+
+    return {
+        "archived": sorted(archived),
+        "deleted": sorted(deleted),
+        "kept": sorted(kept),
+        "freed_bytes": freed_bytes,
+        "archive_dir": str(ARCHIVE_DIR),
+        "first_date": first_date.isoformat(),
+        "latest_date": latest_date.isoformat(),
+        "is_final": is_final,
+        "archive_interval_days": archive_interval_days,
+    }
+
+
+def list_pdfs() -> dict:
+    """Diagnostic — every canonical-name PDF on disk with size, grouped
+    by location. Used by /api/debug/pdfs-list."""
+    rows: list[dict] = []
+    archive_rows: list[dict] = []
+    total = 0
+    archive_total = 0
+    for d, tier, lang, p in _collect_dated_pdfs():
+        size = p.stat().st_size
+        entry = {"name": p.name, "date": d.isoformat(),
+                 "tier": tier, "lang": lang, "size_bytes": size}
+        if p.parent == ARCHIVE_DIR:
+            archive_rows.append(entry)
+            archive_total += size
+        else:
+            rows.append(entry)
+            total += size
+    rows.sort(key=lambda r: (r["date"], r["tier"], r["lang"]))
+    archive_rows.sort(key=lambda r: (r["date"], r["tier"], r["lang"]))
+    return {
+        "pdf_dir": str(PDF_DIR),
+        "archive_dir": str(ARCHIVE_DIR),
+        "pdf_dir_count": len(rows),
+        "pdf_dir_total_bytes": total,
+        "archive_count": len(archive_rows),
+        "archive_total_bytes": archive_total,
+        "pdf_dir_files": rows,
+        "archive_files": archive_rows,
+    }
 
 
