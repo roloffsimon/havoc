@@ -655,6 +655,25 @@ def debug_db(request: Request):
                 out["days_sample"] = [dict(r) for r in rows]
             except Exception as e:  # noqa: BLE001
                 out["days_sample_error"] = str(e)
+            # Per-date catch-row count vs the days/vessels rows. A day
+            # whose `events`/`vessels` are non-zero but `catch_rows` is 0
+            # (or far below `stanzas_caught`) is one whose catches write
+            # didn't survive — the signature of a record_day transaction
+            # killed mid-INSERT under journal_mode=MEMORY.
+            try:
+                rows = c.execute(
+                    """
+                    SELECT d.date, d.events, d.vessels, d.stanzas_caught,
+                           (SELECT COUNT(*) FROM catches x WHERE x.date = d.date)
+                             AS catch_rows
+                    FROM days d
+                    ORDER BY d.date DESC
+                    LIMIT 30
+                    """
+                ).fetchall()
+                out["catch_integrity"] = [dict(r) for r in rows]
+            except Exception as e:  # noqa: BLE001
+                out["catch_integrity_error"] = str(e)
     except Exception as e:  # noqa: BLE001
         out["connect_error"] = str(e)
     return out
