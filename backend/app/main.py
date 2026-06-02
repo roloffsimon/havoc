@@ -721,6 +721,79 @@ def debug_vacuum_db_status(request: Request):
         return dict(_vacuum_state)
 
 
+# ── DB integrity check + index repair ────────────────────────────────
+_integrity_lock = __import__("threading").Lock()
+_integrity_state: dict = {"running": False, "result": None,
+                          "started_at": None, "finished_at": None, "op": None}
+
+
+def _integrity_worker(op: str, table: str):
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        if op == "check":
+            res = db.integrity_check()
+        elif op == "reindex":
+            res = db.reindex_table(table)
+        else:
+            res = {"ok": False, "error": f"unknown op {op!r}"}
+        with _integrity_lock:
+            _integrity_state["result"] = res
+    except Exception as exc:  # noqa: BLE001
+        with _integrity_lock:
+            _integrity_state["result"] = {
+                "ok": False, "error": repr(exc),
+                "traceback": traceback.format_exc()}
+    finally:
+        with _integrity_lock:
+            _integrity_state["running"] = False
+            _integrity_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+def _start_integrity(op: str, table: str = "catches"):
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    with _integrity_lock:
+        if _integrity_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "op": _integrity_state["op"],
+                    "started_at": _integrity_state["started_at"]}
+        _integrity_state["running"] = True
+        _integrity_state["result"] = None
+        _integrity_state["op"] = op
+        _integrity_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _integrity_state["finished_at"] = None
+    threading.Thread(target=_integrity_worker, args=(op, table), daemon=True).start()
+    return {"started": True, "op": op,
+            "started_at": _integrity_state["started_at"],
+            "poll": "/api/debug/integrity-status"}
+
+
+@app.get("/api/debug/integrity")
+def debug_integrity(request: Request):
+    """Read-only PRAGMA integrity_check (background). Poll
+    /api/debug/integrity-status for the message list."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    return _start_integrity("check")
+
+
+@app.get("/api/debug/reindex")
+def debug_reindex(request: Request):
+    """Rebuild a table's indexes (default `catches`) — the repair when
+    integrity_check shows index-only damage. Background; poll
+    /api/debug/integrity-status."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    table = request.query_params.get("table", "catches")
+    return _start_integrity("reindex", table)
+
+
+@app.get("/api/debug/integrity-status")
+def debug_integrity_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _integrity_lock:
+        return dict(_integrity_state)
+
+
 @app.get("/api/debug/weasyprint")
 def debug_weasyprint(request: Request):
     """Probe WeasyPrint import + a tiny render so we can see precisely

@@ -135,6 +135,34 @@ def init_db() -> None:
     log.info("DB initialised at %s", DB_PATH)
 
 
+def integrity_check(limit: int = 50) -> dict:
+    """Read-only `PRAGMA integrity_check` — reports structural damage.
+
+    Returns {"ok": True, "messages": ["ok"]} for a clean DB, or
+    {"ok": False, "messages": [...]} listing up to `limit` problems (e.g.
+    a malformed index vs. table-level corruption). Touches no data."""
+    with connect() as c:
+        rows = c.execute(f"PRAGMA integrity_check({int(limit)});").fetchall()
+    messages = [r[0] for r in rows]
+    return {"ok": messages == ["ok"], "messages": messages}
+
+
+def reindex_table(table: str = "catches") -> dict:
+    """Rebuild a table's indexes from its (intact) row data.
+
+    The fix when corruption is index-only: REINDEX drops and recreates
+    every index on the table without rewriting the table B-tree itself,
+    so writes that touch those indexes (e.g. DELETE in prune_catches)
+    work again. Fails loudly if the table B-tree is the damaged part —
+    that case needs a full rebuild, not a reindex. `table` is validated
+    against a fixed allowlist (no SQL injection surface)."""
+    if table not in {"catches", "vessels_active", "days"}:
+        raise ValueError(f"refusing to reindex unknown table {table!r}")
+    with connect() as c:
+        c.execute(f"REINDEX {table};")
+    return {"ok": True, "table": table}
+
+
 # ── OceanPool persistence ────────────────────────────────────────────
 
 def save_mask(mask: np.ndarray) -> None:
