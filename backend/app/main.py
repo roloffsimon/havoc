@@ -794,6 +794,98 @@ def debug_integrity_status(request: Request):
         return dict(_integrity_state)
 
 
+# ── Day-0 project reset ──────────────────────────────────────────────
+# DESTRUCTIVE: wipes the DB + mask + bitmap and rebuilds a fresh pool
+# from genesis. Runs reset_project in a subprocess so the heavy mask
+# write doesn't block the web worker's event loop, then reloads the pool
+# so the live process serves the fresh Day-1 state without a restart.
+_reset_lock = __import__("threading").Lock()
+_reset_state: dict = {"running": False, "result": None,
+                      "started_at": None, "finished_at": None, "day0": None}
+
+
+def _reset_worker(day0: str):
+    import subprocess
+    import sys
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        cmd = [sys.executable, "-m", "scripts.reset_project",
+               "--yes", "--project-day-0", day0]
+        log.info("reset subprocess: %s", " ".join(cmd))
+        proc = subprocess.run(cmd, timeout=1800, check=False)
+        rc = proc.returncode
+        reloaded = False
+        if rc == 0:
+            # Swap the live in-memory pool over to the fresh genesis mask
+            # so the running process stops serving the old depleted state.
+            try:
+                _load_pool()
+                reloaded = True
+            except Exception as exc:  # noqa: BLE001
+                log.warning("reset: pool reload failed (%s)", exc)
+        with _reset_lock:
+            _reset_state["result"] = {"ok": rc == 0, "rc": rc,
+                                      "pool_reloaded": reloaded, "day0": day0}
+    except subprocess.TimeoutExpired:
+        with _reset_lock:
+            _reset_state["result"] = {"ok": False, "timeout": True}
+    except Exception as exc:  # noqa: BLE001
+        with _reset_lock:
+            _reset_state["result"] = {"ok": False, "error": repr(exc),
+                                      "traceback": traceback.format_exc()}
+    finally:
+        with _reset_lock:
+            _reset_state["running"] = False
+            _reset_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/reset-project")
+def debug_reset_project(request: Request):
+    """DESTRUCTIVE — wipe the database/mask/bitmap and restart the project
+    from genesis with `?day0=YYYY-MM-DD` as the new project day 0. Requires
+    `&confirm=RESET` so a stray request can't trigger it. Runs in a
+    subprocess (no event-loop block) and reloads the pool on success.
+    Poll /api/debug/reset-project-status. Trigger this when no daily job
+    is running (i.e. not around 14:15 UTC)."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    if request.query_params.get("confirm") != "RESET":
+        raise HTTPException(status_code=400,
+                            detail="destructive: append &confirm=RESET to proceed")
+    day0 = request.query_params.get("day0")
+    if not day0:
+        raise HTTPException(status_code=400, detail="provide ?day0=YYYY-MM-DD")
+    if len(day0) != 10 or "T" in day0:
+        raise HTTPException(status_code=400, detail="day0 must be a date YYYY-MM-DD")
+    try:
+        datetime.fromisoformat(day0)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="day0 must be a valid YYYY-MM-DD")
+    with _reset_lock:
+        if _reset_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _reset_state["started_at"]}
+        _reset_state["running"] = True
+        _reset_state["result"] = None
+        _reset_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _reset_state["finished_at"] = None
+        _reset_state["day0"] = day0
+    threading.Thread(target=_reset_worker, args=(day0,), daemon=True).start()
+    return {"started": True, "day0": day0,
+            "started_at": _reset_state["started_at"],
+            "warning": "all days/vessels/catches wiped; pool reset to genesis",
+            "poll": "/api/debug/reset-project-status"}
+
+
+@app.get("/api/debug/reset-project-status")
+def debug_reset_project_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _reset_lock:
+        return dict(_reset_state)
+
+
 @app.get("/api/debug/weasyprint")
 def debug_weasyprint(request: Request):
     """Probe WeasyPrint import + a tiny render so we can see precisely
