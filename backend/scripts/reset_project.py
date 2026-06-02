@@ -56,18 +56,23 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MASK = BACKEND_ROOT / "ocean_mask.npz"
 
 
-def wipe_tables() -> None:
-    with db.connect() as c:
-        # Order matters only nominally — no FKs are enforced — but keep
-        # children-before-parents for clarity.
-        for table in ("catches", "vessels_active", "days", "pool_state"):
-            count = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-            c.execute(f"DELETE FROM {table}")
-            log.info("Cleared %s (%d rows)", table, count)
-
-
 def drop_files() -> None:
-    for path in (db.MASK_PATH, db.DEPLETION_BITMAP_PATH):
+    # Delete the whole SQLite file (+ any rollback-journal sidecar), not
+    # just its rows. Row-wiping (DELETE FROM …) needs a structurally sound
+    # database, which a Day-0 reset can't assume — the file may carry
+    # corruption from an earlier crash (the 2026-05 journal_mode=MEMORY
+    # incident). Dropping the file is unconditional and leaves init_db()
+    # to recreate a pristine schema. The mask + bitmap go too; they are
+    # rebuilt from the source .npz right after.
+    targets = [
+        db.DB_PATH,
+        db.DB_PATH.with_name(db.DB_PATH.name + "-journal"),
+        db.DB_PATH.with_name(db.DB_PATH.name + "-wal"),
+        db.DB_PATH.with_name(db.DB_PATH.name + "-shm"),
+        db.MASK_PATH,
+        db.DEPLETION_BITMAP_PATH,
+    ]
+    for path in targets:
         if path.exists():
             path.unlink()
             log.info("Removed %s", path)
@@ -89,9 +94,10 @@ def main() -> None:
         raise SystemExit(f"Mask not found: {args.src}")
 
     if not args.yes:
-        prompt = ("This wipes catches/days/vessels_active/pool_state, removes the "
-                  "pool mask + depletion bitmap, and reinitialises the pool from "
-                  f"{args.src}. Type 'reset' to confirm: ")
+        prompt = ("This DELETES the SQLite database file, the pool mask and the "
+                  "depletion bitmap, then reinitialises the pool from "
+                  f"{args.src}. All days/vessels/catches history is lost. "
+                  "Type 'reset' to confirm: ")
         if input(prompt).strip() != "reset":
             raise SystemExit("Aborted.")
 
@@ -101,10 +107,11 @@ def main() -> None:
     except ValueError as exc:
         raise SystemExit(f"--project-day-0 must be YYYY-MM-DD: {exc}")
 
-    db.init_db()
-
-    wipe_tables()
+    # Drop the old DB file + mask FIRST, then recreate a clean schema —
+    # so a corrupt prior database can't block the reset on a failed
+    # DELETE. (init_db is CREATE TABLE IF NOT EXISTS on the fresh file.)
     drop_files()
+    db.init_db()
 
     log.info("Loading mask from %s", args.src)
     mask = load_from_npz(args.src)
