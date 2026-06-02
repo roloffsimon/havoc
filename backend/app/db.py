@@ -232,14 +232,29 @@ def latest_day() -> dict | None:
 
 
 def latest_active_day() -> dict | None:
-    """Most recent day with at least one event recorded. Used by the API
+    """Most recent day that still has catch rows on disk. Used by the API
     to keep serving the last real catch when GFW has been silent for
     several days (publication-lag stretches, the 5/21–5/26 gap, etc.)
     instead of flipping the site to 0 vessels / 0 stanzas. Returns
-    None when no day with events > 0 exists yet."""
+    None when no such day exists yet.
+
+    The EXISTS guard (not a bare `events > 0`) matters: a day's `days`
+    and `vessels_active` rows can outlive its `catches` rows — e.g. when
+    catches for the heaviest day get pruned to reclaim volume space under
+    disk pressure. The fleet endpoint inlines per-vessel catches, so a
+    day with vessels but no catch rows renders an empty map (every
+    vessel arrives with `catches: []`). Pinning to the latest day that
+    actually has catches makes the API fall through such a day to the
+    previous intact one rather than serving a catch-less fleet.
+    `idx_catches_date` keeps the EXISTS sub-query cheap."""
     with connect() as c:
         row = c.execute(
-            "SELECT * FROM days WHERE events > 0 ORDER BY date DESC LIMIT 1"
+            """
+            SELECT d.* FROM days d
+            WHERE d.events > 0
+              AND EXISTS (SELECT 1 FROM catches c WHERE c.date = d.date)
+            ORDER BY d.date DESC LIMIT 1
+            """
         ).fetchone()
     return dict(row) if row else None
 
