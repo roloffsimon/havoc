@@ -127,6 +127,36 @@ def _run_en_rerender(log: logging.Logger, date: str) -> int:
     return 0
 
 
+def _run_en_restore(log: logging.Logger, date: str) -> int:
+    """Regenerate a past day's catches after they were lost, then render
+    its EN PDFs. Re-fetches GFW for the date and replays against a
+    throwaway scratch pool (the live pool is never touched); see
+    `depletion.regenerate_day`. Unlike `_run_en_rerender`, this REBUILDS
+    the catch rows rather than reading them, so use it when a day has
+    days/vessels but zero catches."""
+    from app import db, depletion
+
+    db.init_db()
+    project_day_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13")
+    fallback_env = os.environ.get("HAVOC_FALLBACK_JSON")
+    fallback_path = Path(fallback_env) if fallback_env else None
+    if fallback_path and not fallback_path.exists():
+        fallback_path = None
+    log.info("Restoring (regenerate) EN for %s", date)
+    try:
+        result = depletion.regenerate_day(date, project_day_0,
+                                           fallback_json=fallback_path,
+                                           languages=("en",))
+    except Exception as exc:  # noqa: BLE001
+        log.exception("EN restore failed: %s", exc)
+        return 1
+    if result is None:
+        log.error("regenerate_day declined to write for %s (no day row, "
+                  "empty day, or zero catches from GFW)", date)
+        return 1
+    return 0
+
+
 def _run_de(log: logging.Logger, date: str | None = None) -> int:
     """Re-render only: render DE PDFs from a specific day's persisted
     catches. Without `--date` falls back to db.latest_day()."""
@@ -160,8 +190,19 @@ def main() -> int:
                     help="Re-render this specific date from persisted "
                          "catches instead of fetching from GFW. Required "
                          "to invoke EN's rerender path.")
+    ap.add_argument("--restore", action="store_true",
+                    help="EN only: re-fetch --date from GFW and REBUILD its "
+                         "catches against a throwaway scratch pool (live "
+                         "pool untouched). Use when a day lost its catch "
+                         "rows. Ignored for --lang de (which re-renders "
+                         "from the rebuilt catches).")
     args = ap.parse_args()
     if args.lang == "en":
+        if args.restore:
+            if not args.date:
+                log.error("--restore requires --date YYYY-MM-DD")
+                return 2
+            return _run_en_restore(log, args.date)
         if args.date:
             return _run_en_rerender(log, args.date)
         return _run_en(log)

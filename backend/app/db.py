@@ -150,6 +150,25 @@ def load_mask() -> np.ndarray | None:
     return np.fromfile(MASK_PATH, dtype=np.uint8)
 
 
+# The undepleted genesis mask, committed next to the `app/` package
+# (same anchor in dev `backend/` and the flattened container `/app`).
+GENESIS_MASK_PATH = Path(__file__).resolve().parents[1] / "ocean_mask.npz"
+
+
+def load_genesis_mask() -> np.ndarray:
+    """Every water cell alive — the project's day-0 ocean.
+
+    Used as a throwaway scratch pool for day-regeneration (restoring a
+    day whose catch rows were lost) so the live, checkpointed pool mask
+    is never touched. The result is NEVER written back to MASK_PATH."""
+    data = np.load(GENESIS_MASK_PATH)
+    key = next(iter(data.files))
+    arr = data[key]
+    if arr.dtype != np.uint8:
+        arr = arr.astype(np.uint8)
+    return np.ascontiguousarray(arr).reshape(-1)
+
+
 def save_pool_state(pool: "OceanPool", project_day_0: str) -> None:
     """Persist cursor / catch count / direction and the mask itself."""
     save_mask(pool.mask)
@@ -247,6 +266,12 @@ def latest_day() -> dict | None:
         row = c.execute(
             "SELECT * FROM days ORDER BY date DESC LIMIT 1"
         ).fetchone()
+    return dict(row) if row else None
+
+
+def get_day(date: str) -> dict | None:
+    with connect() as c:
+        row = c.execute("SELECT * FROM days WHERE date=?", (date,)).fetchone()
     return dict(row) if row else None
 
 

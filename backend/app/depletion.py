@@ -88,19 +88,16 @@ def build_display_bitmap(pool: OceanPool) -> bytes:
     return packed.tobytes()
 
 
-def run_day(pool: OceanPool, events: list[dict],
-            date: str, project_day_0: str,
-            *, languages: tuple[str, ...] = ("en", "de")) -> dict:
-    """Process one day of events. Mutates the pool in place.
+def _process_events(pool: OceanPool, events: list[dict]):
+    """Pure event→catch fold over the pool. Sorts events chronologically,
+    runs each through `pool.process_event` (mutating the pool in place),
+    and groups the resulting catches by vessel.
 
-    `languages` controls which PDF volumes are rendered inline. Default
-    renders both EN and DE (legacy behaviour). The Railway daily job
-    splits these across two subprocess calls — `("en",)` for the first
-    pass (events + persist + EN) and a separate re-render path for DE
-    (`pdf_builder.render_persisted_day`) — so the typst Rust heap from
-    one language never coexists with the next.
+    Returns `(events_sorted, per_vessel, vessels_meta, all_catches)`.
+    Shared by `run_day` (the live daily job) and `regenerate_day` (which
+    replays against a throwaway scratch pool); keeping it a single
+    function means both paths build catches identically.
     """
-    log.info("run_day %s start: %d events, rss=%dMB", date, len(events), _rss_mb())
     # Chronological order. The ocean doesn't sort by anything else.
     events_sorted = sorted(events, key=lambda e: e.get("start", ""))
 
@@ -140,6 +137,24 @@ def run_day(pool: OceanPool, events: list[dict],
             per_vessel[vkey].append(c)
             all_catches.append(c)
         vmeta["stanzas"] += len(catches)
+
+    return events_sorted, per_vessel, vessels_meta, all_catches
+
+
+def run_day(pool: OceanPool, events: list[dict],
+            date: str, project_day_0: str,
+            *, languages: tuple[str, ...] = ("en", "de")) -> dict:
+    """Process one day of events. Mutates the pool in place.
+
+    `languages` controls which PDF volumes are rendered inline. Default
+    renders both EN and DE (legacy behaviour). The Railway daily job
+    splits these across two subprocess calls — `("en",)` for the first
+    pass (events + persist + EN) and a separate re-render path for DE
+    (`pdf_builder.render_persisted_day`) — so the typst Rust heap from
+    one language never coexists with the next.
+    """
+    log.info("run_day %s start: %d events, rss=%dMB", date, len(events), _rss_mb())
+    events_sorted, per_vessel, vessels_meta, all_catches = _process_events(pool, events)
 
     stats = {
         "date": date,
@@ -234,3 +249,98 @@ def run_latest(pool: OceanPool, project_day_0: str,
         events = gfw_client.load_events_from_file(str(fallback_json))
     return run_day(pool, events, date=start, project_day_0=project_day_0,
                    languages=languages)
+
+
+def regenerate_day(date: str, project_day_0: str,
+                   fallback_json: Path | None = None,
+                   *, languages: tuple[str, ...] = ("en", "de")) -> dict | None:
+    """Rebuild a past day's catch rows after they were lost (the
+    2026-05-24 / -26 incident: a record_day INSERT killed mid-write under
+    the old MEMORY journal left days+vessels but zero catches).
+
+    Re-fetches that day's GFW window and replays it against a THROWAWAY
+    genesis scratch pool — the live, checkpointed pool mask and pool_state
+    are never read or written, so this never double-counts depletion. The
+    day's cumulative `depletion_pct` is preserved from the existing row
+    (a scratch pool only knows this one day's draws, not the running
+    total).
+
+    The regenerated catches are NOT byte-identical to the originals: pool
+    draw order is non-seeded by design (`OceanPool._rng`), so pool cells
+    differ — but GPS catches (vessel positions) and per-vessel stanza
+    counts reproduce faithfully, which is all the work's identity rests on
+    (the depletion mask, untouched here, carries the rest).
+
+    Safe by construction: refuses a day that isn't already recorded with
+    events, and aborts WITHOUT writing if the re-fetch yields no catches,
+    so an empty/curtailed GFW response can never wipe the existing rows.
+    Returns the new stats dict, or None if it declined to write.
+    """
+    from datetime import date as _date, timedelta as _td
+
+    existing = db.get_day(date)
+    if existing is None:
+        log.error("regenerate_day: %s not in days table — nothing to restore", date)
+        return None
+    if existing["events"] == 0:
+        log.error("regenerate_day: %s is an empty day (events=0) — nothing to restore", date)
+        return None
+
+    end = (_date.fromisoformat(date) + _td(days=1)).isoformat()
+    try:
+        events = gfw_client.fetch_events(date, end)
+    except Exception as exc:
+        log.warning("regenerate_day: GFW fetch failed for %s: %s", date, exc)
+        if not fallback_json or not fallback_json.exists():
+            raise
+        log.info("Falling back to %s", fallback_json)
+        events = gfw_client.load_events_from_file(str(fallback_json))
+
+    # Throwaway pool: every water cell alive. Never checkpointed, so the
+    # live depletion state is left exactly as it is.
+    scratch = OceanPool(db.load_genesis_mask())
+    log.info("regenerate_day %s: scratch pool %s cells, %d events, rss=%dMB",
+             date, f"{scratch.water_cells:,}", len(events), _rss_mb())
+    events_sorted, per_vessel, vessels_meta, all_catches = _process_events(scratch, events)
+
+    if not all_catches:
+        log.error("regenerate_day: %s produced 0 catches — aborting without "
+                  "writing so the existing day rows stay intact", date)
+        return None
+
+    stats = {
+        "date": date,
+        "events_processed": len(events_sorted),
+        "vessels_active": len(per_vessel),
+        "stanzas_caught": len(all_catches),
+        "gps_catches": sum(1 for c in all_catches if c["source"] == "gps"),
+        "pool_catches": sum(1 for c in all_catches if c["source"] == "pool"),
+        "fishing_hours": sum(e.get("fishing_hours", 0.0) for e in events_sorted),
+        # Cumulative depletion is the live pool's truth, not the scratch's.
+        "depletion_percent": existing["depletion_pct"],
+        "depletion_factor": DEPLETION_FACTOR,
+        "ocean_alive": None,
+    }
+
+    # Keep the existing PDF reference unless a fresh render replaces it.
+    pdf_path_str: str | None = existing.get("pdf_path")
+    if "en" in languages:
+        try:
+            pdf_path = pdf_builder.render_daily_pdf(stats, per_vessel)
+            if pdf_path:
+                pdf_path_str = str(pdf_path)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("regenerate_day: EN PDF render failed for %s: %s", date, exc)
+    if "de" in languages:
+        try:
+            pdf_builder.render_daily_pdf(stats, per_vessel, language="de")
+        except Exception as exc:  # noqa: BLE001
+            log.exception("regenerate_day: DE PDF render failed for %s: %s", date, exc)
+
+    # Atomic replace of the day's days/vessels/catches rows. No mask,
+    # pool_state or bitmap write — the live pool never learns this ran.
+    db.record_day(stats, list(vessels_meta.values()), all_catches, pdf_path_str)
+    log.info("regenerate_day %s done: %d catches / %d vessels, live pool "
+             "untouched, rss=%dMB", date, stats["stanzas_caught"],
+             stats["vessels_active"], _rss_mb())
+    return stats

@@ -558,6 +558,105 @@ def debug_rerender_day_status(request: Request):
         return dict(_rerender_state)
 
 
+# ── Restore (regenerate) a day whose catch rows were lost ────────────
+# Unlike rerender (which reads persisted catches to rebuild only PDFs),
+# restore re-fetches the day from GFW and REBUILDS the catch rows against
+# a throwaway scratch pool — for days that have days/vessels but zero
+# catches (the journal_mode=MEMORY incident). The live pool is untouched.
+_restore_lock = __import__("threading").Lock()
+_restore_state: dict = {"running": False, "result": None,
+                        "started_at": None, "finished_at": None,
+                        "date": None}
+
+
+def _restore_day_worker(date: str):
+    import subprocess
+    import sys
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    runs: list[dict] = []
+    try:
+        # EN rebuilds the catches (--restore), then DE re-renders from the
+        # rows EN just wrote (plain --date, same as the daily DE pass).
+        passes = [["--lang", "en", "--restore", "--date", date],
+                  ["--lang", "de", "--date", date]]
+        for extra in passes:
+            cmd = [sys.executable, "-m", "scripts.run_daily", *extra]
+            log.info("restore subprocess: %s", " ".join(cmd))
+            try:
+                proc = subprocess.run(cmd, timeout=900, check=False)
+                runs.append({"args": extra, "rc": proc.returncode})
+            except subprocess.TimeoutExpired:
+                runs.append({"args": extra, "rc": None, "timeout": True})
+                break
+            if proc.returncode != 0:
+                # EN failed (no day row, empty day, or 0 catches from GFW) —
+                # don't run DE against a day that wasn't rebuilt.
+                break
+        try:
+            _load_pool()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("restore: pool reload skipped (%s)", exc)
+        ok = all(r.get("rc") == 0 for r in runs)
+        with _restore_lock:
+            _restore_state["result"] = {"ok": ok, "runs": runs}
+    except Exception as exc:  # noqa: BLE001
+        with _restore_lock:
+            _restore_state["result"] = {
+                "ok": False,
+                "error": repr(exc),
+                "traceback": traceback.format_exc(),
+                "runs": runs,
+            }
+    finally:
+        with _restore_lock:
+            _restore_state["running"] = False
+            _restore_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/restore-day")
+def debug_restore_day(request: Request):
+    """Rebuild the catch rows for `?date=YYYY-MM-DD` by re-fetching that
+    day from GFW and replaying it against a throwaway scratch pool (the
+    live depletion state is never touched). For days that kept their
+    days/vessels rows but lost their catches. The regenerated catches are
+    design-consistent but not byte-identical to the originals (pool draw
+    order is non-seeded by design). Returns immediately; poll
+    /api/debug/restore-day-status."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    date = request.query_params.get("date")
+    if not date:
+        raise HTTPException(status_code=400, detail="provide ?date=YYYY-MM-DD")
+    try:
+        datetime.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="bad date format (need YYYY-MM-DD)")
+    with _restore_lock:
+        if _restore_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _restore_state["started_at"],
+                    "date": _restore_state["date"]}
+        _restore_state["running"] = True
+        _restore_state["result"] = None
+        _restore_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _restore_state["finished_at"] = None
+        _restore_state["date"] = date
+    threading.Thread(target=_restore_day_worker, args=(date,), daemon=True).start()
+    return {"started": True,
+            "started_at": _restore_state["started_at"],
+            "date": date,
+            "poll": "/api/debug/restore-day-status"}
+
+
+@app.get("/api/debug/restore-day-status")
+def debug_restore_day_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _restore_lock:
+        return dict(_restore_state)
+
+
 @app.get("/api/debug/weasyprint")
 def debug_weasyprint(request: Request):
     """Probe WeasyPrint import + a tiny render so we can see precisely
