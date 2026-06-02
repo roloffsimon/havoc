@@ -854,9 +854,13 @@ def debug_reset_project(request: Request):
     if request.query_params.get("confirm") != "RESET":
         raise HTTPException(status_code=400,
                             detail="destructive: append &confirm=RESET to proceed")
-    day0 = request.query_params.get("day0")
-    if not day0:
-        raise HTTPException(status_code=400, detail="provide ?day0=YYYY-MM-DD")
+    # Default to the HAVOC_DAY_0 env var — the single source of truth the
+    # day counter and daily job already read (so set that env var to the
+    # new Day-1 date first; changing it restarts the service and this
+    # endpoint then picks it up). An explicit ?day0= still overrides, but
+    # if it disagrees with the env the next daily run will rewrite
+    # pool_state back to the env value, so keep them in sync.
+    day0 = request.query_params.get("day0") or _project_day_0
     if len(day0) != 10 or "T" in day0:
         raise HTTPException(status_code=400, detail="day0 must be a date YYYY-MM-DD")
     try:
