@@ -97,15 +97,28 @@ CREATE INDEX IF NOT EXISTS idx_catches_vessel ON catches(date, vessel_id);
 # which SQLite uses unconditionally on its default `unix` VFS. The
 # `unix-none` VFS skips fcntl entirely (its safety guarantee depends
 # on us being the only writer, which we are: one process, one daily
-# job). The MEMORY journal then keeps the rollback journal off disk
-# so the volume never has to support a -journal sidecar either.
+# job). fcntl is the *only* thing unix-none drops — ordinary file
+# create/write/fsync still work, so a rollback-journal sidecar is fine.
 DB_URI = f"file:{DB_PATH}?vfs=unix-none"
 
 
 @contextmanager
 def connect():
     conn = sqlite3.connect(DB_URI, isolation_level=None, uri=True)
-    conn.execute("PRAGMA journal_mode=MEMORY;")
+    # journal_mode=DELETE (an on-disk rollback journal), NOT MEMORY.
+    # record_day writes ~900k catch rows in one transaction; on a heavy
+    # day that INSERT coincides with the live typst heap and pushes the
+    # subprocess into Railway's 8 GB ceiling. With journal_mode=MEMORY a
+    # mid-INSERT OOM-kill loses the in-RAM rollback journal, so the
+    # already-spilled days/vessels pages and the catches DELETE survive
+    # while the re-INSERT does not — the day ends up with vessel rows but
+    # zero catches (the 2026-05-26 incident: empty map despite 14k
+    # vessels). An on-disk journal makes the transaction crash-atomic:
+    # a killed record_day rolls back wholesale on the next open instead
+    # of leaving a half-written day. The -journal sidecar is a plain
+    # file (no fcntl), so unix-none handles it; synchronous=FULL keeps
+    # the journal durable before the main-file overwrite.
+    conn.execute("PRAGMA journal_mode=DELETE;")
     conn.execute("PRAGMA synchronous=FULL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.row_factory = sqlite3.Row
@@ -202,20 +215,26 @@ def record_day(stats: dict, vessels: list[dict], catches: list[dict],
                 """INSERT INTO vessels_active
                    (date, vessel_id, vessel_name, flag, lat, lon, fishing_hours, stanzas)
                    VALUES (?,?,?,?,?,?,?,?)""",
-                [(stats["date"], v["vessel_id"], v["vessel_name"], v["flag"],
-                  v["lat"], v["lon"], v["fishing_hours"], v["stanzas"]) for v in vessels],
+                ((stats["date"], v["vessel_id"], v["vessel_name"], v["flag"],
+                  v["lat"], v["lon"], v["fishing_hours"], v["stanzas"]) for v in vessels),
             )
 
             c.execute("DELETE FROM catches WHERE date=?", (stats["date"],))
+            # Generator, not a list comprehension: `catches` can be ~900k
+            # dicts (200-300 MB), and materialising a second full list of
+            # tuples right here doubles peak RSS at the exact moment the
+            # subprocess is closest to the 8 GB OOM ceiling. executemany
+            # consumes the generator row-by-row, so the tuples are built
+            # and discarded incrementally instead of all at once.
             c.executemany(
                 """INSERT INTO catches
                    (date, vessel_id, vessel_name, flag, lat, lon, col, row,
                     source, entropy, stanza_json)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                [(stats["date"], c2["vessel_id"], c2["vessel_name"], c2["flag"],
+                ((stats["date"], c2["vessel_id"], c2["vessel_name"], c2["flag"],
                   c2["lat"], c2["lon"], c2["col"], c2["row"],
                   c2["source"], c2["entropy"], json.dumps(c2["stanza"]))
-                 for c2 in catches],
+                 for c2 in catches),
             )
             c.execute("COMMIT;")
         except Exception:
