@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -347,3 +348,116 @@ def catches_by_vessel(date: str) -> dict[str, list[dict]]:
         d = dict(r)
         grouped.setdefault(d.pop("vessel_id"), []).append(d)
     return grouped
+
+
+# ── Catch-table retention ────────────────────────────────────────────
+
+def prune_catches(keep_active_days: int = 3) -> dict:
+    """Drop catch rows for active days older than the `keep_active_days`
+    most recent ones, caching the table at a small rolling window so the
+    volume stops growing ~250 MB per active day.
+
+    Why this is safe to automate:
+      * Live serving only ever reads the *latest* active day's catches
+        (`/api/vessels` → catches_by_vessel). Older days are read solely
+        by the on-demand re-render/restore debug paths.
+      * A day's canonical Selection PDF is rendered the same day it is
+        recorded (and milestone PDFs are archived), so the PDF — not the
+        catch rows — is the day's lasting artefact.
+      * Depletion lives in the pool mask, untouched here.
+
+    The latest day that still has catches (the served one) is preserved
+    even if it falls outside the window. The DELETE is crash-atomic under
+    the on-disk rollback journal; freed pages are reused by future
+    inserts, so the file plateaus instead of growing (run `vacuum()` once
+    to actually shrink it). Returns the pruned dates + deleted row count.
+    """
+    with connect() as c:
+        keep = [r[0] for r in c.execute(
+            "SELECT date FROM days WHERE events > 0 ORDER BY date DESC LIMIT ?",
+            (keep_active_days,),
+        ).fetchall()]
+        # Belt-and-suspenders: never drop the day the API actually serves.
+        served = c.execute(
+            "SELECT d.date FROM days d WHERE d.events > 0 "
+            "AND EXISTS (SELECT 1 FROM catches x WHERE x.date = d.date) "
+            "ORDER BY d.date DESC LIMIT 1"
+        ).fetchone()
+        if served and served[0] not in keep:
+            keep.append(served[0])
+        if not keep:
+            return {"kept_dates": [], "pruned_dates": [], "deleted_rows": 0}
+
+        ph = ",".join("?" * len(keep))
+        prune_dates = [r[0] for r in c.execute(
+            f"SELECT DISTINCT date FROM catches WHERE date NOT IN ({ph})",
+            keep,
+        ).fetchall()]
+        if not prune_dates:
+            return {"kept_dates": keep, "pruned_dates": [], "deleted_rows": 0}
+
+        c.execute("BEGIN IMMEDIATE;")
+        try:
+            ph2 = ",".join("?" * len(prune_dates))
+            cur = c.execute(
+                f"DELETE FROM catches WHERE date IN ({ph2})", prune_dates)
+            deleted = cur.rowcount
+            c.execute("COMMIT;")
+        except Exception:
+            c.execute("ROLLBACK;")
+            raise
+    log.info("prune_catches: kept %s, pruned %d dates (%d rows)",
+             keep, len(prune_dates), deleted)
+    return {"kept_dates": keep, "pruned_dates": prune_dates,
+            "deleted_rows": deleted}
+
+
+def disk_usage() -> dict:
+    """Free / total / used bytes on the volume that holds the DB."""
+    usage = shutil.disk_usage(DATA_DIR)
+    return {"total": usage.total, "used": usage.used, "free": usage.free}
+
+
+def vacuum(*, min_free_headroom: float = 1.1) -> dict:
+    """Compact the DB file, reclaiming space freed by prune_catches.
+
+    VACUUM rebuilds the database into a temporary copy before swapping it
+    in, so it transiently needs free space on the order of the *compacted*
+    file. On a volume that has already hit ENOSPC that is the dangerous
+    part, so this refuses to run unless free space ≥ `min_free_headroom`
+    × the estimated compacted size — better a skipped shrink than a
+    half-written swap. The estimate comes from the live (non-freelist)
+    page count, which after a prune is far below the current file size.
+    Returns a dict describing what happened (incl. size before/after).
+    """
+    size_before = DB_PATH.stat().st_size if DB_PATH.exists() else 0
+    with connect() as c:
+        page_count = c.execute("PRAGMA page_count;").fetchone()[0]
+        freelist = c.execute("PRAGMA freelist_count;").fetchone()[0]
+        page_size = c.execute("PRAGMA page_size;").fetchone()[0]
+    compacted_est = max(0, (page_count - freelist)) * page_size
+    free = shutil.disk_usage(DATA_DIR).free
+    need = int(compacted_est * min_free_headroom)
+    if free < need:
+        log.warning("vacuum: SKIPPED — free=%d < need=%d (%.1f× of est. "
+                    "compacted %d; file is %d)",
+                    free, need, min_free_headroom, compacted_est, size_before)
+        return {"ran": False, "reason": "insufficient_free_space",
+                "free": free, "needed": need,
+                "compacted_estimate": compacted_est, "size_before": size_before}
+    # Autocommit connection (isolation_level=None) — VACUUM cannot run
+    # inside an explicit transaction.
+    with connect() as c:
+        # Keep VACUUM's temp copy on the volume we just free-space-checked,
+        # not the container's (possibly tiny) /tmp.
+        try:
+            c.execute(f"PRAGMA temp_store_directory = '{DATA_DIR}';")
+        except sqlite3.OperationalError:
+            pass  # deprecated pragma; harmless if the build rejects it
+        c.execute("VACUUM;")
+    size_after = DB_PATH.stat().st_size if DB_PATH.exists() else 0
+    log.info("vacuum: %d → %d bytes (freed %d)",
+             size_before, size_after, size_before - size_after)
+    return {"ran": True, "size_before": size_before, "size_after": size_after,
+            "freed_bytes": size_before - size_after,
+            "compacted_estimate": compacted_est}

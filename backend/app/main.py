@@ -657,6 +657,70 @@ def debug_restore_day_status(request: Request):
         return dict(_restore_state)
 
 
+# ── Catch-table prune + one-time VACUUM ──────────────────────────────
+_vacuum_lock = __import__("threading").Lock()
+_vacuum_state: dict = {"running": False, "result": None,
+                       "started_at": None, "finished_at": None}
+
+
+def _vacuum_worker(keep_active_days: int):
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        prune = db.prune_catches(keep_active_days=keep_active_days)
+        log.info("vacuum worker: prune %s", prune)
+        vac = db.vacuum()
+        log.info("vacuum worker: vacuum %s", vac)
+        with _vacuum_lock:
+            _vacuum_state["result"] = {"ok": True, "prune": prune, "vacuum": vac}
+    except Exception as exc:  # noqa: BLE001
+        with _vacuum_lock:
+            _vacuum_state["result"] = {
+                "ok": False, "error": repr(exc),
+                "traceback": traceback.format_exc()}
+    finally:
+        with _vacuum_lock:
+            _vacuum_state["running"] = False
+            _vacuum_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/vacuum-db")
+def debug_vacuum_db(request: Request):
+    """Prune the catch log to the last `?keep=N` active days (default 3),
+    then VACUUM to return the freed space to the filesystem. VACUUM
+    refuses itself if free space is short (see db.vacuum), so an
+    ENOSPC-prone volume can't be pushed over the edge. Runs in the
+    background — poll /api/debug/vacuum-db-status."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        keep = int(request.query_params.get("keep", "3"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="keep must be an integer")
+    if keep < 1:
+        raise HTTPException(status_code=400, detail="keep must be >= 1")
+    with _vacuum_lock:
+        if _vacuum_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _vacuum_state["started_at"]}
+        _vacuum_state["running"] = True
+        _vacuum_state["result"] = None
+        _vacuum_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _vacuum_state["finished_at"] = None
+    threading.Thread(target=_vacuum_worker, args=(keep,), daemon=True).start()
+    return {"started": True, "keep_active_days": keep,
+            "started_at": _vacuum_state["started_at"],
+            "poll": "/api/debug/vacuum-db-status"}
+
+
+@app.get("/api/debug/vacuum-db-status")
+def debug_vacuum_db_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _vacuum_lock:
+        return dict(_vacuum_state)
+
+
 @app.get("/api/debug/weasyprint")
 def debug_weasyprint(request: Request):
     """Probe WeasyPrint import + a tiny render so we can see precisely
@@ -733,6 +797,10 @@ def debug_db(request: Request):
         "bitmap_path": str(db.DEPLETION_BITMAP_PATH),
         "bitmap_exists": db.DEPLETION_BITMAP_PATH.exists(),
     }
+    try:
+        out["disk"] = db.disk_usage()
+    except Exception as e:  # noqa: BLE001
+        out["disk_error"] = str(e)
     try:
         with db.connect() as c:
             for table in ("days", "vessels_active", "catches", "pool_state"):

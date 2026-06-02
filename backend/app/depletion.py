@@ -228,6 +228,19 @@ def run_day(pool: OceanPool, events: list[dict],
     bitmap = build_display_bitmap(pool)
     db.save_depletion_bitmap(bitmap)
     db.save_pool_state(pool, project_day_0)
+
+    # Cap the catch log at a small rolling window so the volume stops
+    # growing ~250 MB per active day. Older days keep their (already
+    # rendered) PDFs but shed their catch rows; the served day is always
+    # preserved. Best-effort — a prune failure must not fail the day.
+    try:
+        pc = db.prune_catches(keep_active_days=3)
+        if pc["deleted_rows"]:
+            log.info("prune_catches: dropped %d rows from %s, kept %s",
+                     pc["deleted_rows"], pc["pruned_dates"], pc["kept_dates"])
+    except Exception as exc:  # noqa: BLE001
+        log.exception("prune_catches failed (continuing): %s", exc)
+
     log.info("Day %s recorded: %d catches, %.6f%% depletion (pdf=%s, rss=%dMB)",
              date, stats["stanzas_caught"], stats["depletion_percent"],
              pdf_path_str or "none", _rss_mb())
