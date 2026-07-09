@@ -65,17 +65,27 @@ def _already_processed(date: str) -> bool:
     return bool(day and day.get("date") == date)
 
 
-def _spawn(lang: str) -> int | None:
-    """Run one pass of `scripts.run_daily --lang <lang>` as a subprocess.
-    Returns the subprocess exit code, or None on launch error / timeout
-    (already logged)."""
+def _spawn(lang: str, date: str | None = None,
+           skip_pdf: bool = False) -> int | None:
+    """Run one pass of `scripts.run_daily` as a subprocess. With `date`
+    the pass is a re-render from persisted catches; with `skip_pdf` the
+    subprocess env gets HAVOC_PDF_SKIP=1 (record_day still runs, no
+    typst). Returns the subprocess exit code, or None on launch error /
+    timeout (already logged)."""
     cmd = [sys.executable, "-m", "scripts.run_daily", "--lang", lang]
-    log.info("Spawning subprocess: %s", " ".join(cmd))
+    if date:
+        cmd += ["--date", date]
+    env = None
+    if skip_pdf:
+        env = {**os.environ, "HAVOC_PDF_SKIP": "1"}
+    log.info("Spawning subprocess: %s%s", " ".join(cmd),
+             " (HAVOC_PDF_SKIP=1)" if skip_pdf else "")
     try:
         result = subprocess.run(
             cmd,
             timeout=SUBPROCESS_TIMEOUT_S,
             check=False,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         log.exception("Subprocess (lang=%s) timed out after %ds",
@@ -89,36 +99,69 @@ def _spawn(lang: str) -> int | None:
     return result.returncode
 
 
-def make_job(reload_pool: Callable[[], None]) -> Callable[[], None]:
-    """Return the scheduled callable. Runs the EN pass, reloads the pool
-    (Pass 1 already mutated /data, so the worker should refresh even if
-    the DE pass later fails), then runs the DE pass."""
-    def _job():
+def make_job(reload_pool: Callable[[], None]) -> Callable[[], dict]:
+    """Return the scheduled callable — THREE minimal-peak subprocesses.
+
+    The original two-pass split (EN = events+persist+render inline,
+    DE = re-render) still OOM-killed on heavy days (2026-07-09: rc -9
+    after ~60 s, twice): one process holding the 648 MB pool mask, the
+    ~1 GB catch buffers AND the typst Rust heap crosses the container
+    ceiling. So the render is peeled off the persist entirely:
+
+      Pass 0  --lang en, HAVOC_PDF_SKIP=1 — GFW fetch, pool fold,
+              record_day. No typst, peak ≈ mask + catch buffers.
+      Pass 1  --lang en --date <day> — EN re-render from the persisted
+              catches. No pool mask, no GFW; typst gets the process
+              almost to itself. Also refreshes days.pdf_path.
+      Pass 2  --lang de --date <day> — DE ditto.
+
+    Passes 1/2 are exactly the re-render path that demonstrably coped
+    with the heavy June volumes. Each pass exits before the next starts,
+    so the Rust heap never coexists with the pool mask. Returns a result
+    dict (the debug trigger endpoint surfaces it; the cron ignores it)."""
+    def _job() -> dict:
         # Pre-check in the worker, not the subprocess: lets us skip the
         # ~1-2s of subprocess Python boot when the day is already done.
         # The subprocess does its own check too as a defensive duplicate.
         start, _ = gfw_client.last_available_window()
         if _already_processed(start):
             log.info("Day %s already processed — skipping.", start)
-            return
+            return {"ok": True, "skipped": True, "date": start}
 
-        # Pass 1: events + DB persist + EN render
-        en_rc = _spawn("en")
-        if en_rc == 0:
-            log.info("EN pass completed cleanly; reloading pool")
-            try:
-                reload_pool()
-            except Exception as exc:  # noqa: BLE001
-                log.exception("Pool reload after EN pass failed: %s", exc)
-        else:
-            log.error("EN pass did not complete cleanly; skipping DE pass")
-            return
+        runs: list[dict] = []
 
-        # Pass 2: DE re-render from the day Pass 1 just persisted
-        de_rc = _spawn("de")
-        if de_rc != 0:
-            log.warning("DE pass failed (rc=%s); EN PDFs are in /data/pdfs",
-                        de_rc)
+        # Pass 0: events + pool + DB persist (no render)
+        rc = _spawn("en", skip_pdf=True)
+        runs.append({"pass": "persist", "rc": rc})
+        if rc != 0:
+            log.error("Persist pass failed (rc=%s); aborting day", rc)
+            return {"ok": False, "runs": runs}
+        log.info("Persist pass done; reloading pool")
+        try:
+            reload_pool()
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Pool reload after persist pass failed: %s", exc)
+
+        day = db.latest_day()
+        if not day or day.get("date") != start:
+            log.error("Persist pass exited 0 but day %s is not the latest "
+                      "row (%s) — not rendering", start,
+                      day.get("date") if day else None)
+            return {"ok": False, "runs": runs, "note": "day not recorded"}
+        if not day.get("stanzas_caught"):
+            log.info("Day %s recorded with 0 catches — nothing to render",
+                     start)
+            return {"ok": True, "runs": runs, "note": "empty day, no render"}
+
+        # Pass 1 + 2: language renders from the persisted catches
+        for lang in ("en", "de"):
+            rc = _spawn(lang, date=start)
+            runs.append({"pass": f"render-{lang}", "rc": rc})
+            if rc != 0:
+                log.warning("%s render failed (rc=%s)", lang.upper(), rc)
+
+        return {"ok": all(r["rc"] == 0 for r in runs), "date": start,
+                "runs": runs}
     return _job
 
 

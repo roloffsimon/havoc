@@ -582,13 +582,13 @@ def debug_run_day_status(request: Request):
         return dict(_runday_state)
 
 
-# Manual trigger for the REAL daily job — the subprocess-isolated
-# pipeline the 06:00 scheduler runs (scripts.run_daily --lang en, pool
-# reload, then --lang de). Prefer this over /api/debug/run-day for
+# Manual trigger for the REAL daily job — the same three-pass
+# subprocess pipeline the 06:00 scheduler runs (persist-only pass, then
+# EN and DE renders from the persisted catches; see scheduler.make_job
+# for the memory rationale). Prefer this over /api/debug/run-day for
 # heavy days: run-day renders all six tier compiles (EN+DE) inline in
 # the web worker, the exact ~7 GB configuration that used to OOM-kill
-# the container; the subprocess split peaks around 4 GB per pass and
-# each pass gets a full heap reclaim on exit (see scheduler.py).
+# the container.
 _dailyjob_lock = __import__("threading").Lock()
 _dailyjob_state: dict = {"running": False, "result": None,
                          "started_at": None, "finished_at": None}
@@ -598,19 +598,11 @@ def _daily_job_worker():
     import traceback
     from datetime import datetime as _dt, timezone as _tz
     try:
-        runs: list[dict] = []
-        en_rc = scheduler._spawn("en")
-        runs.append({"lang": "en", "rc": en_rc})
-        if en_rc == 0:
-            try:
-                _load_pool()
-            except Exception as exc:  # noqa: BLE001
-                log.exception("daily-job: pool reload failed: %s", exc)
-            de_rc = scheduler._spawn("de")
-            runs.append({"lang": "de", "rc": de_rc})
+        # Same closure the 06:00 cron runs (three-pass subprocess split,
+        # see scheduler.make_job) — one code path for both triggers.
+        result = scheduler.make_job(_load_pool)()
         with _dailyjob_lock:
-            _dailyjob_state["result"] = {
-                "ok": all(r["rc"] == 0 for r in runs), "runs": runs}
+            _dailyjob_state["result"] = result
     except Exception as exc:  # noqa: BLE001
         with _dailyjob_lock:
             _dailyjob_state["result"] = {"ok": False, "error": repr(exc),
