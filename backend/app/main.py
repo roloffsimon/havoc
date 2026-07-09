@@ -137,9 +137,9 @@ async def lifespan(app: FastAPI):
     # in-memory pool is stale, so we hand the scheduler our reload hook.
     scheduler.attach(sched, scheduler.make_job(_load_pool))
     # Daily read-only integrity snapshot (threaded via _start_integrity, so
-    # it stays off the event loop) so /api/health can flag DB corruption
-    # early instead of it silently blocking writes for weeks — the failure
-    # mode behind the 2026-05/06 freeze. Runs an hour past the daily job.
+    # it stays off the event loop) so /api/pipeline-health can flag DB
+    # corruption early instead of it silently blocking writes for weeks —
+    # the failure mode behind the 2026-05/06 freeze. Runs past the daily job.
     sched.add_job(
         lambda: _start_integrity("check"),
         CronTrigger(hour=7, minute=0, timezone="Europe/Berlin"),
@@ -223,29 +223,42 @@ def status():
 _HEALTH_STALE_HOURS = float(os.environ.get("HAVOC_HEALTH_STALE_HOURS", "30"))
 
 
-@app.get("/api/health")
-def health():
-    """Pipeline liveness for external uptime monitors — READ-ONLY.
+@app.get("/api/pipeline-health")
+def pipeline_health():
+    """Pipeline liveness for an EXTERNAL uptime monitor — READ-ONLY.
 
-    Surfaces the failure that silently froze the project for weeks: the
-    daily job can fetch GFW and render a PDF but fail to persist
-    (record_day rolls back on a corrupt DB), leaving disk activity that
-    masks a dead pipeline. Here it shows as a stale `last_success_utc`
-    (pool_state.updated_at only advances on a fully successful run) and a
-    stale `latest_recorded_date`. The last integrity-check result is
-    merged in so structural DB damage is caught before it blocks writes.
+    Deliberately separate from /api/health, which is Railway's deploy
+    liveness probe (railway.toml healthcheckPath) — that one must stay
+    trivial and always-200 so a stale/corrupt pipeline can't fail the
+    health-gate and trigger a restart loop that wouldn't fix anything.
 
-    Always HTTP 200 (so it can't trip a platform health-gate); poll the
-    `status` field instead:
+    This one surfaces the failure that silently froze the project for
+    weeks: the daily job can fetch GFW and render a PDF but fail to
+    persist (record_day rolls back on a corrupt DB), leaving disk
+    activity that masks a dead pipeline. It shows as a stale
+    `last_success_utc` (pool_state.updated_at advances only on a fully
+    successful run) and a stale `latest_recorded_date`; the last
+    integrity-check result is merged in so structural DB damage is caught
+    before it blocks writes.
+
+    Always HTTP 200; poll the `status` field:
       ok      — a daily run succeeded within HAVOC_HEALTH_STALE_HOURS
       stale   — no successful run recently → the pipeline is stuck
       corrupt — the last integrity check found structural damage
       empty   — fresh DB, no day recorded yet (e.g. just after a reset)
+      unknown — the DB could not be read (e.g. mid-reset)
     """
     now = datetime.now(timezone.utc)
-    latest = db.latest_day()
-    active = db.latest_active_day()
-    ps = db.load_pool_state() or {}
+    try:
+        latest = db.latest_day()
+        active = db.latest_active_day()
+        ps = db.load_pool_state() or {}
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse(
+            content={"status": "unknown", "now_utc": now.isoformat(),
+                     "error": repr(exc)},
+            headers={"Cache-Control": "no-store"},
+        )
 
     latest_date = latest.get("date") if latest else None
     stale_days = None
