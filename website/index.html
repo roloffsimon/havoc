@@ -5,69 +5,76 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Remorseless Havoc</title>
 <link rel="preload" href="public/land_mask_3600x1800.bin" as="fetch" crossorigin="anonymous">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Kode+Mono:wght@400;500;600&family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <style>
   :root {
     /* ════════════════════════════════════════════════════════════
-       PALETTE: "Night Graphite" (v5, Rev 22 Apr 2026)
-       Fast schwarzes Nachtblau + hellgraue Landmassen + gelbe
-       Vessel-Markierung. Hochkontrastig, radarhaft, nüchtern.
+       PALETTE: "Phantom Paper" (v6, Rev 09 Jul 2026)
+       Vorbild Phantom Islands (andrewpekler.com): cremeweißes
+       Papier-Meer, mittelgraue Landmassen, korallenrote Vessels.
+       Der Depletion-Zustand liegt NICHT mehr im Zellhintergrund,
+       sondern in der Schriftfarbe der Strophen (schwarz = intakt,
+       grau = angefischt, stumm = leer) — das Meer selbst bleibt
+       auf jeder Zoomstufe einheitlich hell.
        ════════════════════════════════════════════════════════════ */
 
-    /* Ozean */
-    --ocean:          #030a18;
-    --ocean-deep:     #010510;
-    --ocean-abyss:    #000208;
+    /* Ozean — cremeweißes Papier */
+    --ocean:          #f2ead8;
+    --ocean-deep:     #ede4cf;
+    --ocean-abyss:    #e9e0c9;
 
     /* Legacy-Aliasse */
-    --abyss:          #000208;
-    --deep:           #010510;
-    --mid:            #06142a;
-    --surface:        #0c1e3a;
+    --abyss:          #e9e0c9;
+    --deep:           #ede4cf;
+    --mid:            #efe6d2;
+    --surface:        #f4eddd;
 
-    /* Land — hellgrau, leicht kühl */
-    --land:           #b8bcc2;
-    --land-edge:      #8d9198;
+    /* Land — mittelgrau, ruhig */
+    --land:           #90938f;
+    --land-edge:      #74776f;
 
-    /* Text — kühles Silbergrau statt warmem Cream */
-    --cream:          #d8dce2;
-    --cream-dim:      #9aa0a8;
-    --cream-faint:    #5e6470;
-    --cream-ghost:    rgba(216, 220, 226, 0.16);
+    /* Text — Tinte auf Papier (Variablennamen historisch "cream") */
+    --cream:          #1c1c1a;
+    --cream-dim:      #55534b;
+    --cream-faint:    #8c877a;
+    --cream-ghost:    rgba(28, 28, 26, 0.16);
 
-    /* Akzente — Gelb als einheitlicher Amber-Ersatz */
-    --amber:          #ffd23a;
-    --amber-hot:      #fff066;
-    --amber-dim:      #b88a18;
-    --amber-glow:     rgba(255, 210, 58, 0.5);
+    /* Akzente — Koralle ersetzt das alte Amber-Gelb */
+    --amber:          #d94a32;
+    --amber-hot:      #e8543a;
+    --amber-dim:      #a33b28;
+    --amber-glow:     rgba(217, 74, 50, 0.4);
 
-    /* Catch — warmes Orange-Rot als einziger warmer Akzent */
-    --catch:          #ff8a3a;
-    --catch-flash:    #ff8a3a;
-    --catch-glow:     rgba(255, 138, 58, 0.4);
+    /* Catch — dieselbe Koralle, einheitlicher warmer Akzent */
+    --catch:          #d94a32;
+    --catch-flash:    #e8543a;
+    --catch-glow:     rgba(217, 74, 50, 0.35);
 
-    /* Depletion */
-    --depleted:       #020510;
-    --depleted-edge:  #010308;
-    --depleted-partial: #020510;
-    --depleted-full:    #010308;
+    /* Depletion — Legacy-Variablen, im neuen System ungenutzt hell */
+    --depleted:       #efe6d2;
+    --depleted-edge:  #e9e0c9;
+    --depleted-partial: #efe6d2;
+    --depleted-full:    #e9e0c9;
 
-    /* Vessels — Gelb */
-    --vessel:         #ffd23a;
-    --vessel-hot:     #fff066;
-    --vessel-glow:    rgba(255, 210, 58, 0.5);
+    /* Vessels — Koralle */
+    --vessel:         #d94a32;
+    --vessel-hot:     #e8543a;
+    --vessel-glow:    rgba(217, 74, 50, 0.45);
 
     /* Misc rendering */
-    --ocean-alive:     #030a18;
-    --ocean-alive-hi:  #06142a;
+    --ocean-alive:     #f2ead8;
+    --ocean-alive-hi:  #efe6d2;
     --ship-active:     var(--vessel-hot);
-    --stanza-alive:    var(--cream);
-    --stanza-ghost:    rgba(216, 220, 226, 0.08);
-    --stanza-final:    #22d3ee;
-    --cell-border:     rgba(216, 220, 226, 0.06);
-    --cell-border-z:   rgba(216, 220, 226, 0.12);
-    --ship-trail:      rgba(255, 210, 58, 0.22);
+    --stanza-alive:    #161614;
+    --stanza-ghost:    rgba(22, 22, 20, 0.10);
+    --stanza-final:    #d94a32;
+    --cell-border:     rgba(28, 28, 26, 0.07);
+    --cell-border-z:   rgba(28, 28, 26, 0.13);
+    --ship-trail:      rgba(217, 74, 50, 0.22);
     --ship-glow:       var(--vessel-glow);
+    /* UI-Monospace — OCR-Echo nach ORBIT-Vorbild; die Poesie (Strophen)
+       bleibt bewusst in DM Mono kursiv. */
+    --mono-ui: 'Kode Mono', var(--mono-ui);
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -227,28 +234,33 @@
      HEADER — Titelzeile + horizontale Nav-Bar (Rev 18 Apr 2026)
      Kein Burger. Status-Bar liegt am unteren Rand (siehe .h-status).
      ════════════════════════════════════════════════════════════════════ */
+  /* Masthead nach ORBIT-Vorbild (andshymagazine.com/orbit): ultrafette
+     Grotesk (Archivo Black als freies Pendant zu Antique Olive Nord),
+     Magazin-Skala, line-height 0.8. Höhe wächst mit dem Titel. */
   .h-title-bar {
-    height: 38px;
-    padding: 0 24px;
+    padding: 14px 24px 10px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(240, 232, 210, 0.08);
+    align-items: flex-end;
+    gap: 16px;
+    border-bottom: 1px solid rgba(28, 28, 26, 0.12);
     background: var(--ocean-deep);
     flex-shrink: 0;
     position: relative;
     z-index: 10;
   }
   .h-title {
-    font-family: 'Instrument Sans', sans-serif;
-    font-weight: 500;
-    font-size: 13px;
-    letter-spacing: 0.28em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-weight: 400;
+    font-size: clamp(30px, 5.6vw, 84px);
+    line-height: 0.8;
+    letter-spacing: -0.015em;
     text-transform: uppercase;
     color: var(--cream);
+    white-space: nowrap;
   }
   .h-meta {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.18em;
     color: var(--cream-dim);
@@ -263,7 +275,7 @@
     gap: 18px;
   }
   .h-lang {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -304,7 +316,7 @@
     z-index: 10;
   }
   .h-nav-item {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
@@ -331,7 +343,7 @@
     gap: 18px;
     border-top: 1px solid rgba(240, 232, 210, 0.08);
     background: var(--ocean-deep);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -407,10 +419,12 @@
       to bottom,
       transparent,
       transparent 2px,
-      rgba(0, 0, 0, 0.05) 2px,
-      rgba(0, 0, 0, 0.05) 4px
+      rgba(0, 0, 0, 0.04) 2px,
+      rgba(0, 0, 0, 0.04) 4px
     );
-    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.35);
+    /* Auf Papier nur ein Hauch von Randabdunklung — die alte 0.35er
+       CRT-Verschattung las sich auf hellem Grund als grauer Schleier. */
+    box-shadow: inset 0 0 100px rgba(28, 28, 26, 0.07);
     animation: phosphor-flicker 8s infinite;
   }
   /* Vignette — radial, sehr dezent */
@@ -422,7 +436,7 @@
     z-index: 6;
     background: radial-gradient(ellipse at center,
       transparent 55%,
-      rgba(0, 0, 0, 0.35) 100%);
+      rgba(28, 28, 26, 0.09) 100%);
   }
   @keyframes phosphor-flicker {
     0%, 100% { opacity: 1; }
@@ -435,7 +449,7 @@
     top: 14px;
     right: 16px;
     z-index: 10;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     color: var(--cream-dim);
     letter-spacing: 0.06em;
@@ -449,6 +463,57 @@
   .map-overlay-hint[data-state="dismissed"] {
     opacity: 0;
     pointer-events: none;
+  }
+
+  /* ── Zoom-Buttons (Vorbild Phantom Islands) ─────────────────── */
+  .map-zoom-controls {
+    position: absolute;
+    right: 16px;
+    bottom: 18px;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(28, 28, 26, 0.55);
+    background: rgba(244, 238, 224, 0.92);
+    box-shadow: 0 3px 14px rgba(28, 28, 26, 0.12);
+  }
+  .map-zoom-controls button {
+    width: 34px;
+    height: 34px;
+    background: none;
+    border: none;
+    color: var(--cream);
+    font-family: var(--mono-ui);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .map-zoom-controls button:first-child {
+    border-bottom: 1px solid rgba(28, 28, 26, 0.25);
+  }
+  .map-zoom-controls button:hover {
+    background: rgba(217, 74, 50, 0.12);
+    color: var(--vessel);
+  }
+
+  /* ── Minimap: Weltkarte + aktueller Ausschnitt ───────────────── */
+  .map-minimap {
+    position: absolute;
+    left: 16px;
+    bottom: 18px;
+    z-index: 12;
+    width: 150px;
+    height: 75px;
+    border: 1px solid rgba(28, 28, 26, 0.55);
+    background: var(--ocean);
+    box-shadow: 0 3px 14px rgba(28, 28, 26, 0.12);
+    cursor: pointer;
+    image-rendering: pixelated;
+  }
+  @media (max-width: 700px) {
+    .map-minimap { width: 104px; height: 52px; left: 12px; bottom: 14px; }
+    .map-zoom-controls { right: 12px; bottom: 14px; }
   }
 
   /* Hover-Tooltip für Zellen — schwebt am Cursor */
@@ -467,7 +532,7 @@
   }
 
   .map-overlay-cell .ch-coords {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 9px;
     color: var(--cream-faint);
     letter-spacing: 0.06em;
@@ -490,12 +555,14 @@
   }
 
   /* ── VESSEL-POPUPS (auf der Karte) ── */
+  /* Popup in Schiffsfarbe: Korallenrahmen + Korallenschrift auf Papier
+     (User-Spec: Menü und Schrift in der Farbe der Schiffe). */
   .vessel-popup {
     position: absolute;
-    background: rgba(10, 22, 40, 0.88);
-    border: 1px solid rgba(232, 220, 196, 0.14);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(212, 160, 86, 0.06);
-    padding: 14px 18px 12px;
+    background: rgba(244, 238, 224, 0.94);
+    border: 1px solid rgba(217, 74, 50, 0.65);
+    box-shadow: 0 6px 30px rgba(28, 28, 26, 0.18), inset 0 0 0 1px rgba(217, 74, 50, 0.08);
+    padding: 16px 20px 14px;
     min-width: 240px;
     max-width: 320px;
     backdrop-filter: blur(6px);
@@ -521,7 +588,7 @@
     width: 0; height: 0;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 6px solid rgba(232, 220, 196, 0.14);
+    border-top: 6px solid rgba(217, 74, 50, 0.65);
     transform: translateX(-50%);
   }
 
@@ -530,29 +597,29 @@
     top: 6px; right: 8px;
     width: 18px; height: 18px;
     background: none; border: none;
-    color: var(--cream-faint);
-    font-size: 14px;
+    color: rgba(217, 74, 50, 0.55);
+    font-size: 15px;
     line-height: 1;
     cursor: pointer;
     padding: 0;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
   }
-  .vessel-popup .vp-close:hover { color: var(--cream); }
+  .vessel-popup .vp-close:hover { color: var(--vessel); }
 
   .vessel-popup .pi-name {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
-    color: var(--cream);
+    color: var(--vessel);
     margin-bottom: 4px;
     letter-spacing: 0.03em;
     padding-right: 18px;
   }
 
   .vessel-popup .pi-meta {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    color: var(--cream-faint);
+    font-family: var(--mono-ui);
+    font-size: 10px;
+    color: rgba(217, 74, 50, 0.75);
     line-height: 1.8;
     margin-bottom: 10px;
     letter-spacing: 0.04em;
@@ -560,28 +627,29 @@
 
   .vessel-popup .pi-stanza {
     padding-left: 10px;
-    border-left: 2px solid rgba(232, 220, 196, 0.08);
+    border-left: 2px solid rgba(217, 74, 50, 0.35);
     margin-bottom: 8px;
   }
 
+  /* Strophe größer als früher (11px → 13px) und in Schiffs-Koralle */
   .vessel-popup .pi-line {
     display: block;
     font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    font-weight: 300;
+    font-size: 13px;
+    font-weight: 400;
     font-style: italic;
-    line-height: 1.8;
-    color: var(--cream-dim);
+    line-height: 1.75;
+    color: var(--vessel);
   }
 
   .vessel-popup .pi-entropy {
-    font-family: 'DM Mono', monospace;
-    font-size: 8px;
-    color: var(--cream-faint);
+    font-family: var(--mono-ui);
+    font-size: 9px;
+    color: rgba(217, 74, 50, 0.7);
     margin-top: 6px;
     padding-left: 10px;
     letter-spacing: 0.06em;
-    opacity: 0.6;
+    opacity: 0.8;
   }
 
   /* On phones the 320 px popup overflows the viewport when the vessel
@@ -619,7 +687,7 @@
     color: var(--cream);
   }
   .fleet-head .fh-date {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -629,7 +697,7 @@
     background: transparent;
     border: 1px solid var(--cream-ghost);
     color: var(--cream);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.08em;
     padding: 6px 10px;
@@ -644,7 +712,7 @@
     display: flex;
     gap: 20px;
     padding-bottom: 14px;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -680,81 +748,96 @@
 
   .vessel-card {
     background: var(--deep);
-    padding: 12px 14px;
+    padding: 14px 16px;
     text-align: left;
     border: none;
     cursor: pointer;
-    transition: background 180ms;
+    transition: background 180ms, box-shadow 180ms;
     position: relative;
     font-family: inherit;
     color: inherit;
     animation: fadein 0.3s ease-out both;
   }
-  .vessel-card:hover { background: #0c1a32; }
+  .vessel-card:hover { background: rgba(217, 74, 50, 0.07); }
+  /* Flaggen-Emoji statt ISO-Code (User-Spec) */
   .vessel-card .vc-flag {
-    font-family: 'DM Mono', monospace;
-    font-size: 8px;
-    color: var(--cream-faint);
-    letter-spacing: 0.14em;
+    font-size: 16px;
+    line-height: 1;
   }
   .vessel-card .vc-name {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     color: var(--cream);
-    margin-top: 2px;
+    margin-top: 4px;
   }
   .vessel-card .vc-stats {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
+    font-family: var(--mono-ui);
+    font-size: 11px;
     color: var(--cream-faint);
     margin-top: 4px;
     letter-spacing: 0.04em;
   }
 
-  /* Expanded state */
+  /* Geöffnete Karte bleibt an ihrem Platz (nur Markierung) — das
+     ausgeklappte Detail erscheint als eigenes Panel NACH dem Ende der
+     visuellen Reihe (User-Spec: "wie am Ende der Reihe aufgeklappt"). */
   .vessel-card.is-open {
+    background: rgba(217, 74, 50, 0.10);
+    box-shadow: inset 0 0 0 1px rgba(217, 74, 50, 0.55);
+  }
+
+  .fleet-detail {
     grid-column: 1 / -1;
-    background: #0b1a32;
-    padding: 18px 22px 20px;
+    background: rgba(217, 74, 50, 0.05);
+    border-top: 1px solid rgba(217, 74, 50, 0.4);
+    border-bottom: 1px solid rgba(217, 74, 50, 0.4);
+    padding: 20px 22px 22px;
+    position: relative;
+    animation: fadein 0.25s ease-out both;
   }
-  .vessel-card.is-open .vc-name { font-size: 17px; }
-  .vessel-card.is-open .vc-expand { display: block; }
-  .vessel-card.is-open .vc-map-link { display: inline-block; }
-  .vessel-card .vc-expand {
-    display: none;
-    margin-top: 14px;
+  .fleet-detail .fd-name {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cream);
+    margin-bottom: 12px;
+    padding-right: 120px;
+  }
+  .fleet-detail .fd-name .fd-flag { margin-right: 8px; }
+  /* Alle geernteten Strophen — mehrspaltig wie im PDF-Band */
+  .fleet-detail .fd-stanzas {
+    columns: 240px 4;
+    column-gap: 36px;
     padding-left: 12px;
-    border-left: 2px solid rgba(212, 160, 86, 0.14);
+    border-left: 2px solid rgba(217, 74, 50, 0.35);
   }
-  .vessel-card .vc-line {
+  .fleet-detail .vc-stanza {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: 16px;
+  }
+  .fleet-detail .vc-line {
     display: block;
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 400;
     font-style: italic;
-    line-height: 1.9;
+    line-height: 1.75;
     color: var(--cream-dim);
+    letter-spacing: 0.02em;
+  }
+  /* Reveal-Animation nur für die erste Strophe — bei hunderten
+     nachgeladenen Strophen wäre ein Per-Zeilen-Delay absurd. */
+  .fleet-detail .fd-stanzas .vc-stanza:first-child .vc-line {
     opacity: 0;
     transform: translateX(-6px);
-    letter-spacing: 0.04em;
-  }
-  .vessel-card.is-open .vc-line {
     animation: line-reveal 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
-  .vessel-card.is-open .vc-stanza .vc-line:nth-child(1) { animation-delay: 180ms; }
-  .vessel-card.is-open .vc-stanza .vc-line:nth-child(2) { animation-delay: 420ms; }
-  .vessel-card.is-open .vc-stanza .vc-line:nth-child(3) { animation-delay: 700ms; }
-  .vessel-card.is-open .vc-stanza .vc-line:nth-child(4) { animation-delay: 1030ms; }
-  .vessel-card .vc-stanza + .vc-sep,
-  .vessel-card .vc-sep {
-    display: block;
-    height: 1px;
-    margin: 14px 0 14px -12px;
-    border: none;
-    border-top: 1px dashed rgba(212, 160, 86, 0.16);
-  }
-  .vessel-card .vc-stanza { display: block; }
+  .fleet-detail .fd-stanzas .vc-stanza:first-child .vc-line:nth-child(1) { animation-delay: 120ms; }
+  .fleet-detail .fd-stanzas .vc-stanza:first-child .vc-line:nth-child(2) { animation-delay: 300ms; }
+  .fleet-detail .fd-stanzas .vc-stanza:first-child .vc-line:nth-child(3) { animation-delay: 500ms; }
+  .fleet-detail .fd-stanzas .vc-stanza:first-child .vc-line:nth-child(4) { animation-delay: 720ms; }
 
   @keyframes line-reveal {
     to {
@@ -764,30 +847,35 @@
     }
   }
 
-  .vessel-card .vc-entropy {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    color: var(--cream-faint);
-    margin-top: 10px;
-    letter-spacing: 0.08em;
-    opacity: 0;
-    animation: fadein 0.4s ease-out 1300ms forwards;
+  .fleet-detail .fd-loading {
+    font-family: var(--mono-ui);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(217, 74, 50, 0.8);
+    margin: 8px 0 0 12px;
+    text-transform: uppercase;
   }
-  .vessel-card.is-open .vc-entropy { opacity: 1; }
 
-  .vessel-card .vc-map-link {
-    display: none;
+  .fleet-detail .vc-entropy {
+    font-family: var(--mono-ui);
+    font-size: 10.5px;
+    color: var(--cream-faint);
+    margin-top: 14px;
+    letter-spacing: 0.08em;
+  }
+
+  .fleet-detail .vc-map-link {
     position: absolute;
-    top: 14px; right: 18px;
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
+    top: 20px; right: 22px;
+    font-family: var(--mono-ui);
+    font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--amber-dim);
+    color: var(--vessel);
     background: none; border: none;
     cursor: pointer;
   }
-  .vessel-card .vc-map-link:hover { color: var(--amber); }
+  .fleet-detail .vc-map-link:hover { color: var(--amber-hot); }
 
   /* ════════════════════════════════════════════════════════════════════
      ABOUT VIEW
@@ -798,22 +886,25 @@
     margin: 0 auto;
   }
 
+  /* Projekttitel als Überschrift (statt "About"), im Masthead-Schnitt */
   .about-view h2 {
-    font-family: 'Instrument Sans', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: clamp(26px, 4.4vw, 44px);
+    font-weight: 400;
+    line-height: 0.9;
+    text-transform: uppercase;
     color: var(--cream);
-    margin-bottom: 22px;
-    letter-spacing: 0.02em;
-    text-shadow: 0 0 16px var(--amber-glow);
+    margin-bottom: 26px;
+    letter-spacing: -0.01em;
   }
 
+  /* Erklärtext größer, engerer Zeilenabstand (ZEIT-Online-Anmutung) */
   .about-view p {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 400;
     font-style: italic;
-    line-height: 1.9;
+    line-height: 1.55;
     color: var(--cream-dim);
     margin-bottom: 16px;
   }
@@ -843,7 +934,7 @@
   .about-spec {
     border: 1px solid var(--cream-ghost);
     padding: 14px 18px;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     font-weight: 300;
     line-height: 2;
@@ -877,7 +968,7 @@
     border-bottom: 1px dotted var(--cream-ghost);
     text-decoration: none;
     font-style: normal;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     padding-bottom: 1px;
   }
@@ -888,7 +979,7 @@
     margin-top: 18px;
     padding-top: 14px;
     border-top: 1px dashed var(--cream-ghost);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 9.5px;
     line-height: 1.7;
     letter-spacing: 0.04em;
@@ -936,7 +1027,7 @@
     color: var(--cream);
   }
   .catch-head .ch-date {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -944,7 +1035,7 @@
   }
 
   .catch-big {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 48px;
     font-weight: 300;
     color: var(--cream);
@@ -966,7 +1057,7 @@
     display: grid;
     grid-template-columns: repeat(3, auto);
     gap: 24px;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 11px;
     color: var(--cream-dim);
     letter-spacing: 0.06em;
@@ -1070,7 +1161,7 @@
     justify-content: space-between;
     align-items: baseline;
     gap: 8px;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 8px;
     font-style: normal;
     font-weight: 400;
@@ -1111,7 +1202,7 @@
     .cpp-downloads { grid-template-columns: 1fr; }
   }
   .cpp-cta .cta-label {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -1125,7 +1216,7 @@
     gap: 12px;
     padding: 12px 18px;
     border: 1px solid var(--cream-ghost);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 11px;
     font-weight: 400;
     letter-spacing: 0.12em;
@@ -1188,7 +1279,7 @@
     align-items: center;
     gap: 10px;
     margin: 4px 0;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 9px;
     color: var(--cream-ghost);
     letter-spacing: 0.24em;
@@ -1202,7 +1293,7 @@
     background: var(--cream-ghost);
   }
   .cpp-cta .link-plain {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     color: var(--cream-faint);
     text-decoration: underline;
@@ -1224,7 +1315,7 @@
     margin-top: 8px; margin-bottom: 14px;
   }
   .cpp-size-label {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.08em;
     color: var(--cream-faint);
@@ -1271,7 +1362,7 @@
     color: var(--cream);
   }
   .cpp-dd-current-meta {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.06em;
     color: var(--cream-faint);
@@ -1349,7 +1440,7 @@
     margin-left: 16px;
   }
   .cpp-dd-opt-meta {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     letter-spacing: 0.06em;
     color: var(--cream-faint);
@@ -1396,26 +1487,26 @@
   }
   .catch-modal-backdrop.is-open { display: flex; }
   .catch-modal {
-    min-width: 380px;
-    max-width: 460px;
-    padding: 28px 32px;
+    min-width: 420px;
+    max-width: 520px;
+    padding: 32px 38px;
     background: var(--deep);
     border: 1px solid var(--cream-ghost);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
   }
   .catch-modal .cm-title {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--cream);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   .catch-modal .cm-text {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--cream-dim);
-    line-height: 1.8;
+    line-height: 1.75;
     letter-spacing: 0.04em;
     margin-bottom: 18px;
   }
@@ -1433,7 +1524,7 @@
     transition: width 400ms ease;
   }
   .catch-modal .cm-status {
-    font-size: 10px;
+    font-size: 11.5px;
     color: var(--cream-faint);
     letter-spacing: 0.08em;
   }
@@ -1458,15 +1549,34 @@
   @keyframes splash-in  { to { opacity: 1; } }
   @keyframes splash-out { to { opacity: 0; } }
 
-  .motto {
-    max-width: 640px;
+  /* Splash-Titel: derselbe Masthead-Schnitt wie der Header der
+     Hauptseite (Archivo Black, ORBIT-Skala) — der Splash kündigt die
+     Typografie an, in die er gleich übergeht. */
+  .splash-title {
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: clamp(32px, 6.6vw, 96px);
+    line-height: 0.8;
+    letter-spacing: -0.015em;
+    text-transform: uppercase;
     color: var(--cream);
-    font-family: 'EB Garamond', 'Fraunces', Georgia, serif;
+    text-align: center;
+    align-self: end;
+    margin-bottom: 4vh;
+    white-space: nowrap;
+  }
+
+  /* Motto in der Stimme des Hauptseiten-Fließtexts (Instrument Sans
+     kursiv wie im About), etwas größer als früher. */
+  .motto {
+    max-width: 680px;
+    color: var(--cream);
+    font-family: 'Instrument Sans', 'Helvetica Neue', sans-serif;
     font-style: italic;
-    font-size: clamp(19px, 2.1vw, 26px);
-    line-height: 1.65;
+    font-size: clamp(20px, 2.3vw, 28px);
+    line-height: 1.6;
     text-align: left;
     margin: 0;
+    align-self: start;
     font-variant-numeric: oldstyle-nums;
   }
   .motto p { margin: 0 0 1.8em 0; text-indent: -0.35em; }
@@ -1489,8 +1599,8 @@
 
   .motto footer {
     font-style: normal;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
+    font-family: var(--mono-ui);
+    font-size: 12px;
     letter-spacing: 0.08em;
     color: var(--cream-faint);
     text-transform: uppercase;
@@ -1528,7 +1638,7 @@
   }
 
   .splash-loader-headline {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 12px;
     letter-spacing: 0.32em;
     text-transform: uppercase;
@@ -1601,8 +1711,8 @@
     justify-content: center;
     align-items: center;
     gap: 10px;
-    font-family: 'DM Mono', monospace;
-    font-size: 9.5px;
+    font-family: var(--mono-ui);
+    font-size: 10.5px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--cream-faint);
@@ -1653,7 +1763,7 @@
     background: transparent;
     border: 1px solid var(--amber);
     padding: 14px 36px;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 11px;
     letter-spacing: 0.32em;
     color: var(--amber);
@@ -1691,7 +1801,7 @@
     position: absolute;
     bottom: 14px; left: 20px;
     z-index: 8;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--mono-ui);
     font-size: 10px;
     color: var(--cream-ghost);
     letter-spacing: 0.14em;
@@ -1954,8 +2064,9 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width: 700px) {
-    .h-title-bar { padding: 0 14px; height: 36px; }
-    .h-title { font-size: 11px; letter-spacing: 0.22em; }
+    .h-title-bar { padding: 10px 14px 8px; flex-wrap: wrap; }
+    .h-title { font-size: clamp(22px, 7.4vw, 30px); letter-spacing: -0.01em; width: 100%; }
+    .h-title-right { width: 100%; justify-content: space-between; margin-top: 4px; }
     .h-meta { font-size: 9px; letter-spacing: 0.12em; }
     .h-nav { padding: 0 14px; gap: 18px; }
     .h-nav-item { font-size: 9px; letter-spacing: 0.18em; }
@@ -2075,6 +2186,8 @@
     <span class="h-lang-sep">/</span>
     <button type="button" data-lang="en" class="is-active">EN</button>
   </div>
+  <!-- Projekttitel im Masthead-Schnitt der Hauptseite (User-Spec) -->
+  <div class="splash-title" aria-hidden="true">Remorseless Havoc</div>
   <blockquote class="motto">
     <p data-i18n-html="splash.motto.text">The moot point is, whether Leviathan can long endure so wide a chase, and so <span class="motto-title">remorseless a havoc</span>; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.</p>
     <footer>&mdash; Herman Melville, <cite>Moby-Dick</cite>, <span data-i18n="splash.motto.chapter">Chapter&nbsp;CV</span></footer>
@@ -2141,6 +2254,13 @@
           zoom in to read the stanzas
         </div>
 
+        <!-- Zoom-Controls + Minimap (Vorbild Phantom Islands) -->
+        <div class="map-zoom-controls">
+          <button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" id="map-zoom-out" aria-label="Zoom out">&minus;</button>
+        </div>
+        <canvas class="map-minimap" id="map-minimap" width="150" height="75" aria-hidden="true"></canvas>
+
         <div class="loading-fallback" id="loading-fallback" data-i18n="ocean.loading">calibrating ocean grid &hellip;</div>
       </div>
     </div>
@@ -2172,6 +2292,13 @@
               <option data-i18n="fleet.type.longliner">Longliner</option>
               <option data-i18n="fleet.type.purse-seiner">Purse Seiner</option>
             </select>
+            <!-- Schnitt-Auswahl wie im PDF-Download (Full/Selection/…) -->
+            <select id="fleet-tier">
+              <option value="" data-i18n="fleet.tier.full">cut: full fleet</option>
+              <option value="selection" data-i18n="fleet.tier.selection">cut: selection (1/10)</option>
+              <option value="finecut" data-i18n="fleet.tier.finecut">cut: fine cut (1/100)</option>
+              <option value="onepiece" data-i18n="fleet.tier.onepiece">cut: one piece</option>
+            </select>
           </div>
           <div class="fleet-grid" id="fleet-grid"></div>
         </div>
@@ -2182,7 +2309,7 @@
     <div class="view" id="view-about">
       <div class="scrollable">
         <div class="about-view">
-          <h2 data-i18n="about.h2">About</h2>
+          <h2 data-i18n="about.h2">Remorseless Havoc</h2>
           <p data-i18n-html="about.p1">
             <em>Remorseless Havoc</em> consists of an ocean of algorithmically generated
             language. The stanzas you can see zooming in on the map are generated by an
@@ -2222,16 +2349,17 @@
             A note on the map. Its grid of one-square-kilometre stanza cells holds
             approximately 460 million entries. For rendering efficiency, the map displays a
             coarser tile grid of roughly 10 &times; 10&nbsp;km (0.1&deg;); each visible tile
-            aggregates 100 stanza cells. Four colours on the ocean encode each tile&rsquo;s
-            depletion status and today&rsquo;s fleet activity: <strong>dark blue</strong>
-            means the tile is intact (all 100 stanzas still alive); a lighter
-            <strong>mid-blue</strong> means it is partially depleted (at least one stanza
-            erased); <strong>brown</strong> marks tiles where a vessel is actively fishing
-            today (this layer may change from day to day); and <strong>black</strong> tiles
-            are fully depleted (all 100 stanzas gone) and carry no text. When you zoom in,
-            each tile reveals one representative stanza drawn from its centre cell, except
-            for fully depleted tiles, which fall silent. The full stanza cell grid is only
-            ever consulted by the backend when a fishing event actually deletes stanzas.
+            aggregates 100 stanza cells. The sea itself stays a single unbroken paper white
+            at every zoom level &mdash; from a distance the ocean looks untouched. Zoom in
+            and each tile reveals one representative stanza drawn from its centre cell, and
+            it is the <em>colour of that text</em> that carries the tile&rsquo;s state:
+            <strong>black</strong> type means the tile is intact (all 100 stanzas still
+            alive); <strong>grey</strong> type means it has been fished (at least one
+            stanza erased); and a tile that shows <strong>no text at all</strong> is fully
+            depleted &mdash; all 100 stanzas gone, the cell has fallen silent. Vessels
+            fishing today appear as pulsing coral markers on top. The full stanza cell grid
+            is only ever consulted by the backend when a fishing event actually deletes
+            stanzas.
           </p>
           <p data-i18n-html="about.p4">
             You can watch this happen on the map, browse all poems generated in the
@@ -2455,7 +2583,7 @@ const I18N = {
     'splash.progress.vessels': 'Fleet',
     'ocean.hint': 'scroll to zoom &middot; drag to pan<br>zoom in to read the stanzas',
     'ocean.hint.midzoom': '0.1\u00b0 display grid<br>zoom more to read stanzas',
-    'ocean.hint.zoomed':  'stanzas visible in cells<br>depleted = dark',
+    'ocean.hint.zoomed':  'stanzas visible in cells<br>grey = fished &middot; silent = emptied',
     'ocean.loading': 'calibrating ocean grid \u2026',
     'status.cells-alive': 'cells alive',
     'status.vessels-active': 'vessels active',
@@ -2476,11 +2604,17 @@ const I18N = {
     'fleet.type.purse-seiner': 'Purse Seiner',
     'fleet.stanzas.singular': 'stanza',
     'fleet.stanzas.plural':   'stanzas',
-    'about.h2': 'About',
-    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the dark tiles in the map, representing the watery regions of our planet, are generated by an algorithm that assembles poetic stanzas from language fragments by Emily Dickinson and Herman Melville. This algorithm can create as many stanzas as there are \u201cfish in the sea\u201d, according to Nick Montfort and Stephanie Strickland, who originally developed it for their digital literary work <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>.',
+    'fleet.tier.full': 'cut: full fleet',
+    'fleet.tier.selection': 'cut: selection (1/10)',
+    'fleet.tier.finecut': 'cut: fine cut (1/100)',
+    'fleet.tier.onepiece': 'cut: one piece',
+    'fleet.showonmap': 'show on map',
+    'fleet.loading.all': 'hauling in all stanzas',
+    'about.h2': 'Remorseless Havoc',
+    'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the pale paper tiles of the map, representing the watery regions of our planet, are generated by an algorithm that assembles poetic stanzas from language fragments by Emily Dickinson and Herman Melville. This algorithm can create as many stanzas as there are \u201cfish in the sea\u201d, according to Nick Montfort and Stephanie Strickland, who originally developed it for their digital literary work <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>.',
     'about.p3': '<em>Remorseless Havoc</em> takes the metaphor literally and transfers the stanzas into a grid spanning the entire globe. Each cell of this grid represents an area of about one square kilometre (1.1\u00a0\u00d7\u00a01.1\u00a0km at the equatorial meridian). This results in 460 million cells and just as many stanzas, distributed across the world\u2019s oceans. Gradually, the stanzas are then deleted by the program based on the movement data of industrial fishing vessels.',
     'about.p3a': 'All technical details can also be found on this project\u2019s <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub page</a>, but the movement data comes from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. There, the transponder signals from vessels above a certain tonnage are analysed using a machine-learning algorithm that recognises characteristic turning manoeuvres, changes in speed, and dwell-time patterns. In this way, GFW identifies fishing activity and calculates it in hours per vessel in conjunction with the GPS position. The <em>Remorseless Havoc</em> algorithm then erases verses from the ocean for each hour in near real time, as GFW requires 72\u00a0hours to analyse the satellite data. One day, all verses will be removed from the sea \u2014 the language used in this work is finite, like the ocean\u2019s resources.',
-    'about.p3b': 'A note on the map: to improve rendering efficiency it uses a coarser grid of tiles, each measuring roughly 10\u00a0\u00d7\u00a010\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. Four colours of the ocean encode each tile’s depletion status and today’s fleet activity: <strong>dark blue</strong> (intact \u2014 all 100 stanzas still alive); a lighter <strong>mid-blue</strong> (partially depleted \u2014 at least one stanza erased); <strong>brown</strong> (a vessel is actively fishing in this tile today \u2014 this layer may change from day to day); and <strong>black</strong> (fully depleted \u2014 all 100 stanzas erased, no text). When you zoom in, each tile reveals a stanza drawn from its centre cell, except for fully depleted tiles, which fall silent. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes stanzas.',
+    'about.p3b': 'A note on the map: to improve rendering efficiency it uses a coarser grid of tiles, each measuring roughly 10\u00a0\u00d7\u00a010\u00a0km (0.1\u00b0), and each visible tile aggregates 100 stanza cells. The sea itself stays a single unbroken paper white at every zoom level \u2014 from a distance the ocean looks untouched. Zoom in and each tile reveals a stanza drawn from its centre cell, and it is the <em>colour of that text</em> that carries the tile\u2019s state: <strong>black</strong> type means the tile is intact (all 100 stanzas still alive); <strong>grey</strong> type means it has been fished (at least one stanza erased); and a tile that shows <strong>no text at all</strong> has been fully depleted \u2014 all 100 stanzas gone, the cell has fallen silent. Vessels fishing today appear as pulsing coral markers on top. The full stanza cell grid is only ever consulted by the backend when a fishing event deletes stanzas.',
     'about.p4': 'You can track the havoc on the map, browse today\u2019s erased stanzas in <em>Fleet</em> View, or download a random selection of the day\u2019s catch as a poetry volume. Each vessel compiles the stanzas it collects from the ocean on a given day into a poem, arranged from greatest to least lexical diversity.',
     'about.p5': 'The project will run until the poetic ocean is empty, which is expected to be around the year 2030 based on current data. Then one final poem will remain \u2014 in a place, at a time, and with words shaped by the contingencies of the exploitation of the seas. It will be the Leviathan\u2019s last breath, so to speak, on which Herman Melville had already speculated in Chapter\u00a0CV of <em>Moby-Dick</em> as the result of the systematic hunting of sea creatures: \u201cThe moot point is, whether Leviathan can long endure so wide a chase, and so remorseless a havoc; whether he must not at last be exterminated from the waters, and the last whale, like the last man, smoke his last pipe, and then himself evaporate in the final puff.\u201d',
     'about.spec.grid': 'Grid',
@@ -2570,7 +2704,7 @@ const I18N = {
     'splash.progress.vessels': 'Flotte',
     'ocean.hint': 'scrollen zum zoomen &middot; ziehen zum schwenken<br>heranzoomen, um die strophen zu lesen',
     'ocean.hint.midzoom': '0,1\u00b0-anzeigegitter<br>weiter heranzoomen, um die strophen zu lesen',
-    'ocean.hint.zoomed':  'strophen in den zellen sichtbar<br>ersch\u00f6pft = dunkel',
+    'ocean.hint.zoomed':  'strophen in den zellen sichtbar<br>grau = angefischt &middot; stumm = leer',
     'ocean.loading': 'ozean-gitter wird kalibriert \u2026',
     'status.cells-alive': 'aktive zellen',
     'status.vessels-active': 'aktive schiffe',
@@ -2591,11 +2725,17 @@ const I18N = {
     'fleet.type.purse-seiner': 'Ringwadenf\u00e4nger',
     'fleet.stanzas.singular': 'Strophe',
     'fleet.stanzas.plural':   'Strophen',
-    'about.h2': '\u00dcber',
-    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die dunklen Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 enthalten algorithmisch generierte Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt wurden. Nach Nick Montfort und Stephanie Strickland, die den Algorithmus urspr\u00fcnglich f\u00fcr ihr digitalliterarisches Werk <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> geschrieben haben, kann der Generator so viele Strophen erzeugen, wie es \u201eFische im Meer\u201c gibt.',
+    'fleet.tier.full': 'Schnitt: ganze Flotte',
+    'fleet.tier.selection': 'Schnitt: Auswahl (1/10)',
+    'fleet.tier.finecut': 'Schnitt: Feiner Schnitt (1/100)',
+    'fleet.tier.onepiece': 'Schnitt: Einzelst\u00fcck',
+    'fleet.showonmap': 'auf der Karte zeigen',
+    'fleet.loading.all': 'alle Strophen werden eingeholt',
+    'about.h2': 'Remorseless Havoc',
+    'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die hellen Papier-Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 enthalten algorithmisch generierte Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt wurden. Nach Nick Montfort und Stephanie Strickland, die den Algorithmus urspr\u00fcnglich f\u00fcr ihr digitalliterarisches Werk <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> geschrieben haben, kann der Generator so viele Strophen erzeugen, wie es \u201eFische im Meer\u201c gibt.',
     'about.p3': '<em>Remorseless Havoc</em> nimmt die Metapher w\u00f6rtlich und \u00fcbertr\u00e4gt die Strophen in ein Raster, das den gesamten Globus \u00fcberspannt. Jede Zelle dieses Rasters repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quatorialmeridian). Das ergibt 460 Millionen Zellen und ebenso viele Strophen, verteilt \u00fcber die Weltmeere. Nach und nach werden die Strophen dann vom Programm wieder gel\u00f6scht, ausgehend von den Bewegungsdaten der industriellen Fischerei.',
     'about.p3a': 'Alle technischen Details findet man auch auf der <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub-Seite</a> dieses Projekts, aber die Bewegungsdaten kommen von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Dort analysiert man die Transpondersignale von Schiffen ab einer bestimmten Tonnage mithilfe eines Machine-Learning-Algorithmus, der charakteristische Wendeman\u00f6ver, Geschwindigkeits\u00e4nderungen und Verweildauer-Muster erkennt. Auf diese Weise identifiziert GFW Fischfangt\u00e4tigkeit und berechnet sie in Stunden pro Schiff in Verbindung mit der GPS-Position. Der Algorithmus von <em>Remorseless Havoc</em> l\u00f6scht dann fast in Echtzeit f\u00fcr jede Stunde Strophen aus dem Ozean, da GFW 72 Stunden ben\u00f6tigt, um die Satellitendaten zu analysieren. Eines Tages werden alle Strophen aus dem Meer entfernt sein \u2013 die in dieser Arbeit verwendete Sprache ist so endlich wie die Ressourcen des Ozeans.',
-    'about.p3b': 'Anmerkung zur Karte: Um die Darstellungsleistung zu verbessern, wird ein gr\u00f6beres Raster aus Kacheln verwendet, die jeweils etwa 10 \u00d7 10 km (0,1\u00b0) gro\u00df sind, wobei jede sichtbare Kachel 100 Strophenzellen umfasst. Vier Farben des Ozeans zeigen den Ersch\u00f6pfungszustand und die heutige Fleet-Aktivit\u00e4t jeder Kachel an: <strong>Dunkelblau</strong> (intakt \u2014 alle 100 Strophen noch vorhanden); ein helleres <strong>Mittelblau</strong> (teilweise ersch\u00f6pft \u2014 mindestens eine Strophe gel\u00f6scht); <strong>Braun</strong> (in dieser Kachel fischt heute ein Schiff \u2014 diese Ebene kann sich von Tag zu Tag \u00e4ndern); und <strong>Schwarz</strong> (vollst\u00e4ndig ersch\u00f6pft \u2014 alle 100 Strophen gel\u00f6scht, ohne Text). Wenn man hineinzoomt, zeigt jede Kachel eine Strophe aus ihrer mittleren Zelle, au\u00dfer bei vollst\u00e4ndig ersch\u00f6pften Kacheln, die stumm bleiben. Das vollst\u00e4ndige Strophenzellenraster wird vom Backend nur dann abgefragt, wenn ein Fischereivorgang Strophen l\u00f6scht.',
+    'about.p3b': 'Anmerkung zur Karte: Um die Darstellungsleistung zu verbessern, wird ein gr\u00f6beres Raster aus Kacheln verwendet, die jeweils etwa 10 \u00d7 10 km (0,1\u00b0) gro\u00df sind, wobei jede sichtbare Kachel 100 Strophenzellen umfasst. Das Meer selbst bleibt auf jeder Zoomstufe ein einheitliches Papierwei\u00df \u2014 aus der Distanz wirkt der Ozean unber\u00fchrt. Erst beim Hineinzoomen zeigt jede Kachel eine Strophe aus ihrer mittleren Zelle, und die <em>Farbe dieser Schrift</em> tr\u00e4gt den Zustand der Kachel: <strong>schwarze</strong> Schrift bedeutet intakt (alle 100 Strophen noch vorhanden); <strong>graue</strong> Schrift bedeutet angefischt (mindestens eine Strophe gel\u00f6scht); und eine Kachel <strong>ganz ohne Schrift</strong> ist vollst\u00e4ndig ersch\u00f6pft \u2014 alle 100 Strophen gel\u00f6scht, die Zelle ist verstummt. Heute fischende Schiffe erscheinen dar\u00fcber als pulsierende korallenrote Markierungen. Das vollst\u00e4ndige Strophenzellenraster wird vom Backend nur dann abgefragt, wenn ein Fischereivorgang Strophen l\u00f6scht.',
     'about.p4': 'Sie k\u00f6nnen die Zerst\u00f6rung auf der Karte verfolgen, die heute gel\u00f6schten Strophen in der <em>Flotte</em>-Ansicht durchst\u00f6bern oder eine zuf\u00e4llige Auswahl des Tagesfangs als Gedichtband herunterladen. Jedes Schiff fasst die Strophen, die es an einem bestimmten Tag aus dem Ozean sammelt, zu einem Gedicht zusammen, geordnet nach absteigender lexikalischer Vielfalt.',
     'about.p5': 'Das Projekt l\u00e4uft so lange, bis der poetische Ozean leer ist, was nach aktuellen Daten voraussichtlich um das Jahr 2030 der Fall sein wird. Dann wird ein letztes Gedicht stehen bleiben \u2013 an einem Ort, zu einer Zeit und mit einem Text, die von den Unw\u00e4gbarkeiten der Ausbeutung der Meere bestimmt sind. Es wird der letzte Atemzug des Leviathans sein, wenn man so will, \u00fcber den schon Herman Melville in Kapitel CV von <em>Moby-Dick</em> als Ergebnis der systematischen Jagd auf Meeresbewohner nachdachte: \u201eDer streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so r\u00fccksichtsloses Gemetzel [remorseless havoc] aushalten kann, ob er nicht schlie\u00dflich aus den Gew\u00e4ssern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen m\u00fcssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzul\u00f6sen.\u201c',
     'about.spec.grid': 'Gitter',
@@ -2837,6 +2977,9 @@ function _havocMarkLoading(stage) {
       splash.remove();
       document.body.style.overflow = '';
       localStorage.setItem('motto_dismissed', '1');
+      // Intro-Flug: von der Weltansicht auf ein aktives Schiff zoomen
+      // und sein Gedicht öffnen (bricht bei User-Interaktion ab).
+      if (typeof startIntroFlight === 'function') startIntroFlight();
     }, 500);
   }
 
@@ -3629,39 +3772,35 @@ const DISPLAY_COLS = 3600;
 const DISPLAY_ROWS = 1800;
 
 // Grid colors as RGB triplets for ImageData rendering.
-// Palette for the three tile states + land + vessels + stanza text layers.
-// The three depletion tones are the visible side of `isDepleted()` (see above):
-//   oceanAlive       → STATE_INTACT     all 100 stanza cells in the tile alive
-//                                        ("unangetastet"  — dunkelblau)
-//   depletedPartial  → STATE_PARTIAL    at least one stanza cell erased
-//                                        ("angegriffen"   — helleres Mittelblau,
-//                                         entkoppelt vom braunen Ship-Overlay so
-//                                         dass Erosionsgeschichte und heutige
-//                                         Fleet-Position als getrennte Klassen
-//                                         lesbar sind)
-//   depletedFull     → STATE_DEPLETED   all 100 stanza cells erased
-//                                        ("leer"          — near-black, kein Text)
+// "Phantom Paper" (v6): der Depletion-Zustand liegt NICHT mehr im
+// Zellhintergrund. Das Meer ist auf jeder Zoomstufe einheitlich
+// cremeweißes Papier (nur subtile Hash-Variation, damit das Raster
+// nicht als Flachfläche liest); der Zustand aus `isDepleted()` färbt
+// stattdessen die STROPHEN-SCHRIFT in den Zellen:
+//   STATE_INTACT   → stanzaAlive    schwarze Tinte (unangetastet)
+//   STATE_PARTIAL  → stanzaPartial  grau (angefischt)
+//   STATE_DEPLETED → kein Text      die Zelle ist stumm (leer)
+// Weit herausgezoomt (bevor Schrift erscheint) ist der Abbau damit
+// bewusst unsichtbar — die Zerstörung offenbart sich erst beim
+// Hineinzoomen in den Text.
 const GRID_COLORS = {
-  land: [184, 188, 194],              // --land #b8bcc2 — hellgrau
-  landEdge: [141, 145, 152],          // --land-edge #8d9198
+  land: [144, 147, 143],              // --land #90938f — mittelgrau
+  landEdge: [116, 119, 111],          // --land-edge #74776f
   oceanAlive: function(cellIndex) {
-    // STATE_INTACT — blue, with subtle per-cell variation so wide swaths
-    // don't read as flat fill at world view.
+    // Papier-Creme mit subtiler per-Zelle-Variation (Raster-Prinzip).
     const hash = ((cellIndex * 2654435761) >>> 0) & 0xFF;
     const t = hash / 255;
     return [
-      Math.round(16 + t * 6),         // 16–22
-      Math.round(44 + t * 12),        // 44–56
-      Math.round(88 + t * 20),        // 88–108
+      Math.round(238 + t * 6),        // 238–244
+      Math.round(230 + t * 6),        // 230–236
+      Math.round(211 + t * 7),        // 211–218
     ];
   },
-  depletedPartial: [40, 90, 150],     // STATE_PARTIAL  — helleres Mittelblau ("angegriffen")
-  depletedFull:    [6, 6, 8],         // STATE_DEPLETED — near-black ("leer")
-  ship: [255, 240, 102],              // --vessel-hot #fff066
-  stanzaAlive: 'rgba(216, 220, 226, 0.92)',  // --cream #d8dce2
-  stanzaGhost: 'rgba(216, 220, 226, 0.08)',  // derzeit ungenutzt — DEPLETED ohne Schiff erhält gar keinen Text
-  stanzaPartial: 'rgba(216, 220, 226, 0.30)',
-  stanzaFinal: '#22d3ee',
+  ship: [217, 74, 50],                // --vessel #d94a32 — Koralle
+  stanzaAlive: 'rgba(22, 22, 20, 0.95)',     // Tinte — Zelle unangetastet
+  stanzaGhost: 'rgba(22, 22, 20, 0.10)',     // derzeit ungenutzt — DEPLETED ohne Schiff erhält gar keinen Text
+  stanzaPartial: 'rgba(22, 22, 20, 0.38)',   // Grau — Zelle angefischt
+  stanzaFinal: '#d94a32',
 };
 
 // ══════════════════════════════════════════════════
@@ -4025,6 +4164,47 @@ function renderLoop() {
   }
 }
 
+// ── Ship-Pulse-Ticker ────────────────────────────────────────────
+// Die Schiffe pulsieren kontinuierlich (Clickability-Cue). Damit dafür
+// nicht 60×/s das ganze Grid neu gerechnet werden muss, snapshotet
+// render() die fertigen Basisschichten (Meer, Land, Linien, Strophen)
+// in einen Offscreen-Cache; der Ticker blittet nur den Cache zurück
+// und zeichnet die Schiffe mit aktueller Pulsphase obendrauf.
+let shipBaseCache = null, shipBaseCtx = null, shipBaseValid = false;
+let cachedActiveCells = null;
+
+function snapshotBaseLayers() {
+  if (!shipBaseCache) {
+    shipBaseCache = document.createElement('canvas');
+    shipBaseCtx = shipBaseCache.getContext('2d');
+  }
+  if (shipBaseCache.width !== canvas.width || shipBaseCache.height !== canvas.height) {
+    shipBaseCache.width = canvas.width;
+    shipBaseCache.height = canvas.height;
+  }
+  shipBaseCtx.setTransform(1, 0, 0, 1, 0, 0);
+  shipBaseCtx.clearRect(0, 0, shipBaseCache.width, shipBaseCache.height);
+  shipBaseCtx.drawImage(canvas, 0, 0);
+  shipBaseValid = true;
+}
+
+function shipPulseLoop() {
+  requestAnimationFrame(shipPulseLoop);
+  if (needsRender) return;                 // voller Render steht an — der zeichnet Schiffe selbst
+  if (!shipBaseValid || !landMask) return;
+  if (document.hidden) return;
+  if (document.body.classList.contains('not-ocean')) return;
+  if (shipBaseCache.width !== canvas.width || shipBaseCache.height !== canvas.height) return;
+  if (!cachedActiveCells || !cachedActiveCells.size) return;
+  const { startCol, startRow, cellsWide, cellsHigh, cellW } = getViewportBounds();
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(shipBaseCache, 0, 0);
+  ctx.restore();
+  renderShips(cachedActiveCells, startCol, startRow, cellsWide, cellsHigh, cellW);
+}
+requestAnimationFrame(shipPulseLoop);
+
 function getViewportBounds() {
   const cellW = canvasW / viewport.cellsWide;
   const cellsHigh = canvasH / cellW;
@@ -4044,23 +4224,30 @@ function render() {
     renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW);
   }
 
-  // Cells with at least one active vessel get a warm-brown tint regardless
-  // of depletion state. Painted *after* land/ocean/depletion so it reads
-  // as "today's hot zones," and *before* stanzas/lines so the text still
-  // renders on top.
+  // Die Zellen der heute aktiven Schiffe: kein brauner Hintergrund-Tint
+  // mehr (das einheitliche Papier-Meer bleibt ungebrochen) — die Heute-
+  // gefischt-Ebene tragen allein die Korallen-Schiffsmarker. Die Map
+  // wird weiterhin von renderStanzas (Ship-Zellen) + renderShips geteilt.
   const activeCells = collectActiveVesselCells();
-  renderActiveVesselCells(activeCells, startCol, startRow, cellsWide, cellsHigh, cellW);
 
   if (cellW >= ZOOM_THRESHOLDS.GRID_LINES) {
     renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW);
   }
 
-  if (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) {
+  // Strophen erst ab STANZA_FULL (40 px/Zelle) — früher (ab 20) begann
+  // der Text als unlesbares Übereinander; jetzt taucht er später und
+  // dank Zell-Clipping von Anfang an sauber begrenzt auf.
+  if (cellW >= ZOOM_THRESHOLDS.STANZA_FULL) {
     // TODO: memoize stanza-per-cell to WeakMap if mid-zoom frame rate drops.
     renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW, activeCells);
   }
 
+  // Basisschichten für den Ship-Pulse-Ticker cachen, dann Schiffe drauf.
+  cachedActiveCells = activeCells;
+  snapshotBaseLayers();
   renderShips(activeCells, startCol, startRow, cellsWide, cellsHigh, cellW);
+
+  updateMinimap();
 }
 
 // Collect the set of 0.1° display cells that contain at least one vessel
@@ -4095,40 +4282,10 @@ function collectActiveVesselCells() {
   return cells;
 }
 
-function renderActiveVesselCells(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
-  if (!cells || !cells.size) return;
-  const cellH = cellW;
-  // Braun ist jetzt die exklusive Markierung heute aktiver Schiff-Zellen,
-  // getrennt vom Mittelblau der STATE_PARTIAL-Tiles. Painted opaque so a ship
-  // on a fully-depleted (black) or partially-eroded (blue) tile still reads
-  // as brown — a current ship's presence trumps the persistent state.
-  ctx.fillStyle = 'rgb(96, 58, 32)';
-  // Min draw size keeps the tint visible at world view, where a single
-  // 0.1° cell is sub-pixel and would otherwise alpha-out to nothing —
-  // active regions then read as coherent brown swathes that resolve
-  // back to per-cell rectangles when the user zooms in.
-  const w = Math.max(1.5, cellW);
-  const h = Math.max(1.5, cellH);
-  // Range filter in display-cell space, plus longitude wrap so eastern
-  // panes pick up the same vessels as the canonical 0..3600 column.
-  const wrap = DISPLAY_COLS;
-  const colMin = Math.floor(startCol);
-  const colMax = Math.ceil(startCol + cellsWide);
-  const rowMin = Math.max(0, Math.floor(startRow));
-  const rowMax = Math.min(DISPLAY_ROWS - 1, Math.ceil(startRow + cellsHigh));
-  for (const { dcol, drow } of cells.values()) {
-    if (drow < rowMin || drow > rowMax) continue;
-    // The longitude axis can be panned past 360°, so test against every
-    // image of dcol that falls inside the visible column range.
-    let dc = dcol;
-    while (dc > colMax) dc -= wrap;
-    while (dc < colMin) dc += wrap;
-    if (dc < colMin || dc > colMax) continue;
-    const px = (dc - startCol) * cellW;
-    const py = canvasH - (drow - startRow + 1) * cellH;
-    ctx.fillRect(px, py, w, h);
-  }
-}
+// renderActiveVesselCells (brauner Zell-Tint für heute aktive Schiffe)
+// wurde mit der Phantom-Paper-Palette entfernt: das Meer bleibt auf
+// jeder Zoomstufe ungebrochen hell, die Heute-Ebene tragen allein die
+// Korallen-Schiffsmarker in renderShips.
 
 let offCanvas = null;
 let offCtx = null;
@@ -4162,7 +4319,7 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
       const base = py * imgW * 4;
       for (let px = 0; px < imgW; px++) {
         const idx = base + px * 4;
-        pixels[idx] = 4; pixels[idx+1] = 15; pixels[idx+2] = 32; pixels[idx+3] = 255;
+        pixels[idx] = 233; pixels[idx+1] = 224; pixels[idx+2] = 201; pixels[idx+3] = 255; // --ocean-abyss Papier
       }
       continue;
     }
@@ -4194,18 +4351,12 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
         pixels[idx+1] = Math.round(og * (1 - blend) + lg * blend);
         pixels[idx+2] = Math.round(ob * (1 - blend) + lb * blend);
       } else {
+        // Einheitliches Papier-Meer — der Depletion-Zustand färbt im
+        // neuen System nur die Strophen-Schrift (renderStanzas), nicht
+        // den Zellhintergrund. Kein isDepleted() im Weitzoom-Pfad.
         const cellIdx = drow * DISPLAY_COLS + col;
-        const deplState = isDepleted(col, drow);
-        if (deplState === 2) {
-          const [dr, dg, db] = GRID_COLORS.depletedFull;
-          pixels[idx] = dr; pixels[idx+1] = dg; pixels[idx+2] = db;
-        } else if (deplState === 1) {
-          const [dr, dg, db] = GRID_COLORS.depletedPartial;
-          pixels[idx] = dr; pixels[idx+1] = dg; pixels[idx+2] = db;
-        } else {
-          const [or, og, ob] = GRID_COLORS.oceanAlive(cellIdx);
-          pixels[idx] = or; pixels[idx+1] = og; pixels[idx+2] = ob;
-        }
+        const [or, og, ob] = GRID_COLORS.oceanAlive(cellIdx);
+        pixels[idx] = or; pixels[idx+1] = og; pixels[idx+2] = ob;
       }
       pixels[idx+3] = 255;
     }
@@ -4217,7 +4368,7 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
 }
 
 function renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW) {
-  ctx.fillStyle = '#040f20';  // --ocean-abyss
+  ctx.fillStyle = '#e9e0c9';  // --ocean-abyss (Papier, Off-Grid-Rand)
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   const cellH = cellW;
@@ -4239,11 +4390,10 @@ function renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW) {
       if (isLand(col, row)) {
         [r, g, b] = GRID_COLORS.land;
       } else {
+        // Einheitliches Papier-Meer — Zustand liegt in der Strophen-
+        // Schriftfarbe (renderStanzas), nicht im Zellhintergrund.
         const cellIdx = row * DISPLAY_COLS + col;
-        const deplState = isDepleted(col, row);
-        if (deplState === 2) [r, g, b] = GRID_COLORS.depletedFull;
-        else if (deplState === 1) [r, g, b] = GRID_COLORS.depletedPartial;
-        else [r, g, b] = GRID_COLORS.oceanAlive(cellIdx);
+        [r, g, b] = GRID_COLORS.oceanAlive(cellIdx);
       }
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(px, py, cellW + 0.5, cellH + 0.5);
@@ -4256,7 +4406,9 @@ function renderGridLines(startCol, startRow, cellsWide, cellsHigh, cellW) {
   const alpha = Math.min(0.4, (cellW - ZOOM_THRESHOLDS.GRID_LINES) / 8 * 0.4);
   if (alpha <= 0) return;
 
-  ctx.strokeStyle = `rgba(141, 145, 152, ${alpha})`;
+  // Tinte auf Papier: gleiche Alpha-Rampe wie früher, aber ~halbiert —
+  // dunkle Linien auf hellem Grund wirken bei gleichem Alpha härter.
+  ctx.strokeStyle = `rgba(28, 28, 26, ${alpha * 0.45})`;
   ctx.lineWidth = 0.5;
 
   const colStart = Math.floor(startCol);
@@ -4381,9 +4533,20 @@ function renderStanzas(startCol, startRow, cellsWide, cellsHigh, cellW, activeCe
       const startY = py + (cellH - totalH) / 2;
       const xLeft = px + cellW * 0.04;
 
+      // Auf die eigene Zelle clippen: der Textblock kann (mittlere
+      // Zoomstufen) größer sein als die Zelle — ungeclippt liefen die
+      // Strophen der Nachbarzellen übereinander und der Text wurde zum
+      // unlesbaren Doppeldruck ("verwischt"). Geclippt zeigt jede Zelle
+      // sauber so viel ihrer Strophe, wie hineinpasst, und der volle
+      // Vers löst sich beim Weiterzoomen aus der Mitte heraus auf.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(px + 1, py + 1, cellW - 2, cellH - 2);
+      ctx.clip();
       for (let i = 0; i < wrapped.length; i++) {
         ctx.fillText(wrapped[i], xLeft, startY + i * lineH);
       }
+      ctx.restore();
     }
   }
 
@@ -4435,33 +4598,188 @@ function renderShips(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
       seen.add(key);
     }
 
-    const glowR = Math.min(20, Math.max(2, cellW * 1.5));
-    const gradient = ctx.createRadialGradient(vx, vy, 0, vx, vy, glowR);
-    gradient.addColorStop(0, 'rgba(255, 240, 102, 0.9)');
-    gradient.addColorStop(0.5, 'rgba(255, 210, 58, 0.2)');
-    gradient.addColorStop(1, 'rgba(255, 210, 58, 0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(vx - glowR, vy - glowR, glowR * 2, glowR * 2);
+    // Korallen-Marker (Phantom-Islands-artig): fester Kern-Dot plus ein
+    // pulsierender, auslaufender Ring als Clickability-Cue. Die Phase
+    // ist pro Schiff über einen Positions-Hash versetzt, damit die
+    // Flotte organisch flimmert statt im Gleichtakt zu blinken.
+    const minDot = canvasW < 700 ? 4 : 3;
+    const dotR = Math.max(minDot, Math.min(6, cellW * 0.18));
+    const jitter = (((Math.round(vessel.lon * 10) * 7 + Math.round(vessel.lat * 10) * 13) % 97) + 97) % 97 / 97;
+    const phase = (performance.now() / 2400 + jitter) % 1;
 
-    // Slightly fatter minimum dot on phone-sized canvases — at world
-    // zoom on a 390 px screen each cell is 0.1 px, so the previous 2 px
-    // floor disappeared into the brown active-cell tint.
-    const minDot = canvasW < 700 ? 3 : 2;
-    const dotR = Math.max(minDot, Math.min(4, cellW * 0.15));
+    // Kern
     ctx.beginPath();
     ctx.arc(vx, vy, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff066';
+    ctx.fillStyle = '#d94a32';
     ctx.fill();
+
+    // Puls-Ring: wächst nach außen und blendet aus
+    const span = Math.max(7, Math.min(16, cellW * 0.5));
+    const pr = dotR + 1.5 + phase * span;
+    const pa = 0.55 * (1 - phase);
+    if (pa > 0.02) {
+      ctx.beginPath();
+      ctx.arc(vx, vy, pr, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(217, 74, 50, ${pa})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     if (cellW >= ZOOM_THRESHOLDS.STANZA_CANVAS) {
       const nameSize = Math.max(7, Math.min(10, cellW * 0.4));
-      ctx.font = `500 ${nameSize}px 'DM Mono', monospace`;
-      ctx.fillStyle = 'rgba(255, 240, 102, 0.7)';
+      ctx.font = `500 ${nameSize}px 'Kode Mono', monospace`;
+      ctx.fillStyle = 'rgba(217, 74, 50, 0.85)';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(vessel.name, vx + dotR + 4, vy - 4);
+      ctx.fillText(vessel.name, vx + dotR + 5, vy - 4);
     }
   }
 }
+
+// ══════════════════════════════════════════════════
+// VIEWPORT-TWEEN — eased Fly-to (Vorbild Phantom Islands)
+// ══════════════════════════════════════════════════
+
+let flightRAF = null;
+
+function cancelFlight() {
+  if (flightRAF) { cancelAnimationFrame(flightRAF); flightRAF = null; }
+}
+
+// Animiert das Viewport zu (targetCol, targetRow, targetCellsWide).
+// Der Zoom wird im Log-Raum interpoliert (Zoom ist multiplikativ —
+// linear interpoliert wirkt das Andocken abgehackt), die Position
+// linear, beides mit easeInOutCubic.
+function flyTo(targetCol, targetRow, targetCellsWide, duration, onDone) {
+  cancelFlight();
+  const c0 = viewport.centerCol, r0 = viewport.centerRow;
+  const z0 = Math.log(viewport.cellsWide);
+  const z1 = Math.log(Math.max(ZOOM_LIMITS.minCellsWide, Math.min(ZOOM_LIMITS.maxCellsWide, targetCellsWide)));
+  const t0 = performance.now();
+  const ease = t => (t < 0.5) ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function step(now) {
+    const t = Math.min(1, (now - t0) / duration);
+    const e = ease(t);
+    viewport.centerCol = c0 + (targetCol - c0) * e;
+    viewport.centerRow = r0 + (targetRow - r0) * e;
+    viewport.cellsWide = Math.exp(z0 + (z1 - z0) * e);
+    clampViewport();
+    scheduleRender();
+    if (t < 1) {
+      flightRAF = requestAnimationFrame(step);
+    } else {
+      flightRAF = null;
+      if (onDone) onDone();
+    }
+  }
+  flightRAF = requestAnimationFrame(step);
+}
+
+// Zoomstufe, auf der die Verse im Grid gut lesbar sind (~70 px/Zelle) —
+// dort landet der Intro-Flug und jeder Jump-to-Ship.
+function readableCellsWide() {
+  return Math.max(ZOOM_LIMITS.minCellsWide, Math.round(canvasW / 70));
+}
+
+// ── Intro-Flug: Fullscreen-Weltansicht → Autozoom auf ein aktives
+// Schiff mit geöffnetem Gedicht (User-Spec, Vorbild Phantom Islands).
+// Wird beim Splash-Dismiss ausgelöst (bzw. sobald die echte Flotte da
+// ist, wenn der Splash übersprungen wurde) und bricht sofort ab, wenn
+// der User selbst interagiert.
+let introFlightDone = false;
+
+function startIntroFlight() {
+  if (introFlightDone || userInteracted) return;
+  if (document.body.classList.contains('not-ocean')) return;
+  const vs = (fleetData || []).filter(v =>
+    Array.isArray(v.catches) && v.catches.length > 0 &&
+    typeof v.lon === 'number' && typeof v.lat === 'number');
+  if (!vs.length) return;   // echte Flotte noch nicht da — Trigger kommt erneut
+  introFlightDone = true;
+  // Ein Schiff mit vielen Fängen (die oberen ~200), darunter zufällig —
+  // jeder Besuch landet woanders, aber nie bei einem Ein-Strophen-Schiff.
+  const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0));
+  const v = ranked[Math.floor(Math.random() * Math.min(ranked.length, 200))];
+  setTimeout(() => {
+    if (userInteracted) return;
+    flyTo((v.lon + 180) / 0.1, (v.lat + 90) / 0.1, readableCellsWide(), 2600, () => {
+      if (!userInteracted) spawnVesselPopup(v, 0);
+    });
+  }, 700);
+}
+
+// Splash übersprungen (localStorage): fliegen, sobald die Flotte lädt.
+document.addEventListener('srah:stage-ready', () => {
+  if (!document.getElementById('intro-splash')) startIntroFlight();
+});
+
+// ══════════════════════════════════════════════════
+// ZOOM-BUTTONS + MINIMAP (Vorbild Phantom Islands)
+// ══════════════════════════════════════════════════
+
+const minimapCanvas = document.getElementById('map-minimap');
+const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
+let minimapBase = null;
+
+// Weltkarten-Grundbild der Minimap — einmal aus der Landmaske gebaut.
+function buildMinimapBase() {
+  if (!landMask || !minimapCtx) return;
+  const w = minimapCanvas.width, h = minimapCanvas.height;
+  const img = minimapCtx.createImageData(w, h);
+  const px = img.data;
+  for (let y = 0; y < h; y++) {
+    const row = Math.min(DISPLAY_ROWS - 1, Math.floor((1 - (y + 0.5) / h) * DISPLAY_ROWS));
+    for (let x = 0; x < w; x++) {
+      const col = Math.min(DISPLAY_COLS - 1, Math.floor((x + 0.5) / w * DISPLAY_COLS));
+      const idx = (y * w + x) * 4;
+      if (isLand(col, row)) { px[idx] = 144; px[idx+1] = 147; px[idx+2] = 143; }
+      else                  { px[idx] = 242; px[idx+1] = 234; px[idx+2] = 216; }
+      px[idx+3] = 255;
+    }
+  }
+  minimapBase = img;
+}
+
+// Grundbild + korallenrotes Rechteck des aktuellen Ausschnitts.
+function updateMinimap() {
+  if (!minimapCtx) return;
+  if (!minimapBase) { buildMinimapBase(); if (!minimapBase) return; }
+  const w = minimapCanvas.width, h = minimapCanvas.height;
+  minimapCtx.putImageData(minimapBase, 0, 0);
+  const { startCol, startRow, cellsWide, cellsHigh } = getViewportBounds();
+  const sx = w / DISPLAY_COLS, sy = h / DISPLAY_ROWS;
+  const rw = Math.max(3, cellsWide * sx);
+  const rh = Math.max(3, cellsHigh * sy);
+  const ry = h - (startRow + cellsHigh) * sy;
+  const rc = ((startCol % DISPLAY_COLS) + DISPLAY_COLS) % DISPLAY_COLS;
+  const rx = rc * sx;
+  minimapCtx.strokeStyle = '#d94a32';
+  minimapCtx.lineWidth = 1.5;
+  minimapCtx.strokeRect(rx, ry, rw, rh);
+  // Longitude-Wrap: ragt das Rechteck rechts hinaus, links gespiegelt
+  // weiterzeichnen, damit der Ausschnitt am Datumssprung sichtbar bleibt.
+  if (rx + rw > w) minimapCtx.strokeRect(rx - w, ry, rw, rh);
+}
+
+// Klick auf die Minimap springt dorthin (Zoomstufe bleibt).
+if (minimapCanvas) {
+  minimapCanvas.addEventListener('click', (e) => {
+    markInteracted();
+    const r = minimapCanvas.getBoundingClientRect();
+    viewport.centerCol = ((e.clientX - r.left) / r.width) * DISPLAY_COLS;
+    viewport.centerRow = (1 - (e.clientY - r.top) / r.height) * DISPLAY_ROWS;
+    clampViewport();
+    scheduleRender();
+  });
+}
+
+function buttonZoom(factor) {
+  markInteracted();   // beendet Intro-Flug + Hint, BEVOR der neue Flug startet
+  flyTo(viewport.centerCol, viewport.centerRow, viewport.cellsWide / factor, 260);
+}
+const zoomInBtn = document.getElementById('map-zoom-in');
+const zoomOutBtn = document.getElementById('map-zoom-out');
+if (zoomInBtn) zoomInBtn.addEventListener('click', () => buttonZoom(1.7));
+if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => buttonZoom(1 / 1.7));
 
 // ══════════════════════════════════════════════════
 // PAN & ZOOM
@@ -4475,6 +4793,7 @@ let dragStartCenterCol, dragStartCenterRow;
 function markInteracted() {
   if (userInteracted) return;
   userInteracted = true;
+  cancelFlight();
   const hint = document.querySelector('.map-overlay-hint');
   if (hint) hint.setAttribute('data-state', 'dismissed');
   fadeAllVesselPopups();
@@ -4749,7 +5068,8 @@ function translateType(type) {
 function formatVesselMeta(v) {
   const ns = v.lat >= 0 ? 'N' : 'S';
   const ew = v.lon >= 0 ? 'E' : 'W';
-  return `${v.flag} \u00b7 ${Math.abs(v.lat).toFixed(1)}\u00b0${ns} ${Math.abs(v.lon).toFixed(1)}\u00b0${ew} \u00b7 ${translateType(v.type)} \u00b7 ${v.hours.toFixed(1)} ${t('popup.fishing')}`;
+  const fe = flagEmoji(v.flag);
+  return `${fe ? fe + ' ' : ''}${v.flag} \u00b7 ${Math.abs(v.lat).toFixed(1)}\u00b0${ns} ${Math.abs(v.lon).toFixed(1)}\u00b0${ew} \u00b7 ${translateType(v.type)} \u00b7 ${v.hours.toFixed(1)} ${t('popup.fishing')}`;
 }
 
 function spawnVesselPopup(vessel, autoCloseAfter = 7000) {
@@ -4896,6 +5216,44 @@ function generateFleet() {
 // follows the active toggle. Fallback (mock fleet, no live data): one
 // deterministic stanza from the vessel's GPS centre + seed, keeping
 // legacy behaviour for the static demo.
+// ── Flaggen-Emoji (User-Spec: Emoji statt ISO-Code) ─────────────────
+// GFW liefert ISO-3166 alpha-3; Emoji-Flaggen bauen auf alpha-2
+// Regional-Indicator-Paaren auf, also braucht es die Übersetzung.
+// Abdeckung: die maritime Welt (Fischereiflaggen + gängige Register);
+// unbekannte Codes fallen sichtbar auf den Rohcode zurück.
+const FLAG_A3_TO_A2 = {
+  ABW:'AW',AGO:'AO',AIA:'AI',ALB:'AL',ARE:'AE',ARG:'AR',ATG:'AG',AUS:'AU',AUT:'AT',AZE:'AZ',
+  BEL:'BE',BEN:'BJ',BGD:'BD',BGR:'BG',BHR:'BH',BHS:'BS',BLZ:'BZ',BMU:'BM',BRA:'BR',BRB:'BB',
+  BRN:'BN',CAN:'CA',CHE:'CH',CHL:'CL',CHN:'CN',CIV:'CI',CMR:'CM',COD:'CD',COG:'CG',COK:'CK',
+  COL:'CO',COM:'KM',CPV:'CV',CRI:'CR',CUB:'CU',CUW:'CW',CYM:'KY',CYP:'CY',DEU:'DE',DJI:'DJ',
+  DMA:'DM',DNK:'DK',DOM:'DO',DZA:'DZ',ECU:'EC',EGY:'EG',ERI:'ER',ESP:'ES',EST:'EE',FIN:'FI',
+  FJI:'FJ',FLK:'FK',FRA:'FR',FRO:'FO',FSM:'FM',GAB:'GA',GBR:'GB',GEO:'GE',GHA:'GH',GIB:'GI',
+  GIN:'GN',GLP:'GP',GMB:'GM',GNB:'GW',GNQ:'GQ',GRC:'GR',GRD:'GD',GRL:'GL',GTM:'GT',GUF:'GF',
+  GUY:'GY',HKG:'HK',HND:'HN',HRV:'HR',HTI:'HT',IDN:'ID',IND:'IN',IRL:'IE',IRN:'IR',IRQ:'IQ',
+  ISL:'IS',ISR:'IL',ITA:'IT',JAM:'JM',JOR:'JO',JPN:'JP',KAZ:'KZ',KEN:'KE',KHM:'KH',KIR:'KI',
+  KNA:'KN',KOR:'KR',KWT:'KW',LBN:'LB',LBR:'LR',LBY:'LY',LCA:'LC',LKA:'LK',LTU:'LT',LVA:'LV',
+  MAR:'MA',MCO:'MC',MDA:'MD',MDG:'MG',MDV:'MV',MEX:'MX',MHL:'MH',MLT:'MT',MMR:'MM',MNE:'ME',
+  MNG:'MN',MOZ:'MZ',MRT:'MR',MTQ:'MQ',MUS:'MU',MYS:'MY',MYT:'YT',NAM:'NA',NCL:'NC',NGA:'NG',
+  NIC:'NI',NIU:'NU',NLD:'NL',NOR:'NO',NRU:'NR',NZL:'NZ',OMN:'OM',PAK:'PK',PAN:'PA',PER:'PE',
+  PHL:'PH',PLW:'PW',PNG:'PG',POL:'PL',PRK:'KP',PRT:'PT',PRY:'PY',PYF:'PF',QAT:'QA',REU:'RE',
+  ROU:'RO',RUS:'RU',SAU:'SA',SEN:'SN',SGP:'SG',SHN:'SH',SLB:'SB',SLE:'SL',SLV:'SV',SOM:'SO',
+  SPM:'PM',STP:'ST',SUR:'SR',SVN:'SI',SWE:'SE',SYC:'SC',SYR:'SY',TCA:'TC',TGO:'TG',THA:'TH',
+  TKL:'TK',TLS:'TL',TON:'TO',TTO:'TT',TUN:'TN',TUR:'TR',TUV:'TV',TWN:'TW',TZA:'TZ',UKR:'UA',
+  URY:'UY',USA:'US',VCT:'VC',VEN:'VE',VGB:'VG',VNM:'VN',VUT:'VU',WLF:'WF',WSM:'WS',YEM:'YE',
+  ZAF:'ZA',
+};
+
+function flagEmoji(a3) {
+  const a2 = FLAG_A3_TO_A2[(a3 || '').toUpperCase()];
+  if (!a2) return null;
+  return String.fromCodePoint(...[...a2].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65));
+}
+
+// Emoji, wenn bekannt — sonst der Rohcode (sichtbarer Fallback).
+function flagDisplay(a3) {
+  return flagEmoji(a3) || (a3 || '??');
+}
+
 function stanzasForFleetEntry(v) {
   const lang = currentLang;
   if (Array.isArray(v.catches) && v.catches.length > 0) {
@@ -4932,21 +5290,47 @@ function computeStanzaEntropy(stanza) {
   return h;
 }
 
+// Deterministischer Hash f\u00fcr die Schnitt-Auswahl (Full/Selection/\u2026):
+// stabil pro Schiff \u00fcber Reloads, damit derselbe Schnitt immer dieselben
+// Schiffe zeigt \u2014 konzeptuell wie das seeded Sampling der PDF-Tiers.
+function vesselHash(v) {
+  const s = String(v.vesselId ?? v.id ?? v.name ?? '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const FLEET_TIER_DENOM = { selection: 10, finecut: 100 };
+
 function renderFleetGrid() {
   const grid = document.getElementById('fleet-grid');
   grid.innerHTML = '';
   const filter = getFleetFilter();
+  const matching = fleetData.filter(v => matchesFilter(v, filter));
+
+  // Schnitt anwenden: selection/finecut = deterministisches Zehntel/
+  // Hundertstel, onepiece = genau ein Schiff (min. Hash \u2014 stabil).
+  let pool = matching;
+  if (filter.tier === 'onepiece' && matching.length) {
+    pool = [matching.reduce((a, b) => (vesselHash(a) <= vesselHash(b) ? a : b))];
+  } else if (FLEET_TIER_DENOM[filter.tier]) {
+    const d = FLEET_TIER_DENOM[filter.tier];
+    pool = matching.filter(v => vesselHash(v) % d === 0);
+  }
+
   let shown = 0;
   const limit = 400; // render a reasonable slice; backend pagination later
-  for (const v of fleetData) {
+  for (const v of pool) {
     if (shown >= limit) break;
-    if (!matchesFilter(v, filter)) continue;
     const card = document.createElement('button');
     card.className = 'vessel-card';
     card.dataset.id = v.id;
     card.style.animationDelay = (shown * 3) + 'ms';
     card.innerHTML = `
-      <div class="vc-flag">${v.flag}</div>
+      <div class="vc-flag" title="${v.flag}">${flagDisplay(v.flag)}</div>
       <div class="vc-name">${v.name}</div>
       <div class="vc-stats">${v.hours.toFixed(1)}h &middot; ${v.catch}</div>
     `;
@@ -4955,14 +5339,16 @@ function renderFleetGrid() {
     shown++;
   }
   document.getElementById('fleet-count').textContent =
-    fleetData.filter(v => matchesFilter(v, filter)).length.toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
+    pool.length.toLocaleString('en', { useGrouping: true }).replace(/,/g, '\u2009');
 }
 
 function getFleetFilter() {
+  const tierEl = document.getElementById('fleet-tier');
   return {
     sort: document.getElementById('fleet-sort').value,
     flag: document.getElementById('fleet-flag').value,
     type: document.getElementById('fleet-type').value,
+    tier: tierEl ? tierEl.value : '',
     q:    document.getElementById('fleet-search').value.toLowerCase(),
   };
 }
@@ -4988,79 +5374,126 @@ function sortFleet() {
   });
 }
 
-function renderFleetStanzas(card, v) {
-  // Build (or rebuild) the expanded card body. We only render the
-  // first stanza — vessels can carry hundreds of catches per day, and
-  // the line-reveal animation is designed for a single 4-line block.
-  // Total catch count remains visible in the entropy line below.
-  card.querySelectorAll('.vc-expand, .vc-entropy, .vc-map-link').forEach(el => el.remove());
-  const stanzas = stanzasForFleetEntry(v);
-  const stanza = stanzas[0] || [];
-  const expand = document.createElement('div');
-  expand.className = 'vc-expand';
-  expand.innerHTML = `<div class="vc-stanza">${
+// Alle Fänge eines Schiffs lazy vom Backend holen (der Fleet-Endpoint
+// trimmt auf einen Fang pro Schiff; /api/vessels/{id}/catches liefert
+// die komplette Liste). Gecacht am Vessel-Objekt — Sprachwechsel
+// braucht keinen zweiten Fetch, die Strophen werden client-seitig aus
+// (col,row) regeneriert.
+async function loadAllCatches(v) {
+  if (Array.isArray(v._allCatches)) return v._allCatches;
+  if (!HAVOC_HAS_API || !v.vesselId) return null;
+  try {
+    const r = await fetch(`${HAVOC_API_BASE}/api/vessels/${encodeURIComponent(v.vesselId)}/catches`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (!Array.isArray(data.catches)) return null;
+    v._allCatches = data.catches;
+    return v._allCatches;
+  } catch (e) {
+    console.warn('per-vessel catches unavailable', e);
+    return null;
+  }
+}
+
+function stanzaBlockHTML(stanza) {
+  return `<div class="vc-stanza">${
     stanza.map(l => `<span class="vc-line">${l}</span>`).join('')
   }</div>`;
-  const entropy = document.createElement('div');
-  entropy.className = 'vc-entropy';
+}
+
+// Baut das ausgeklappte Detail-Panel (Name, ALLE Strophen, Meta, Link).
+function renderFleetDetail(detail, v) {
+  const stanzas = stanzasForFleetEntry(v);
+  const totalCatches = (typeof v.catchCount === 'number' && v.catchCount > 0)
+    ? v.catchCount
+    : stanzas.length;
   const ns = v.lat >= 0 ? 'N' : 'S';
   const ew = v.lon >= 0 ? 'E' : 'W';
   const entropyVal = (typeof v.entropy === 'number')
     ? v.entropy
-    : computeStanzaEntropy(stanza);
-  // Total catches per vessel comes from the API as catchCount; stanzas[]
-  // only ever has 1 entry now (the API trim), so we can't infer the
-  // count from the locally-rendered list.
-  const totalCatches = (typeof v.catchCount === 'number' && v.catchCount > 0)
-    ? v.catchCount
-    : stanzas.length;
+    : computeStanzaEntropy(stanzas[0] || []);
   const word = totalCatches === 1
     ? t('fleet.stanzas.singular')
     : t('fleet.stanzas.plural');
-  const countTxt = `${totalCatches} ${word}`;
-  entropy.textContent = `${countTxt}  \u00b7  ${Math.abs(v.lat).toFixed(4)}\u00b0${ns}  ${Math.abs(v.lon).toFixed(4)}\u00b0${ew}   H = ${entropyVal.toFixed(2)}`;
+
+  detail.innerHTML = `
+    <div class="fd-name"><span class="fd-flag">${flagDisplay(v.flag)}</span>${v.name}</div>
+    <div class="fd-stanzas">${stanzas.map(stanzaBlockHTML).join('')}</div>
+    <div class="vc-entropy">${totalCatches} ${word}  ·  ${Math.abs(v.lat).toFixed(4)}°${ns}  ${Math.abs(v.lon).toFixed(4)}°${ew}   H = ${entropyVal.toFixed(2)}</div>
+  `;
   const mapLink = document.createElement('button');
   mapLink.type = 'button';
   mapLink.className = 'vc-map-link';
-  mapLink.textContent = '\u2197 show on map';
+  mapLink.textContent = '↗ ' + t('fleet.showonmap');
   mapLink.addEventListener('click', (e) => { e.stopPropagation(); focusVesselOnMap(v); });
-  card.appendChild(expand);
-  card.appendChild(entropy);
-  card.appendChild(mapLink);
+  detail.appendChild(mapLink);
+
+  // Alle geernteten Strophen nachladen (User-Spec) — das Panel zeigt
+  // sofort die erste, der Rest strömt nach, sobald das Backend liefert.
+  if (totalCatches > stanzas.length) {
+    const loading = document.createElement('div');
+    loading.className = 'fd-loading';
+    loading.textContent = `${t('fleet.loading.all')} (${totalCatches})…`;
+    detail.querySelector('.fd-stanzas').after(loading);
+    loadAllCatches(v).then(catches => {
+      loading.remove();
+      if (!catches || !detail.isConnected) return;
+      const lang = currentLang;
+      const holder = detail.querySelector('.fd-stanzas');
+      if (!holder) return;
+      const rest = catches.slice(1).map(c =>
+        stanzaBlockHTML(generateStanzaForLang(c.col, c.row, lang))).join('');
+      holder.insertAdjacentHTML('beforeend', rest);
+    });
+  }
 }
 
+// Öffnet das Detail als eigenes Panel NACH dem Ende der visuellen Reihe
+// der angeklickten Karte (User-Spec: Aufklappen sieht immer aus wie am
+// Reihenende) — die Karte selbst bleibt an Ort und Stelle markiert.
 function toggleFleetCard(card, v) {
-  const isOpen = card.classList.contains('is-open');
+  const wasOpen = card.classList.contains('is-open');
   document.querySelectorAll('.vessel-card.is-open').forEach(c => c.classList.remove('is-open'));
-  if (isOpen) return;
+  document.querySelectorAll('.fleet-detail').forEach(d => d.remove());
+  if (wasOpen) return;
 
-  // Populate expand block on first open
-  if (!card.querySelector('.vc-expand')) {
-    renderFleetStanzas(card, v);
-  } else {
-    // restart reveal animation
-    card.querySelectorAll('.vc-line').forEach(l => { l.style.animation = 'none'; l.offsetHeight; l.style.animation = ''; });
+  const detail = document.createElement('div');
+  detail.className = 'fleet-detail';
+  detail.dataset.id = v.id;
+  renderFleetDetail(detail, v);
+
+  // Reihenende finden: erstes Karten-Geschwister unterhalb der Zeile
+  // der angeklickten Karte (offsetTop-Vergleich im Grid).
+  const grid = card.parentElement;
+  let anchor = null;
+  for (const sib of grid.children) {
+    if (!sib.classList.contains('vessel-card')) continue;
+    if (sib.offsetTop > card.offsetTop) { anchor = sib; break; }
   }
+  if (anchor) grid.insertBefore(detail, anchor);
+  else grid.appendChild(detail);
+
   card.classList.add('is-open');
 }
 
-// Re-render every currently open fleet card in the new language.
+// Re-render every currently open fleet detail in the new language.
 function rerenderOpenFleetCards() {
-  document.querySelectorAll('.vessel-card.is-open').forEach(card => {
-    const id = card.dataset.id;
+  document.querySelectorAll('.fleet-detail').forEach(detail => {
+    const id = detail.dataset.id;
     const v = fleetData.find(x => String(x.id) === String(id));
-    if (v) renderFleetStanzas(card, v);
+    if (v) renderFleetDetail(detail, v);
   });
 }
 
 function focusVesselOnMap(v) {
-  // Switch to ocean view, center viewport on vessel, zoom in
+  // Zur Karte wechseln und animiert aufs Schiff fliegen; am Ziel das
+  // Popup öffnen, damit klar ist, zu WELCHEM Schiff gesprungen wurde
+  // (User-Spec — vorher: Instant-Sprung ohne Markierung).
   switchToView('ocean');
-  viewport.centerCol = (v.lon + 180) / 0.1;
-  viewport.centerRow = (v.lat + 90) / 0.1;
-  viewport.cellsWide = 40;
-  clampViewport();
-  scheduleRender();
+  cancelFlight();
+  flyTo((v.lon + 180) / 0.1, (v.lat + 90) / 0.1, readableCellsWide(), 1600, () => {
+    spawnVesselPopup(v, 0);
+  });
   updateHint();
 }
 
@@ -5075,7 +5508,8 @@ function populateFlagOptions() {
     const opt = document.createElement('option');
     opt.value = f;
     opt.dataset.flag = f;
-    opt.textContent = `${t('fleet.flag.prefix')}: ${f} (${counts[f]})`;
+    const em = flagEmoji(f);
+    opt.textContent = `${em ? em + ' ' : ''}${f} (${counts[f]})`;
     sel.appendChild(opt);
   });
 }
@@ -5105,14 +5539,22 @@ function switchToView(name) {
     resizeCanvas();
     scheduleRender();
     // Some browsers (notably Safari) wipe the canvas backing store while
-    // its parent .view is display:none. After we flip the view back on,
-    // the wrapper's clientWidth/Height may also still be reporting the
-    // pre-flip layout for a frame. Re-resize and re-render once the
-    // browser has settled, so the map is guaranteed to be on screen.
-    requestAnimationFrame(() => {
+    // its parent .view is display:none, and the wrapper can keep
+    // reporting stale (even zero) clientWidth/Height for MULTIPLE
+    // frames after the flip. The old single-rAF retry lost that race —
+    // returning from Fleet sometimes left a blank map. Re-resize and
+    // re-render every frame until the wrapper reports real dimensions
+    // (bounded, so a hidden tab can't loop forever); the ResizeObserver
+    // in init covers anything slower still.
+    let settleTries = 0;
+    (function settleOcean() {
       resizeCanvas();
+      clampViewport();
       scheduleRender();
-    });
+      if ((canvasW <= 0 || canvasH <= 0) && ++settleTries < 30) {
+        requestAnimationFrame(settleOcean);
+      }
+    })();
   } else if (name === 'fleet') {
     if (fleetData.length === 0) fleetData = generateFleet();
     const grid = document.getElementById('fleet-grid');
@@ -5150,7 +5592,7 @@ function animateCatchCounter() {
 // FLEET FILTER LISTENERS
 // ══════════════════════════════════════════════════
 
-['fleet-sort', 'fleet-flag', 'fleet-type', 'fleet-search'].forEach(id => {
+['fleet-sort', 'fleet-flag', 'fleet-type', 'fleet-tier', 'fleet-search'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener(id === 'fleet-search' ? 'input' : 'change', () => {
@@ -5306,6 +5748,24 @@ window.addEventListener('resize', () => {
   scheduleRender();
   updateVesselPopupPositions();
 });
+
+// Definitiver Fix für "Karte lädt nicht nach Rückkehr aus der Flotte":
+// der ResizeObserver feuert, wann immer der Wrapper seine echte Größe
+// (zurück)bekommt — auch wenn das Layout erst viele Frames nach dem
+// View-Wechsel settled, wo rAF-Retries aufgeben würden.
+(function observeOceanWrapper() {
+  const wrapper = document.querySelector('.ocean-canvas-wrapper');
+  if (!wrapper || typeof ResizeObserver === 'undefined') return;
+  new ResizeObserver(() => {
+    if (document.body.classList.contains('not-ocean')) return;
+    if (wrapper.clientWidth <= 0 || wrapper.clientHeight <= 0) return;
+    if (wrapper.clientWidth === canvasW && wrapper.clientHeight === canvasH) return;
+    resizeCanvas();
+    clampViewport();
+    scheduleRender();
+    updateVesselPopupPositions();
+  }).observe(wrapper);
+})();
 
 function updateStatusBar() {
   if (!fleetData.length) fleetData = generateFleet();
