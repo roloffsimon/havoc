@@ -21,6 +21,7 @@ compress well and stay light when WeasyPrint flattens to PDF.
 from __future__ import annotations
 
 import gc
+import json
 import logging
 import os
 import random
@@ -1687,6 +1688,99 @@ def render_daily_pdf(stats: dict, poems: dict[str, list[dict]],
     return _write_daily_artefacts(stats, capped_poems)
 
 
+def _render_persisted_day_typst(date: str, stats: dict,
+                                language: str) -> Path | None:
+    """Tier loop for render_persisted_day — memory-lean.
+
+    The naive path (db.catches_for → group → render_daily_pdf) loads the
+    whole day into Python first: on 2026-07-05 that is 993k catch dicts
+    with parsed stanza JSON, ~2-3 GB, sitting in RAM before a single
+    tier is sampled — and the render subprocess got OOM-killed before
+    typst even ran. But _sample_for_tier only looks at the poems KEYS,
+    so the vessel selection can be computed from a tiny identity list
+    and only the sampled vessels' catches (1/10 for selection, 1/100
+    for finecut, one vessel for onepiece) ever get materialised.
+    Stanza JSON is parsed only for EN — DE regenerates verse from
+    (col,row) via stanza_de and never reads the stored stanza.
+    """
+    with db.connect() as c:
+        vrows = c.execute(
+            "SELECT vessel_id, vessel_name, flag, COUNT(*) AS n "
+            "FROM catches WHERE date=? GROUP BY vessel_id, vessel_name, flag",
+            (date,),
+        ).fetchall()
+    ident: dict[str, dict] = {}
+    for r in vrows:
+        key = r["vessel_id"] or (
+            f'{r["vessel_name"] or "UNKNOWN"}::{r["flag"] or "??"}'
+        )
+        ident[key] = dict(r)
+    fleet_total = len(ident)
+    if fleet_total == 0:
+        log.info("render_persisted_day: no catches for %s — skipping", date)
+        return None
+    log.info("render_persisted_day(lean): %s, language=%s, fleet=%d, "
+             "catches=%d", date, language, fleet_total,
+             stats.get("stanzas_caught", 0))
+
+    def _load_sub_poems(keys: list[str]) -> dict[str, list[dict]]:
+        sub: dict[str, list[dict]] = {k: [] for k in keys}
+        want_stanza = language == DEFAULT_LANGUAGE
+        with db.connect() as c:
+            id_keys = [k for k in keys if ident[k]["vessel_id"]]
+            for i in range(0, len(id_keys), 400):
+                chunk = id_keys[i:i + 400]
+                ph = ",".join("?" * len(chunk))
+                rows = c.execute(
+                    f"SELECT * FROM catches WHERE date=? AND vessel_id IN ({ph}) "
+                    "ORDER BY vessel_id, id",
+                    (date, *[ident[k]["vessel_id"] for k in chunk]),
+                ).fetchall()
+                for row in rows:
+                    d = dict(row)
+                    d["stanza"] = (json.loads(d["stanza_json"])
+                                   if want_stanza else None)
+                    d.pop("stanza_json", None)
+                    sub[d["vessel_id"]].append(d)
+            # Fallback keys (empty vessel_id — not seen in practice, but
+            # the key derivation allows it): match on name+flag.
+            for k in keys:
+                if ident[k]["vessel_id"]:
+                    continue
+                rows = c.execute(
+                    "SELECT * FROM catches WHERE date=? AND vessel_id='' "
+                    "AND vessel_name=? AND flag=? ORDER BY id",
+                    (date, ident[k]["vessel_name"], ident[k]["flag"]),
+                ).fetchall()
+                for row in rows:
+                    d = dict(row)
+                    d["stanza"] = (json.loads(d["stanza_json"])
+                                   if want_stanza else None)
+                    d.pop("stanza_json", None)
+                    sub[k].append(d)
+        return {k: v for k, v in sub.items() if v}
+
+    cover_bytes = _render_cover_image()
+    skeleton = {k: [] for k in ident}
+    paths: dict[str, Path] = {}
+    for tier in TIERS:
+        sampled = list(_sample_for_tier(skeleton, tier, date).keys())
+        sub_poems = _load_sub_poems(sampled)
+        log.info("render_persisted_day(lean): tier=%s vessels=%d "
+                 "catches=%d rss=%dMB", tier, len(sub_poems),
+                 sum(len(v) for v in sub_poems.values()), _rss_mb())
+        paths[tier] = _write_tier_artefact(
+            stats, sub_poems, tier,
+            fleet_total=fleet_total,
+            cover_bytes=cover_bytes,
+            out_dir=PDF_DIR,
+            language=language,
+        )
+        del sub_poems
+        gc.collect()
+    return paths.get(DEFAULT_TIER) or next(iter(paths.values()))
+
+
 def render_persisted_day(date: str, *,
                          language: str = DEFAULT_LANGUAGE) -> Path | None:
     """Re-render the PDFs for a day already persisted in the DB.
@@ -1727,17 +1821,29 @@ def render_persisted_day(date: str, *,
         "ocean_alive": None,
         "fishing_hours": 0.0,
     }
-    catches = db.catches_for(date)
-    poems: dict[str, list[dict]] = {}
-    for ct in catches:
-        key = ct.get("vessel_id") or (
-            f'{ct.get("vessel_name") or "UNKNOWN"}'
-            f'::{ct.get("flag") or "??"}'
-        )
-        poems.setdefault(key, []).append(ct)
-    log.info("render_persisted_day: %s, language=%s, vessels=%d, catches=%d",
-             date, language, len(poems), len(catches))
-    result = render_daily_pdf(stats, poems, language=language)
+    if os.environ.get("HAVOC_PDF_SKIP", "").strip() in {"1", "true", "yes"}:
+        log.info("render_persisted_day: skipped (HAVOC_PDF_SKIP=1)")
+        return None
+    if stats.get("stanzas_caught", 0) == 0:
+        log.info("render_persisted_day: skipped (0 catches for %s)", date)
+        return None
+    language = _normalise_language(language)
+
+    engine = os.environ.get("HAVOC_PDF_ENGINE", "typst").strip().lower()
+    if engine != "typst":
+        # Legacy engine keeps the old full-load path (WeasyPrint is
+        # tier-unaware anyway and EN-only).
+        catches = db.catches_for(date)
+        poems: dict[str, list[dict]] = {}
+        for ct in catches:
+            key = ct.get("vessel_id") or (
+                f'{ct.get("vessel_name") or "UNKNOWN"}'
+                f'::{ct.get("flag") or "??"}'
+            )
+            poems.setdefault(key, []).append(ct)
+        result = render_daily_pdf(stats, poems, language=language)
+    else:
+        result = _render_persisted_day_typst(date, stats, language)
     # The EN selection path is what `days.pdf_path` records and what
     # latest_pdf / _active_render_date key off. After a rebuild that
     # writes the artefact under a new render_date, refresh the row so
