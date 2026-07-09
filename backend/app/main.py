@@ -582,6 +582,73 @@ def debug_run_day_status(request: Request):
         return dict(_runday_state)
 
 
+# Manual trigger for the REAL daily job — the subprocess-isolated
+# pipeline the 06:00 scheduler runs (scripts.run_daily --lang en, pool
+# reload, then --lang de). Prefer this over /api/debug/run-day for
+# heavy days: run-day renders all six tier compiles (EN+DE) inline in
+# the web worker, the exact ~7 GB configuration that used to OOM-kill
+# the container; the subprocess split peaks around 4 GB per pass and
+# each pass gets a full heap reclaim on exit (see scheduler.py).
+_dailyjob_lock = __import__("threading").Lock()
+_dailyjob_state: dict = {"running": False, "result": None,
+                         "started_at": None, "finished_at": None}
+
+
+def _daily_job_worker():
+    import traceback
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        runs: list[dict] = []
+        en_rc = scheduler._spawn("en")
+        runs.append({"lang": "en", "rc": en_rc})
+        if en_rc == 0:
+            try:
+                _load_pool()
+            except Exception as exc:  # noqa: BLE001
+                log.exception("daily-job: pool reload failed: %s", exc)
+            de_rc = scheduler._spawn("de")
+            runs.append({"lang": "de", "rc": de_rc})
+        with _dailyjob_lock:
+            _dailyjob_state["result"] = {
+                "ok": all(r["rc"] == 0 for r in runs), "runs": runs}
+    except Exception as exc:  # noqa: BLE001
+        with _dailyjob_lock:
+            _dailyjob_state["result"] = {"ok": False, "error": repr(exc),
+                                         "traceback": traceback.format_exc()}
+    finally:
+        with _dailyjob_lock:
+            _dailyjob_state["running"] = False
+            _dailyjob_state["finished_at"] = _dt.now(_tz.utc).isoformat()
+
+
+@app.get("/api/debug/run-daily-job")
+def debug_run_daily_job(request: Request):
+    """Run the scheduled daily pipeline now (subprocess EN pass → pool
+    reload → subprocess DE pass). Skips nothing: same code path as the
+    06:00 cron. Poll /api/debug/run-daily-job-status."""
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    import threading
+    from datetime import datetime as _dt, timezone as _tz
+    with _dailyjob_lock:
+        if _dailyjob_state["running"]:
+            return {"started": False, "reason": "already running",
+                    "started_at": _dailyjob_state["started_at"]}
+        _dailyjob_state["running"] = True
+        _dailyjob_state["result"] = None
+        _dailyjob_state["started_at"] = _dt.now(_tz.utc).isoformat()
+        _dailyjob_state["finished_at"] = None
+    threading.Thread(target=_daily_job_worker, daemon=True).start()
+    return {"started": True, "started_at": _dailyjob_state["started_at"],
+            "poll": "/api/debug/run-daily-job-status"}
+
+
+@app.get("/api/debug/run-daily-job-status")
+def debug_run_daily_job_status(request: Request):
+    _debug_guard(request.headers.get("x-debug-token") or request.query_params.get("token"))
+    with _dailyjob_lock:
+        return dict(_dailyjob_state)
+
+
 # Same background-task pattern as run-day, but for re-rendering a
 # specific historic day from persisted catches. Used to rebuild PDFs
 # wiped by an earlier emergency cleanup while the catch rows are still
