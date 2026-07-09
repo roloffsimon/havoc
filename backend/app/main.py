@@ -236,6 +236,31 @@ def vessels():
     )
 
 
+@app.get("/api/vessels/{vessel_id}/catches")
+def vessel_catches(vessel_id: str, date: str | None = None):
+    """All harvested stanzas (catches) of a single vessel — lazily
+    loaded when a Fleet card is expanded so it can show every stanza.
+    `/api/vessels` trims each vessel to one catch to keep the fleet
+    response small (~42 MB otherwise); this serves the full per-vessel
+    list on demand. Defaults to the same active day the fleet is pinned
+    to (latest_active_day) so the counts line up with the fleet card."""
+    if not date:
+        day = db.latest_active_day() or db.latest_day()
+        if not day:
+            return JSONResponse(
+                content={"date": None, "vessel_id": vessel_id, "catches": [],
+                         "catch_count": 0},
+                headers=_PUBLIC_CACHE_5MIN,
+            )
+        date = day["date"]
+    catches = db.catches_for_vessel(date, vessel_id)
+    return JSONResponse(
+        content={"date": date, "vessel_id": vessel_id,
+                 "catches": catches, "catch_count": len(catches)},
+        headers=_PUBLIC_CACHE_5MIN,
+    )
+
+
 @app.get("/api/depletion-grid")
 def depletion_grid():
     """

@@ -159,12 +159,18 @@ def _run_en_restore(log: logging.Logger, date: str) -> int:
 
 def _run_de(log: logging.Logger, date: str | None = None) -> int:
     """Re-render only: render DE PDFs from a specific day's persisted
-    catches. Without `--date` falls back to db.latest_day()."""
+    catches. Without `--date` falls back to the latest day that still
+    has catch rows (db.latest_active_day) — never the bare
+    db.latest_day(), whose newest row may be an empty publication-lag
+    day or one whose catches were pruned/lost. Rendering such a day
+    yields empty `poems` → render_persisted_day returns None → no DE
+    volume is written, while EN keeps serving the last real catch. This
+    is the EN/DE asymmetry that made a day's German PDF go missing."""
     from app import db, pdf_builder
 
     db.init_db()
     if not date:
-        latest = db.latest_day()
+        latest = db.latest_active_day() or db.latest_day()
         if not latest:
             log.error("No recorded day in DB — cannot render DE")
             return 2

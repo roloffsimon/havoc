@@ -1808,24 +1808,41 @@ def latest_pdf(tier: str | None = None,
             if candidate.exists():
                 return candidate
 
-    # Step 2 — mtime-newest tier-matching PDF in PDF_DIR.
-    tier_pdfs = sorted(PDF_DIR.glob(f"catch_*_{tier}{suffix}.pdf"),
-                       key=lambda p: p.stat().st_mtime, reverse=True)
+    # Step 2 — mtime-newest tier-matching PDF across PDF_DIR + ARCHIVE_DIR.
+    # (Step 1 already checks both dirs; the tier fallback must too, or a
+    # DE volume that only survives in the archive is invisible here.)
+    tier_pdfs = sorted(
+        (p for parent in (PDF_DIR, ARCHIVE_DIR)
+           for p in parent.glob(f"catch_*_{tier}{suffix}.pdf")),
+        key=lambda p: p.stat().st_mtime, reverse=True)
     if tier_pdfs:
         return tier_pdfs[0]
+
     if language != DEFAULT_LANGUAGE:
-        # No EN-fallback for DE: missing DE artefact stays missing.
-        return None
-    pdfs = sorted(PDF_DIR.glob("catch_*.pdf"),
-                  key=lambda p: p.stat().st_mtime, reverse=True)
-    if pdfs:
-        # Filter out other-language artefacts so EN fallback doesn't
-        # accidentally serve a `_de` file.
-        pdfs = [p for p in pdfs if not p.stem.endswith("_de")]
+        # DE gets the SAME reach EN has — fall back to any DE volume
+        # (other tier) by mtime rather than 404ing. Never serve an EN
+        # file for DE, so the language stays pure: the fallback only
+        # ever matches `_de` artefacts.
+        de_pdfs = sorted(
+            (p for parent in (PDF_DIR, ARCHIVE_DIR)
+               for p in parent.glob("catch_*_de.pdf")),
+            key=lambda p: p.stat().st_mtime, reverse=True)
+        return de_pdfs[0] if de_pdfs else None
+
+    # EN fallbacks — any catch_*.pdf, then an HTML pre-typst leftover.
+    pdfs = sorted(
+        (p for parent in (PDF_DIR, ARCHIVE_DIR)
+           for p in parent.glob("catch_*.pdf")),
+        key=lambda p: p.stat().st_mtime, reverse=True)
+    # Filter out other-language artefacts so EN fallback doesn't
+    # accidentally serve a `_de` file.
+    pdfs = [p for p in pdfs if not p.stem.endswith("_de")]
     if pdfs:
         return pdfs[0]
-    htmls = sorted(PDF_DIR.glob("catch_*.html"),
-                   key=lambda p: p.stat().st_mtime, reverse=True)
+    htmls = sorted(
+        (p for parent in (PDF_DIR, ARCHIVE_DIR)
+           for p in parent.glob("catch_*.html")),
+        key=lambda p: p.stat().st_mtime, reverse=True)
     htmls = [p for p in htmls if not p.stem.endswith("_de")]
     return htmls[0] if htmls else None
 

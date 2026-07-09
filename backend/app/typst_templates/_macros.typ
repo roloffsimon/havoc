@@ -451,7 +451,7 @@
 // enough to read as the stanza's footer, but the next stanza sits a
 // noticeably larger gap below so the boundary stays unambiguous.
 #let stanza-block(s) = {
-  set text(font: FONT_BODY_ITALIC, weight: 300, size: 8.5pt, style: "italic",
+  set text(font: FONT_BODY_ITALIC, weight: 300, size: 10pt, style: "italic",
            fill: INK_SOFT)
   set par(leading: 0.30em, justify: false, first-line-indent: 0pt)
   block(breakable: false, below: 5mm)[
@@ -460,7 +460,7 @@
     #s.lines.at(2)\
     #s.lines.at(3)
     #v(2mm, weak: true)
-    #text(font: FONT_MONO, style: "normal", size: 5.4pt, fill: INK_FAINT,
+    #text(font: FONT_MONO, style: "normal", size: 6pt, fill: INK_FAINT,
           tracking: 0.06em)[
       #calc.round(s.lat, digits: 2)°, #calc.round(s.lon, digits: 2)°
     ]
@@ -481,7 +481,7 @@
   block(sticky: true, below: 4.5mm)[
     == #poem.name #label("vessel-" + poem.vkey)
     #h(1.4mm)
-    #text(font: FONT_MONO, size: 6.6pt, fill: INK_RULE,
+    #text(font: FONT_MONO, size: 7pt, fill: INK_RULE,
           tracking: 0.18em, baseline: -0.15em)[#upper(poem.flag)]
   ]
   block(below: 8mm)[
@@ -502,7 +502,7 @@
   #context {
     let entries = poems.map(p => (p.name, p.flag, p.vkey))
     entries = entries.sorted(key: e => e.at(0))
-    set text(font: FONT_BODY_ROMAN, size: 9pt, fill: INK_SOFT,
+    set text(font: FONT_BODY_ROMAN, size: 10pt, fill: INK_SOFT,
              style: "italic", weight: 300)
     columns(2, gutter: 8mm)[
       #for (name, flag, vkey) in entries [

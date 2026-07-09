@@ -378,6 +378,22 @@ def catches_by_vessel(date: str) -> dict[str, list[dict]]:
     return grouped
 
 
+def catches_for_vessel(date: str, vessel_id: str) -> list[dict]:
+    """Every catch of one vessel on a given day, as compact dicts
+    `{col, row, source, lat, lon, entropy}` (same shape as
+    `catches_by_vessel`'s values). Backs the per-vessel lazy-load
+    endpoint so a Fleet card can show ALL harvested stanzas without
+    `/api/vessels` inlining every vessel's catches (it trims to one each
+    to keep that response small). `idx_catches_vessel` keeps this cheap."""
+    with connect() as c:
+        rows = c.execute(
+            "SELECT col, row, source, lat, lon, entropy "
+            "FROM catches WHERE date=? AND vessel_id=? ORDER BY id",
+            (date, vessel_id),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 # ── Catch-table retention ────────────────────────────────────────────
 
 def prune_catches(keep_active_days: int = 3) -> dict:

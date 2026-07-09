@@ -15,7 +15,7 @@
   title: stats.strings.title + " — " + stats.long_date,
   author: "Simon Roloff",
 )
-#set text(font: FONT_BODY_ROMAN, size: 9.2pt, fill: INK)
+#set text(font: FONT_BODY_ROMAN, size: 10pt, fill: INK)
 #set par(leading: 0.32em, justify: false)
 #set heading(numbering: none)
 
@@ -75,8 +75,21 @@
 #section-opener(stats.day_label, label_text: stats.strings.section_opener)
 
 // ── Per-vessel poems ───────────────────────────────────────────────
-#for poem in poems [
-  #render-poem(poem)
+// Backstop: render_daily_pdf already returns None for an empty day, so
+// this branch should never render in the normal pipeline. It guarantees
+// that if an empty `poems` ever reaches the template, the volume states
+// it plainly instead of silently producing a shipless cover+TOC+index.
+#if poems.len() == 0 [
+  #v(4cm)
+  #align(center)[
+    #text(font: FONT_MONO, size: 9pt, fill: INK_HEADER, tracking: 0.2em)[
+      #upper(stats.strings.at("empty_body", default: "— no catch recorded —"))
+    ]
+  ]
+] else [
+  #for poem in poems [
+    #render-poem(poem)
+  ]
 ]
 
 // ── Index of vessels ───────────────────────────────────────────────
