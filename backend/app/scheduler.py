@@ -44,9 +44,15 @@ from . import db, gfw_client
 
 log = logging.getLogger(__name__)
 
-# Daily — shortly after GFW's publication cadence (~midday UTC).
-DAILY_HOUR_UTC = int(os.environ.get("HAVOC_SCHEDULE_HOUR_UTC", "14"))
-DAILY_MINUTE_UTC = int(os.environ.get("HAVOC_SCHEDULE_MINUTE_UTC", "15"))
+# Daily data pull — 06:00 Europe/Berlin (local German time). Timezone-
+# aware via CronTrigger so it stays 06:00 wall-clock across the CET/CEST
+# DST switch (= 05:00 UTC in winter, 04:00 UTC in summer) instead of
+# drifting an hour twice a year. GFW's window is always ~3 days old
+# (gfw_client.last_available_window), so an early-morning slot has data
+# regardless of GFW's own publish cadence.
+DAILY_TZ = os.environ.get("HAVOC_SCHEDULE_TZ", "Europe/Berlin")
+DAILY_HOUR = int(os.environ.get("HAVOC_SCHEDULE_HOUR", "6"))
+DAILY_MINUTE = int(os.environ.get("HAVOC_SCHEDULE_MINUTE", "0"))
 
 # Hard cap on the daily render. Measured runtime ~50s on a 500k-catch
 # day; 600s is 12× that — anything past it is a genuine hang and we'd
@@ -119,11 +125,11 @@ def make_job(reload_pool: Callable[[], None]) -> Callable[[], None]:
 def attach(scheduler: AsyncIOScheduler, daily: Callable[[], None]) -> None:
     scheduler.add_job(
         daily,
-        CronTrigger(hour=DAILY_HOUR_UTC, minute=DAILY_MINUTE_UTC, timezone="UTC"),
+        CronTrigger(hour=DAILY_HOUR, minute=DAILY_MINUTE, timezone=DAILY_TZ),
         id="daily-depletion",
         replace_existing=True,
         max_instances=1,
         coalesce=True,
     )
-    log.info("Scheduled daily depletion at %02d:%02d UTC",
-             DAILY_HOUR_UTC, DAILY_MINUTE_UTC)
+    log.info("Scheduled daily depletion at %02d:%02d %s",
+             DAILY_HOUR, DAILY_MINUTE, DAILY_TZ)

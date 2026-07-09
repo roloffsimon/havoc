@@ -65,6 +65,7 @@ def _preload_pdf_libs() -> None:
 _preload_pdf_libs()
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -135,6 +136,18 @@ async def lifespan(app: FastAPI):
     # the rationale in scheduler.py). After it succeeds the worker's
     # in-memory pool is stale, so we hand the scheduler our reload hook.
     scheduler.attach(sched, scheduler.make_job(_load_pool))
+    # Daily read-only integrity snapshot (threaded via _start_integrity, so
+    # it stays off the event loop) so /api/health can flag DB corruption
+    # early instead of it silently blocking writes for weeks — the failure
+    # mode behind the 2026-05/06 freeze. Runs an hour past the daily job.
+    sched.add_job(
+        lambda: _start_integrity("check"),
+        CronTrigger(hour=7, minute=0, timezone="Europe/Berlin"),
+        id="daily-integrity",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
     sched.start()
     try:
         yield
@@ -205,6 +218,80 @@ def status():
             "depletion_pct": latest["depletion_pct"],
         }
     return JSONResponse(content=out, headers=_PUBLIC_CACHE_5MIN)
+
+
+_HEALTH_STALE_HOURS = float(os.environ.get("HAVOC_HEALTH_STALE_HOURS", "30"))
+
+
+@app.get("/api/health")
+def health():
+    """Pipeline liveness for external uptime monitors — READ-ONLY.
+
+    Surfaces the failure that silently froze the project for weeks: the
+    daily job can fetch GFW and render a PDF but fail to persist
+    (record_day rolls back on a corrupt DB), leaving disk activity that
+    masks a dead pipeline. Here it shows as a stale `last_success_utc`
+    (pool_state.updated_at only advances on a fully successful run) and a
+    stale `latest_recorded_date`. The last integrity-check result is
+    merged in so structural DB damage is caught before it blocks writes.
+
+    Always HTTP 200 (so it can't trip a platform health-gate); poll the
+    `status` field instead:
+      ok      — a daily run succeeded within HAVOC_HEALTH_STALE_HOURS
+      stale   — no successful run recently → the pipeline is stuck
+      corrupt — the last integrity check found structural damage
+      empty   — fresh DB, no day recorded yet (e.g. just after a reset)
+    """
+    now = datetime.now(timezone.utc)
+    latest = db.latest_day()
+    active = db.latest_active_day()
+    ps = db.load_pool_state() or {}
+
+    latest_date = latest.get("date") if latest else None
+    stale_days = None
+    if latest_date:
+        stale_days = (now.date() - datetime.fromisoformat(latest_date).date()).days
+
+    last_success = ps.get("updated_at")
+    stale_hours = None
+    if last_success:
+        try:
+            stale_hours = round(
+                (now - datetime.fromisoformat(last_success)).total_seconds() / 3600.0, 1)
+        except ValueError:
+            stale_hours = None
+
+    with _integrity_lock:
+        integ = _integrity_state.get("result") or {}
+        integ_checked = _integrity_state.get("finished_at")
+    integrity_ok = integ.get("ok")
+
+    if integrity_ok is False:
+        status = "corrupt"
+    elif latest_date is None:
+        status = "empty"
+    elif stale_hours is not None and stale_hours > _HEALTH_STALE_HOURS:
+        status = "stale"
+    elif stale_hours is None and stale_days is not None and stale_days > 5:
+        status = "stale"
+    else:
+        status = "ok"
+
+    return JSONResponse(
+        content={
+            "status": status,
+            "now_utc": now.isoformat(),
+            "day0": _project_day_0,
+            "served_date": active.get("date") if active else None,
+            "latest_recorded_date": latest_date,
+            "stale_days": stale_days,
+            "last_success_utc": last_success,
+            "stale_hours": stale_hours,
+            "integrity_ok": integrity_ok,
+            "integrity_checked_utc": integ_checked,
+        },
+        headers={"Cache-Control": "public, max-age=60"},
+    )
 
 
 @app.get("/api/vessels")
