@@ -90,7 +90,7 @@ log = logging.getLogger(__name__)
 # whole lifetime; checkpointed to disk after each daily run.
 
 _pool: OceanPool | None = None
-_project_day_0: str = os.environ.get("HAVOC_DAY_0", "2026-02-13")
+_project_day_0: str = os.environ.get("HAVOC_DAY_0", "2026-02-13").strip()
 
 
 def _get_pool() -> OceanPool:

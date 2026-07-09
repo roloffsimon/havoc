@@ -92,7 +92,7 @@ def _run_en(log: logging.Logger) -> int:
         log.info("Day %s already processed — skipping.", start)
         return 0
 
-    project_day_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13")
+    project_day_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13").strip()
     fallback_env = os.environ.get("HAVOC_FALLBACK_JSON")
     fallback_path = Path(fallback_env) if fallback_env else None
     if fallback_path and not fallback_path.exists():
@@ -137,7 +137,7 @@ def _run_en_restore(log: logging.Logger, date: str) -> int:
     from app import db, depletion
 
     db.init_db()
-    project_day_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13")
+    project_day_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13").strip()
     fallback_env = os.environ.get("HAVOC_FALLBACK_JSON")
     fallback_path = Path(fallback_env) if fallback_env else None
     if fallback_path and not fallback_path.exists():

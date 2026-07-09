@@ -145,7 +145,7 @@ TYPST_TMP_DIR = TYPST_TEMPLATE_DIR / ".tmp"
 
 # Project day 0 — used to compute the daily Vol. number that prints on
 # the cover.
-_DAY_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13")
+_DAY_0 = os.environ.get("HAVOC_DAY_0", "2026-02-13").strip()
 
 
 # ── Vol. number helpers ──────────────────────────────────────────────
