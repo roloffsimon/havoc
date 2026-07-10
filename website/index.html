@@ -4102,11 +4102,11 @@ function isLand(col, row) {
 // ══════════════════════════════════════════════════
 
 const viewport = {
-  // Start als Ausschnitt (Nordatlantik), nicht als Weltansicht — der
-  // Intro-Flug gleitet von hier langsam auf ein Schiff zu (Vorbild
-  // Phantom Islands: man landet IN der Welt, nicht über ihr).
-  centerCol: 1400,
-  centerRow: 1150,
+  // Start als Ausschnitt über dem westlichen Indischen Ozean — der
+  // Intro-Flug gleitet von hier langsam an die ostafrikanische Küste
+  // (Vorbild Phantom Islands: man landet IN der Welt, nicht über ihr).
+  centerCol: 2250,
+  centerRow: 900,
   cellsWide: 700,
 };
 
@@ -4714,19 +4714,36 @@ function startIntroFlight(force) {
     typeof v.lon === 'number' && typeof v.lat === 'number');
   if (!vs.length) return;   // echte Flotte noch nicht da — Trigger kommt erneut
   introFlightDone = true;
-  // Unter den fangreichsten ~400 Schiffen das dem aktuellen Ausschnitt
-  // NÄCHSTE wählen — so gleitet der Flug ohne Sprung aus dem Startbild
-  // heraus, langsam (Vorbild Phantom Islands), und öffnet das Gedicht.
-  const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0))
-    .slice(0, 400);
-  const cc = viewport.centerCol, cr = viewport.centerRow;
-  const v = ranked.reduce((best, x) => {
-    const dx = Math.min(Math.abs((x.lon + 180) / 0.1 - cc),
-                        DISPLAY_COLS - Math.abs((x.lon + 180) / 0.1 - cc));
-    const dy = (x.lat + 90) / 0.1 - cr;
-    const d = dx * dx + dy * dy;
-    return (!best || d < best.d) ? { v: x, d } : best;
-  }, null).v;
+  // Landeziel: die ostafrikanische Küste (30–60°O, 30°S–15°N). Unter
+  // den dort fischenden Schiffen eines der fangreichsten (leicht
+  // variiert, damit nicht jeder Besuch identisch landet). Fischt dort
+  // gerade niemand, fällt die Wahl aufs dem Ausschnitt nächste Schiff.
+  // Küsten-Anker vor Tansania (40°O, 8°S): gewählt wird zufällig eines
+  // der fünf Schiffe, die der ostafrikanischen KÜSTE am nächsten fischen
+  // — nicht irgendwo in der Box (die fing sonst Hochsee-Langleiner
+  // mitten im südlichen Indik).
+  const eastAfrica = vs.filter(x =>
+    x.lon >= 30 && x.lon <= 60 && x.lat >= -30 && x.lat <= 15)
+    .sort((a, b) => {
+      const da = (a.lon - 40) ** 2 + (a.lat + 8) ** 2;
+      const db = (b.lon - 40) ** 2 + (b.lat + 8) ** 2;
+      return da - db;
+    });
+  let v;
+  if (eastAfrica.length) {
+    v = eastAfrica[Math.floor(Math.random() * Math.min(eastAfrica.length, 5))];
+  } else {
+    const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0))
+      .slice(0, 400);
+    const cc = viewport.centerCol, cr = viewport.centerRow;
+    v = ranked.reduce((best, x) => {
+      const dx = Math.min(Math.abs((x.lon + 180) / 0.1 - cc),
+                          DISPLAY_COLS - Math.abs((x.lon + 180) / 0.1 - cc));
+      const dy = (x.lat + 90) / 0.1 - cr;
+      const d = dx * dx + dy * dy;
+      return (!best || d < best.d) ? { v: x, d } : best;
+    }, null).v;
+  }
   const myToken = ++flightToken;
   setTimeout(() => {
     if (flightToken !== myToken) return;   // abgebrochen oder ersetzt
