@@ -19,19 +19,19 @@
        ════════════════════════════════════════════════════════════ */
 
     /* Ozean — cremeweißes Papier */
-    --ocean:          #f2ead8;
-    --ocean-deep:     #ede4cf;
-    --ocean-abyss:    #e9e0c9;
+    --ocean:          #f7f3e9;
+    --ocean-deep:     #f2eddf;
+    --ocean-abyss:    #ede7d8;
 
     /* Legacy-Aliasse */
-    --abyss:          #e9e0c9;
-    --deep:           #ede4cf;
-    --mid:            #efe6d2;
-    --surface:        #f4eddd;
+    --abyss:          #ede7d8;
+    --deep:           #f2eddf;
+    --mid:            #f4efe2;
+    --surface:        #f7f2e6;
 
     /* Land — mittelgrau, ruhig */
-    --land:           #90938f;
-    --land-edge:      #74776f;
+    --land:           #a3a5a0;
+    --land-edge:      #8a8c85;
 
     /* Text — Tinte auf Papier (Variablennamen historisch "cream") */
     --cream:          #1c1c1a;
@@ -51,10 +51,10 @@
     --catch-glow:     rgba(217, 74, 50, 0.35);
 
     /* Depletion — Legacy-Variablen, im neuen System ungenutzt hell */
-    --depleted:       #efe6d2;
-    --depleted-edge:  #e9e0c9;
-    --depleted-partial: #efe6d2;
-    --depleted-full:    #e9e0c9;
+    --depleted:       #f4efe2;
+    --depleted-edge:  #ede7d8;
+    --depleted-partial: #f4efe2;
+    --depleted-full:    #ede7d8;
 
     /* Vessels — Koralle */
     --vessel:         #d94a32;
@@ -62,8 +62,8 @@
     --vessel-glow:    rgba(217, 74, 50, 0.45);
 
     /* Misc rendering */
-    --ocean-alive:     #f2ead8;
-    --ocean-alive-hi:  #efe6d2;
+    --ocean-alive:     #f7f3e9;
+    --ocean-alive-hi:  #f4efe2;
     --ship-active:     var(--vessel-hot);
     --stanza-alive:    #161614;
     --stanza-ghost:    rgba(22, 22, 20, 0.10);
@@ -74,7 +74,7 @@
     --ship-glow:       var(--vessel-glow);
     /* UI-Monospace — OCR-Echo nach ORBIT-Vorbild; die Poesie (Strophen)
        bleibt bewusst in DM Mono kursiv. */
-    --mono-ui: 'Kode Mono', var(--mono-ui);
+    --mono-ui: 'Kode Mono', 'DM Mono', monospace;
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -260,9 +260,9 @@
     white-space: nowrap;
   }
   .h-meta {
-    font-family: var(--mono-ui);
-    font-size: 10px;
-    letter-spacing: 0.18em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
     color: var(--cream-dim);
     text-transform: uppercase;
   }
@@ -316,9 +316,10 @@
     z-index: 10;
   }
   .h-nav-item {
-    font-family: var(--mono-ui);
-    font-size: 10px;
-    letter-spacing: 0.22em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--cream-faint);
     text-decoration: none;
@@ -343,9 +344,9 @@
     gap: 18px;
     border-top: 1px solid rgba(240, 232, 210, 0.08);
     background: var(--ocean-deep);
-    font-family: var(--mono-ui);
-    font-size: 10px;
-    letter-spacing: 0.14em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     z-index: 10;
     white-space: nowrap;
@@ -503,8 +504,8 @@
     left: 16px;
     bottom: 18px;
     z-index: 12;
-    width: 150px;
-    height: 75px;
+    width: 300px;
+    height: 150px;
     border: 1px solid rgba(28, 28, 26, 0.55);
     background: var(--ocean);
     box-shadow: 0 3px 14px rgba(28, 28, 26, 0.12);
@@ -512,7 +513,7 @@
     image-rendering: pixelated;
   }
   @media (max-width: 700px) {
-    .map-minimap { width: 104px; height: 52px; left: 12px; bottom: 14px; }
+    .map-minimap { width: 150px; height: 75px; left: 12px; bottom: 14px; }
     .map-zoom-controls { right: 12px; bottom: 14px; }
   }
 
@@ -687,9 +688,9 @@
     color: var(--cream);
   }
   .fleet-head .fh-date {
-    font-family: var(--mono-ui);
-    font-size: 10px;
-    letter-spacing: 0.14em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--cream-faint);
   }
@@ -712,9 +713,9 @@
     display: flex;
     gap: 20px;
     padding-bottom: 14px;
-    font-family: var(--mono-ui);
-    font-size: 10px;
-    letter-spacing: 0.14em;
+    font-family: 'Archivo Black', 'Archivo', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
   .fleet-filters select {
@@ -761,19 +762,19 @@
   .vessel-card:hover { background: rgba(217, 74, 50, 0.07); }
   /* Flaggen-Emoji statt ISO-Code (User-Spec) */
   .vessel-card .vc-flag {
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
   }
   .vessel-card .vc-name {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 500;
     color: var(--cream);
     margin-top: 4px;
   }
   .vessel-card .vc-stats {
     font-family: var(--mono-ui);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--cream-faint);
     margin-top: 4px;
     letter-spacing: 0.04em;
@@ -798,7 +799,7 @@
   }
   .fleet-detail .fd-name {
     font-family: 'Instrument Sans', sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--cream);
     margin-bottom: 12px;
@@ -819,8 +820,8 @@
   }
   .fleet-detail .vc-line {
     display: block;
-    font-family: 'Instrument Sans', sans-serif;
-    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
     font-weight: 400;
     font-style: italic;
     line-height: 1.75;
@@ -849,7 +850,7 @@
 
   .fleet-detail .fd-loading {
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.1em;
     color: rgba(217, 74, 50, 0.8);
     margin: 8px 0 0 12px;
@@ -858,7 +859,7 @@
 
   .fleet-detail .vc-entropy {
     font-family: var(--mono-ui);
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--cream-faint);
     margin-top: 14px;
     letter-spacing: 0.08em;
@@ -898,13 +899,14 @@
     letter-spacing: -0.01em;
   }
 
-  /* Erklärtext größer, engerer Zeilenabstand (ZEIT-Online-Anmutung) */
+  /* Fließtext im OCR-Echo (Kode Mono) wie der Editorial-Fließtext
+     der ORBIT-Seite; aufrecht statt kursiv. */
   .about-view p {
-    font-family: 'Instrument Sans', sans-serif;
-    font-size: 16px;
+    font-family: var(--mono-ui);
+    font-size: 17px;
     font-weight: 400;
-    font-style: italic;
-    line-height: 1.55;
+    font-style: normal;
+    line-height: 1.6;
     color: var(--cream-dim);
     margin-bottom: 16px;
   }
@@ -912,7 +914,7 @@
      italic body. Same colour as body — the contrast is purely the
      stylistic switch. */
   .about-view p em {
-    font-style: normal;
+    font-style: italic;
     font-weight: 400;
     color: inherit;
   }
@@ -933,9 +935,9 @@
   /* Spec-Sheet box */
   .about-spec {
     border: 1px solid var(--cream-ghost);
-    padding: 14px 18px;
+    padding: 18px 22px;
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 12.5px;
     font-weight: 300;
     line-height: 2;
     color: var(--cream);
@@ -953,12 +955,12 @@
     color: var(--cream-faint);
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    font-size: 9px;
+    font-size: 11px;
   }
   .about-spec .spec-val { color: var(--cream); }
 
   .about-credits {
-    font-size: 12px;
+    font-size: 14px;
     font-style: italic;
     color: var(--cream-faint);
     line-height: 2;
@@ -980,7 +982,7 @@
     padding-top: 14px;
     border-top: 1px dashed var(--cream-ghost);
     font-family: var(--mono-ui);
-    font-size: 9.5px;
+    font-size: 11.5px;
     line-height: 1.7;
     letter-spacing: 0.04em;
     color: var(--cream-faint);
@@ -1028,7 +1030,7 @@
   }
   .catch-head .ch-date {
     font-family: var(--mono-ui);
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--cream-faint);
@@ -1058,7 +1060,7 @@
     grid-template-columns: repeat(3, auto);
     gap: 24px;
     font-family: var(--mono-ui);
-    font-size: 11px;
+    font-size: 13px;
     color: var(--cream-dim);
     letter-spacing: 0.06em;
     margin-bottom: 30px;
@@ -1073,10 +1075,11 @@
     margin-top: 2px;
   }
 
+  /* Fließtext im OCR-Echo (Kode Mono), wie About */
   .catch-intro {
-    font-family: 'Instrument Sans', sans-serif;
-    font-size: 14px;
-    font-style: italic;
+    font-family: var(--mono-ui);
+    font-size: 15.5px;
+    font-style: normal;
     line-height: 1.9;
     color: var(--cream-dim);
     max-width: 540px;
@@ -1108,10 +1111,10 @@
     position: relative;
     width: 240px;
     height: 339px;             /* A5 portrait ratio 1 : 1.414 */
-    background: #030a18;       /* --abyss / cover ocean */
-    color: #d8dce2;            /* --cream */
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55),
-                0 2px 6px rgba(0, 0, 0, 0.3);
+    background: #f7f3e9;       /* Papier — wie das echte PDF-Cover */
+    color: #1c1c1a;            /* Tinte */
+    box-shadow: 0 14px 32px rgba(28, 28, 26, 0.22),
+                0 2px 6px rgba(28, 28, 26, 0.12);
     padding: 22px 18px 18px;
     display: grid;
     grid-template-rows: 1fr auto;
@@ -1120,10 +1123,10 @@
     /* 20px major + 2.5px minor lattice in cream — same scheme as the
        PDF cover (20 mm major / 2 mm minor, scaled). */
     background-image:
-      linear-gradient(to right,  rgba(216,220,226,0.16) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(216,220,226,0.16) 1px, transparent 1px),
-      linear-gradient(to right,  rgba(216,220,226,0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(216,220,226,0.06) 1px, transparent 1px);
+      linear-gradient(to right,  rgba(28,28,26,0.14) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(28,28,26,0.14) 1px, transparent 1px),
+      linear-gradient(to right,  rgba(28,28,26,0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(28,28,26,0.05) 1px, transparent 1px);
     background-size: 20px 20px, 20px 20px, 2.5px 2.5px, 2.5px 2.5px;
     background-position: 0 0, 0 0, 0 0, 0 0;
   }
@@ -1144,7 +1147,7 @@
     line-height: 0.92;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #d8dce2;
+    color: #1c1c1a;
     /* Stack words like the PDF: "CATCH OF" / "THE DAY". The flex
        container above already centres each line. */
     display: block;
@@ -1153,7 +1156,7 @@
   }
   .cpp-cover-rule {
     height: 1px;
-    background: rgba(216,220,226,0.28);
+    background: rgba(28,28,26,0.3);
     width: 100%;
   }
   .cpp-cover-bottom {
@@ -1167,7 +1170,7 @@
     font-weight: 400;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #d8dce2;
+    color: #1c1c1a;
     padding-top: 8px;
   }
 
@@ -1203,7 +1206,7 @@
   }
   .cpp-cta .cta-label {
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--cream-faint);
@@ -1217,7 +1220,7 @@
     padding: 12px 18px;
     border: 1px solid var(--cream-ghost);
     font-family: var(--mono-ui);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 400;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1228,7 +1231,7 @@
     transition: background 0.25s, box-shadow 0.25s, border-color 0.25s;
   }
   .btn-havoc .btn-sub {
-    font-size: 9px;
+    font-size: 10.5px;
     color: var(--cream-faint);
     letter-spacing: 0.1em;
     margin-left: 14px;
@@ -1316,7 +1319,7 @@
   }
   .cpp-size-label {
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.08em;
     color: var(--cream-faint);
     text-transform: uppercase;
@@ -1326,7 +1329,7 @@
     display: flex; align-items: center; gap: 8px;
     width: 100%;
     padding: 8px 12px 8px 12px;
-    background: rgba(6, 10, 20, 0.6);
+    background: rgba(255, 255, 255, 0.45);
     border: 1px solid var(--cream-ghost);
     border-radius: 2px;
     color: var(--cream-dim);
@@ -1363,7 +1366,7 @@
   }
   .cpp-dd-current-meta {
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 11.5px;
     letter-spacing: 0.06em;
     color: var(--cream-faint);
     white-space: nowrap;
@@ -1388,10 +1391,10 @@
     position: absolute;
     top: calc(100% + 4px);
     left: 0; right: 0;
-    background: #030a18;
+    background: #f4efe2;
     border: 1px solid var(--amber);
     border-radius: 2px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 8px 24px rgba(28, 28, 26, 0.22);
     padding: 4px;
     display: none;
     z-index: 50;
@@ -1441,16 +1444,16 @@
   }
   .cpp-dd-opt-meta {
     font-family: var(--mono-ui);
-    font-size: 10px;
+    font-size: 11.5px;
     letter-spacing: 0.06em;
     color: var(--cream-faint);
   }
   .cpp-dd-opt-desc {
     display: block;
     margin: 2px 0 0 16px;
-    font-family: 'Instrument Sans', sans-serif;
-    font-size: 11px;
-    font-style: italic;
+    font-family: var(--mono-ui);
+    font-size: 12.5px;
+    font-style: normal;
     line-height: 1.45;
     color: var(--cream-faint);
   }
@@ -1479,7 +1482,7 @@
     position: fixed;
     inset: 0;
     z-index: 9500;
-    background: rgba(5, 10, 18, 0.85);
+    background: rgba(28, 28, 26, 0.4);
     backdrop-filter: blur(4px);
     display: none;
     align-items: center;
@@ -1539,7 +1542,7 @@
     background: var(--abyss);
     display: grid;
     place-items: center;
-    padding: 8vh 6vw;
+    padding: 17vh 6vw 24vh;
     cursor: pointer;
     opacity: 0;
     animation: splash-in 800ms ease-out 120ms forwards;
@@ -1552,18 +1555,27 @@
   /* Splash-Titel: derselbe Masthead-Schnitt wie der Header der
      Hauptseite (Archivo Black, ORBIT-Skala) — der Splash kündigt die
      Typografie an, in die er gleich übergeht. */
+  /* Titel oben links — exakt dort, wo er nach dem Splash auch im
+     Karten-Header (Masthead) steht. */
   .splash-title {
+    position: absolute;
+    top: 14px;
+    left: 24px;
     font-family: 'Archivo Black', 'Archivo', sans-serif;
-    font-size: clamp(32px, 6.6vw, 96px);
+    font-size: clamp(26px, 4.6vw, 84px);
     line-height: 0.8;
     letter-spacing: -0.015em;
     text-transform: uppercase;
     color: var(--cream);
-    text-align: center;
-    align-self: end;
-    margin-bottom: 4vh;
+    text-align: left;
     white-space: nowrap;
   }
+  @media (max-width: 700px) {
+    .splash-title { top: 10px; left: 14px; font-size: clamp(22px, 7.4vw, 30px); }
+  }
+  /* DE/EN-Toggle auf dem Splash etwas größer */
+  #intro-splash .h-lang,
+  #intro-splash .h-lang button { font-size: 13px; }
 
   /* Motto in der Stimme des Hauptseiten-Fließtexts (Instrument Sans
      kursiv wie im About), etwas größer als früher. */
@@ -1572,7 +1584,7 @@
     color: var(--cream);
     font-family: 'Instrument Sans', 'Helvetica Neue', sans-serif;
     font-style: italic;
-    font-size: clamp(20px, 2.3vw, 28px);
+    font-size: clamp(17px, 2.3vw, 28px);
     line-height: 1.6;
     text-align: left;
     margin: 0;
@@ -1593,14 +1605,12 @@
     font-style: normal;
     letter-spacing: 0.03em;
     color: var(--cream);
-    border-bottom: 1px solid var(--cream-ghost);
-    padding-bottom: 0.05em;
   }
 
   .motto footer {
     font-style: normal;
     font-family: var(--mono-ui);
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 0.08em;
     color: var(--cream-faint);
     text-transform: uppercase;
@@ -1762,9 +1772,9 @@
     appearance: none;
     background: transparent;
     border: 1px solid var(--amber);
-    padding: 14px 36px;
+    padding: 16px 44px;
     font-family: var(--mono-ui);
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.32em;
     color: var(--amber);
     text-transform: uppercase;
@@ -2067,10 +2077,10 @@
     .h-title-bar { padding: 10px 14px 8px; flex-wrap: wrap; }
     .h-title { font-size: clamp(22px, 7.4vw, 30px); letter-spacing: -0.01em; width: 100%; }
     .h-title-right { width: 100%; justify-content: space-between; margin-top: 4px; }
-    .h-meta { font-size: 9px; letter-spacing: 0.12em; }
+    .h-meta { font-size: 11px; letter-spacing: 0.04em; }
     .h-nav { padding: 0 14px; gap: 18px; }
-    .h-nav-item { font-size: 9px; letter-spacing: 0.18em; }
-    .h-status { padding: 0 14px; gap: 10px; font-size: 9px; letter-spacing: 0.1em; }
+    .h-nav-item { font-size: 11px; letter-spacing: 0.04em; }
+    .h-status { padding: 0 14px; gap: 10px; font-size: 10.5px; letter-spacing: 0.03em; }
     .fleet-view, .about-view, .catch-view { padding: 22px 16px; }
     .catch-big { font-size: 34px; }
     .cpp-row { grid-template-columns: 1fr; gap: 22px; }
@@ -2259,7 +2269,7 @@
           <button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
           <button type="button" id="map-zoom-out" aria-label="Zoom out">&minus;</button>
         </div>
-        <canvas class="map-minimap" id="map-minimap" width="150" height="75" aria-hidden="true"></canvas>
+        <canvas class="map-minimap" id="map-minimap" width="300" height="150" aria-hidden="true"></canvas>
 
         <div class="loading-fallback" id="loading-fallback" data-i18n="ocean.loading">calibrating ocean grid &hellip;</div>
       </div>
@@ -2286,12 +2296,6 @@
             <select id="fleet-flag">
               <option value="" data-i18n="fleet.flag.all">flag: all</option>
             </select>
-            <select id="fleet-type">
-              <option value="" data-i18n="fleet.type.all">type: all</option>
-              <option data-i18n="fleet.type.trawler">Trawler</option>
-              <option data-i18n="fleet.type.longliner">Longliner</option>
-              <option data-i18n="fleet.type.purse-seiner">Purse Seiner</option>
-            </select>
             <!-- Schnitt-Auswahl wie im PDF-Download (Full/Selection/…) -->
             <select id="fleet-tier">
               <option value="" data-i18n="fleet.tier.full">cut: full fleet</option>
@@ -2309,7 +2313,7 @@
     <div class="view" id="view-about">
       <div class="scrollable">
         <div class="about-view">
-          <h2 data-i18n="about.h2">Remorseless Havoc</h2>
+          <h2 data-i18n="about.h2">About Remorseless Havoc</h2>
           <p data-i18n-html="about.p1">
             <em>Remorseless Havoc</em> consists of an ocean of algorithmically generated
             language. The stanzas you can see zooming in on the map are generated by an
@@ -2610,7 +2614,7 @@ const I18N = {
     'fleet.tier.onepiece': 'cut: one piece',
     'fleet.showonmap': 'show on map',
     'fleet.loading.all': 'hauling in all stanzas',
-    'about.h2': 'Remorseless Havoc',
+    'about.h2': 'About Remorseless Havoc',
     'about.p1': '<em>Remorseless Havoc</em> is based on an ocean of algorithmically generated language. The stanzas you can see zooming in on the pale paper tiles of the map, representing the watery regions of our planet, are generated by an algorithm that assembles poetic stanzas from language fragments by Emily Dickinson and Herman Melville. This algorithm can create as many stanzas as there are \u201cfish in the sea\u201d, according to Nick Montfort and Stephanie Strickland, who originally developed it for their digital literary work <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a>.',
     'about.p3': '<em>Remorseless Havoc</em> takes the metaphor literally and transfers the stanzas into a grid spanning the entire globe. Each cell of this grid represents an area of about one square kilometre (1.1\u00a0\u00d7\u00a01.1\u00a0km at the equatorial meridian). This results in 460 million cells and just as many stanzas, distributed across the world\u2019s oceans. Gradually, the stanzas are then deleted by the program based on the movement data of industrial fishing vessels.',
     'about.p3a': 'All technical details can also be found on this project\u2019s <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub page</a>, but the movement data comes from <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. There, the transponder signals from vessels above a certain tonnage are analysed using a machine-learning algorithm that recognises characteristic turning manoeuvres, changes in speed, and dwell-time patterns. In this way, GFW identifies fishing activity and calculates it in hours per vessel in conjunction with the GPS position. The <em>Remorseless Havoc</em> algorithm then erases verses from the ocean for each hour in near real time, as GFW requires 72\u00a0hours to analyse the satellite data. One day, all verses will be removed from the sea \u2014 the language used in this work is finite, like the ocean\u2019s resources.',
@@ -2697,7 +2701,7 @@ const I18N = {
     'nav.catch': 'Fang des Tages',
     'splash.loader.headline': 'Der Ozean lädt',
     'splash.button.ready': 'Eintreten',
-    'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so rücksichtsloses Gemetzel <span class="motto-title">[remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
+    'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so <span class="motto-title">rücksichtsloses Gemetzel [remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
     'splash.motto.chapter': 'Kapitel CV',
     'splash.progress.land': 'Karte',
     'splash.progress.depletion': 'Tiefen',
@@ -2713,7 +2717,7 @@ const I18N = {
     'fleet.title': 'Aktive Flotte',
     'fleet.vessels-suffix': 'Schiffe',
     'fleet.search.placeholder': 'Name, Flagge, Typ suchen\u2026',
-    'fleet.sort.most': 'sortieren: Fang (meist)',
+    'fleet.sort.most': 'sortieren: Fang (meiste)',
     'fleet.sort.least': 'sortieren: Fang (wenigste)',
     'fleet.sort.hours': 'sortieren: Fangstunden',
     'fleet.sort.alpha': 'sortieren: alphabetisch',
@@ -2725,13 +2729,13 @@ const I18N = {
     'fleet.type.purse-seiner': 'Ringwadenf\u00e4nger',
     'fleet.stanzas.singular': 'Strophe',
     'fleet.stanzas.plural':   'Strophen',
-    'fleet.tier.full': 'Schnitt: ganze Flotte',
-    'fleet.tier.selection': 'Schnitt: Auswahl (1/10)',
-    'fleet.tier.finecut': 'Schnitt: Feiner Schnitt (1/100)',
-    'fleet.tier.onepiece': 'Schnitt: Einzelst\u00fcck',
+    'fleet.tier.full': 'Auswahl: ganze Flotte',
+    'fleet.tier.selection': 'Auswahl 1/10',
+    'fleet.tier.finecut': 'Feinauswahl 1/100',
+    'fleet.tier.onepiece': 'Zufallsauswahl 1',
     'fleet.showonmap': 'auf der Karte zeigen',
     'fleet.loading.all': 'alle Strophen werden eingeholt',
-    'about.h2': 'Remorseless Havoc',
+    'about.h2': 'Über Remorseless Havoc',
     'about.p1': '<em>Remorseless Havoc</em> basiert auf einem Meer aus algorithmisch generierter Sprache. Die hellen Papier-Kacheln auf der Karte \u2013 die Wasserregionen unseres Planeten \u2013 enthalten algorithmisch generierte Strophen, die aus Sprachfragmenten von Emily Dickinson und Herman Melville zusammengesetzt wurden. Nach Nick Montfort und Stephanie Strickland, die den Algorithmus urspr\u00fcnglich f\u00fcr ihr digitalliterarisches Werk <a href="https://nickm.com/montfort_strickland/sea_and_spar_between/" target="_blank" rel="noopener"><em>Sea and Spar Between</em></a> geschrieben haben, kann der Generator so viele Strophen erzeugen, wie es \u201eFische im Meer\u201c gibt.',
     'about.p3': '<em>Remorseless Havoc</em> nimmt die Metapher w\u00f6rtlich und \u00fcbertr\u00e4gt die Strophen in ein Raster, das den gesamten Globus \u00fcberspannt. Jede Zelle dieses Rasters repr\u00e4sentiert eine Fl\u00e4che von etwa einem Quadratkilometer (1,1 \u00d7 1,1 km am \u00c4quatorialmeridian). Das ergibt 460 Millionen Zellen und ebenso viele Strophen, verteilt \u00fcber die Weltmeere. Nach und nach werden die Strophen dann vom Programm wieder gel\u00f6scht, ausgehend von den Bewegungsdaten der industriellen Fischerei.',
     'about.p3a': 'Alle technischen Details findet man auch auf der <a href="https://github.com/roloffsimon/havoc" target="_blank" rel="noopener">GitHub-Seite</a> dieses Projekts, aber die Bewegungsdaten kommen von <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener"><em>Global Fishing Watch</em></a>. Dort analysiert man die Transpondersignale von Schiffen ab einer bestimmten Tonnage mithilfe eines Machine-Learning-Algorithmus, der charakteristische Wendeman\u00f6ver, Geschwindigkeits\u00e4nderungen und Verweildauer-Muster erkennt. Auf diese Weise identifiziert GFW Fischfangt\u00e4tigkeit und berechnet sie in Stunden pro Schiff in Verbindung mit der GPS-Position. Der Algorithmus von <em>Remorseless Havoc</em> l\u00f6scht dann fast in Echtzeit f\u00fcr jede Stunde Strophen aus dem Ozean, da GFW 72 Stunden ben\u00f6tigt, um die Satellitendaten zu analysieren. Eines Tages werden alle Strophen aus dem Meer entfernt sein \u2013 die in dieser Arbeit verwendete Sprache ist so endlich wie die Ressourcen des Ozeans.',
@@ -2758,15 +2762,15 @@ const I18N = {
     'catch.sub.vessels': 'Schiffe',
     'catch.sub.hours': 'Fangstunden',
     'catch.sub.delta': '&Delta; Ersch\u00f6pfung',
-    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Nach der Regel des Projekts &mdash; drei Strophen pro Fangstunde &mdash; wurden 291&thinsp;723 Strophen aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht, verteilt auf 8&thinsp;766 Schiffe. Vollst\u00e4ndig gedruckt w\u00fcrde der Tagesfang mehrere Tausend Seiten f\u00fcllen &mdash; zu viel als t\u00e4gliches Artefakt, sowohl f\u00fcr die kleine Infrastruktur des Projekts als auch als Lesegegenstand. Die Standardausgabe <em>Selection</em> unten ist deshalb ein zuf\u00e4lliges Zehntel der Flotte.',
+    'catch.intro': 'Am 10. April 2026 waren industrielle Fischereischiffe 97&thinsp;241 Stunden weltweit im Einsatz. Nach der Regel des Projekts &mdash; drei Strophen pro Fangstunde &mdash; wurden 291&thinsp;723 Strophen aus dem poetischen Ozean von <em>Sea and Spar Between</em> gel\u00f6scht, verteilt auf 8&thinsp;766 Schiffe. Vollst\u00e4ndig gedruckt w\u00fcrde der Tagesfang mehrere Tausend Seiten f\u00fcllen &mdash; zu viel als t\u00e4gliches Artefakt, sowohl f\u00fcr die kleine Infrastruktur des Projekts als auch als Lesegegenstand. Die Standardausgabe <em>Auswahl</em> unten ist deshalb ein zuf\u00e4lliges Zehntel der Flotte.',
     'catch.size.label': 'Dokumentgr\u00f6\u00dfe',
-    'catch.size.selection.name': 'Selection',
+    'catch.size.selection.name': 'Auswahl',
     'catch.size.selection.meta': 'ein zuf\u00e4lliges Zehntel der Tagesflotte',
     'catch.size.selection.desc': 'Die kanonische Ausgabe \u2014 alle F\u00e4nge eines zuf\u00e4lligen Zehntels der Tagesflotte, nach Shannon-Entropie geordnet.',
-    'catch.size.finecut.name':   'Fine Cut',
+    'catch.size.finecut.name':   'Feinauswahl',
     'catch.size.finecut.meta':   'ein zuf\u00e4lliges Hundertstel der Flotte',
     'catch.size.finecut.desc':   'Schlankere Lesefassung \u2014 etwa hundert zuf\u00e4llig gezogene Schiffe mit ihren vollst\u00e4ndigen F\u00e4ngen.',
-    'catch.size.onepiece.name':  'One Piece',
+    'catch.size.onepiece.name':  'Zufallsauswahl',
     'catch.size.onepiece.meta':  'ein einziges, zuf\u00e4llig gezogenes Schiff',
     'catch.size.onepiece.desc':  'Das minimale Portr\u00e4t \u2014 der Tag eines einzigen Schiffs, ein paar Dutzend Strophen, das kleinstm\u00f6gliche Artefakt.',
     'catch.cta.label': 'Vor dem Download bitte f\u00fcr den Erhalt der Ozeane spenden',
@@ -3784,16 +3788,16 @@ const DISPLAY_ROWS = 1800;
 // bewusst unsichtbar — die Zerstörung offenbart sich erst beim
 // Hineinzoomen in den Text.
 const GRID_COLORS = {
-  land: [144, 147, 143],              // --land #90938f — mittelgrau
-  landEdge: [116, 119, 111],          // --land-edge #74776f
+  land: [163, 165, 160],              // --land #a3a5a0 — helles Grau
+  landEdge: [138, 140, 133],          // --land-edge #8a8c85
   oceanAlive: function(cellIndex) {
     // Papier-Creme mit subtiler per-Zelle-Variation (Raster-Prinzip).
     const hash = ((cellIndex * 2654435761) >>> 0) & 0xFF;
     const t = hash / 255;
     return [
-      Math.round(238 + t * 6),        // 238–244
-      Math.round(230 + t * 6),        // 230–236
-      Math.round(211 + t * 7),        // 211–218
+      Math.round(244 + t * 6),        // 244–250
+      Math.round(240 + t * 6),        // 240–246
+      Math.round(227 + t * 7),        // 227–234
     ];
   },
   ship: [217, 74, 50],                // --vessel #d94a32 — Koralle
@@ -4093,9 +4097,12 @@ function isLand(col, row) {
 // ══════════════════════════════════════════════════
 
 const viewport = {
-  centerCol: 1800,
-  centerRow: 900,   // Äquator — zentrierte Weltsicht
-  cellsWide: 3600,
+  // Start als Ausschnitt (Nordatlantik), nicht als Weltansicht — der
+  // Intro-Flug gleitet von hier langsam auf ein Schiff zu (Vorbild
+  // Phantom Islands: man landet IN der Welt, nicht über ihr).
+  centerCol: 1400,
+  centerRow: 1150,
+  cellsWide: 700,
 };
 
 const ZOOM_LIMITS = { minCellsWide: 10, maxCellsWide: 3600 };
@@ -4319,7 +4326,7 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
       const base = py * imgW * 4;
       for (let px = 0; px < imgW; px++) {
         const idx = base + px * 4;
-        pixels[idx] = 233; pixels[idx+1] = 224; pixels[idx+2] = 201; pixels[idx+3] = 255; // --ocean-abyss Papier
+        pixels[idx] = 237; pixels[idx+1] = 231; pixels[idx+2] = 216; pixels[idx+3] = 255; // --ocean-abyss Papier
       }
       continue;
     }
@@ -4368,7 +4375,7 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
 }
 
 function renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW) {
-  ctx.fillStyle = '#e9e0c9';  // --ocean-abyss (Papier, Off-Grid-Rand)
+  ctx.fillStyle = '#ede7d8';  // --ocean-abyss (Papier, Off-Grid-Rand)
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   const cellH = cellW;
@@ -4695,16 +4702,25 @@ function startIntroFlight() {
     typeof v.lon === 'number' && typeof v.lat === 'number');
   if (!vs.length) return;   // echte Flotte noch nicht da — Trigger kommt erneut
   introFlightDone = true;
-  // Ein Schiff mit vielen Fängen (die oberen ~200), darunter zufällig —
-  // jeder Besuch landet woanders, aber nie bei einem Ein-Strophen-Schiff.
-  const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0));
-  const v = ranked[Math.floor(Math.random() * Math.min(ranked.length, 200))];
+  // Unter den fangreichsten ~400 Schiffen das dem aktuellen Ausschnitt
+  // NÄCHSTE wählen — so gleitet der Flug ohne Sprung aus dem Startbild
+  // heraus, langsam (Vorbild Phantom Islands), und öffnet das Gedicht.
+  const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0))
+    .slice(0, 400);
+  const cc = viewport.centerCol, cr = viewport.centerRow;
+  const v = ranked.reduce((best, x) => {
+    const dx = Math.min(Math.abs((x.lon + 180) / 0.1 - cc),
+                        DISPLAY_COLS - Math.abs((x.lon + 180) / 0.1 - cc));
+    const dy = (x.lat + 90) / 0.1 - cr;
+    const d = dx * dx + dy * dy;
+    return (!best || d < best.d) ? { v: x, d } : best;
+  }, null).v;
   setTimeout(() => {
     if (userInteracted) return;
-    flyTo((v.lon + 180) / 0.1, (v.lat + 90) / 0.1, readableCellsWide(), 2600, () => {
+    flyTo((v.lon + 180) / 0.1, (v.lat + 90) / 0.1, readableCellsWide(), 6500, () => {
       if (!userInteracted) spawnVesselPopup(v, 0);
     });
-  }, 700);
+  }, 900);
 }
 
 // Splash übersprungen (localStorage): fliegen, sobald die Flotte lädt.
@@ -4731,8 +4747,8 @@ function buildMinimapBase() {
     for (let x = 0; x < w; x++) {
       const col = Math.min(DISPLAY_COLS - 1, Math.floor((x + 0.5) / w * DISPLAY_COLS));
       const idx = (y * w + x) * 4;
-      if (isLand(col, row)) { px[idx] = 144; px[idx+1] = 147; px[idx+2] = 143; }
-      else                  { px[idx] = 242; px[idx+1] = 234; px[idx+2] = 216; }
+      if (isLand(col, row)) { px[idx] = 163; px[idx+1] = 165; px[idx+2] = 160; }
+      else                  { px[idx] = 247; px[idx+1] = 243; px[idx+2] = 233; }
       px[idx+3] = 255;
     }
   }
@@ -5347,7 +5363,7 @@ function getFleetFilter() {
   return {
     sort: document.getElementById('fleet-sort').value,
     flag: document.getElementById('fleet-flag').value,
-    type: document.getElementById('fleet-type').value,
+    type: (document.getElementById('fleet-type') || {}).value || '',
     tier: tierEl ? tierEl.value : '',
     q:    document.getElementById('fleet-search').value.toLowerCase(),
   };
@@ -5592,7 +5608,7 @@ function animateCatchCounter() {
 // FLEET FILTER LISTENERS
 // ══════════════════════════════════════════════════
 
-['fleet-sort', 'fleet-flag', 'fleet-type', 'fleet-tier', 'fleet-search'].forEach(id => {
+['fleet-sort', 'fleet-flag', 'fleet-tier', 'fleet-search'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener(id === 'fleet-search' ? 'input' : 'change', () => {
@@ -5781,7 +5797,7 @@ async function init() {
   // as noise. Start the mobile viewport at half-width so vessels are
   // visible as discrete dots from the first frame.
   if (canvasW < 700) {
-    viewport.cellsWide = 1800;
+    viewport.cellsWide = 500;
   }
   updateStatusBar();
 
