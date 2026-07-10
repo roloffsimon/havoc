@@ -4102,11 +4102,11 @@ function isLand(col, row) {
 // ══════════════════════════════════════════════════
 
 const viewport = {
-  // Start als Ausschnitt über dem westlichen Indischen Ozean — der
-  // Intro-Flug gleitet von hier langsam an die ostafrikanische Küste
-  // (Vorbild Phantom Islands: man landet IN der Welt, nicht über ihr).
-  centerCol: 2250,
-  centerRow: 900,
+  // Start als Ausschnitt über dem östlichen Atlantik — der Intro-Flug
+  // gleitet von hier langsam an die afrikanische Westküste (Vorbild
+  // Phantom Islands: man landet IN der Welt, nicht über ihr).
+  centerCol: 1600,
+  centerRow: 1000,
   cellsWide: 700,
 };
 
@@ -4718,20 +4718,20 @@ function startIntroFlight(force) {
   // den dort fischenden Schiffen eines der fangreichsten (leicht
   // variiert, damit nicht jeder Besuch identisch landet). Fischt dort
   // gerade niemand, fällt die Wahl aufs dem Ausschnitt nächste Schiff.
-  // Küsten-Anker vor Tansania (40°O, 8°S): gewählt wird zufällig eines
-  // der fünf Schiffe, die der ostafrikanischen KÜSTE am nächsten fischen
-  // — nicht irgendwo in der Box (die fing sonst Hochsee-Langleiner
-  // mitten im südlichen Indik).
-  const eastAfrica = vs.filter(x =>
-    x.lon >= 30 && x.lon <= 60 && x.lat >= -30 && x.lat <= 15)
+  // Küsten-Anker vor Senegal/Mauretanien (17°W, 15°N) — das dichteste
+  // Fanggebiet der afrikanischen WESTKÜSTE: gewählt wird zufällig eines
+  // der fünf Schiffe, die diesem Anker am nächsten fischen, damit die
+  // Landung immer an der Küste liegt (nicht bei Hochsee-Langleinern).
+  const westAfrica = vs.filter(x =>
+    x.lon >= -25 && x.lon <= 15 && x.lat >= -30 && x.lat <= 32)
     .sort((a, b) => {
-      const da = (a.lon - 40) ** 2 + (a.lat + 8) ** 2;
-      const db = (b.lon - 40) ** 2 + (b.lat + 8) ** 2;
+      const da = (a.lon + 17) ** 2 + (a.lat - 15) ** 2;
+      const db = (b.lon + 17) ** 2 + (b.lat - 15) ** 2;
       return da - db;
     });
   let v;
-  if (eastAfrica.length) {
-    v = eastAfrica[Math.floor(Math.random() * Math.min(eastAfrica.length, 5))];
+  if (westAfrica.length) {
+    v = westAfrica[Math.floor(Math.random() * Math.min(westAfrica.length, 5))];
   } else {
     const ranked = vs.slice().sort((a, b) => (b.catch_count || 0) - (a.catch_count || 0))
       .slice(0, 400);
