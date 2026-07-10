@@ -5899,7 +5899,11 @@ function fillCatchIntro() {
   const setCi = (key, val) => {
     document.querySelectorAll(`[data-ci="${key}"]`).forEach(el => { el.textContent = val; });
   };
-  const d = new Date(ld.date + 'T12:00:00Z');
+  // Datum: wie überall an der Oberfläche (Header, PDF-Cover, PDF-Intro)
+  // zählt der RENDER-Tag, nicht das ~4 Tage ältere GFW-Datendatum —
+  // sonst widersprechen sich Überschrift ("10. Juli") und Fließtext
+  // ("6. Juli") sichtbar auf derselben Seite.
+  const d = new Date(s.now_utc || ld.date + 'T12:00:00Z');
   if (!isNaN(d)) {
     setCi('date', d.toLocaleDateString(currentLang === 'de' ? 'de-DE' : 'en-GB',
       { day: 'numeric', month: 'long', year: 'numeric' }));
