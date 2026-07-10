@@ -2243,7 +2243,7 @@
 
   <!-- NAV-BAR -->
   <nav class="h-nav">
-    <button type="button" class="h-nav-item is-active" data-view="ocean" data-i18n="nav.ocean">Ocean</button>
+    <button type="button" class="h-nav-item is-active" data-view="ocean" data-i18n="nav.ocean">Map</button>
     <button type="button" class="h-nav-item" data-view="fleet" data-i18n="nav.fleet">Fleet</button>
     <button type="button" class="h-nav-item" data-view="about" data-i18n="nav.about">About</button>
     <button type="button" class="h-nav-item" data-view="catch" data-i18n="nav.catch">Catch of the Day</button>
@@ -2578,7 +2578,7 @@
 const I18N = {
   en: {
     'header.day': 'Day',
-    'nav.ocean': 'Ocean',
+    'nav.ocean': 'Map',
     'nav.fleet': 'Fleet',
     'nav.about': 'About',
     'nav.catch': 'Catch of the Day',
@@ -2699,13 +2699,13 @@ const I18N = {
   },
   de: {
     'header.day': 'Tag',
-    'nav.ocean': 'Ozean',
+    'nav.ocean': 'Karte',
     'nav.fleet': 'Flotte',
     'nav.about': '\u00dcber',
     'nav.catch': 'Fang des Tages',
     'splash.loader.headline': 'Der Ozean lädt',
     'splash.button.ready': 'Eintreten',
-    'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so <span class="motto-title">rücksichtsloses Gemetzel [remorseless havoc]</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
+    'splash.motto.text': 'Der streitige Punkt ist, ob Leviathan lange eine so weitgestreckte Jagd und ein so <span class="motto-title">rücksichtsloses Gemetzel</span> aushalten kann, ob er nicht schließlich aus den Gewässern weggewischt werden wird und der letzte Wal wie der letzte Mensch seine letzte Pfeife wird rauchen müssen, um sich dann selbst mit dem letzten Paffer in Dampf aufzulösen.',
     'splash.motto.chapter': 'Kapitel CV',
     'splash.progress.land': 'Karte',
     'splash.progress.depletion': 'Tiefen',
@@ -4652,8 +4652,12 @@ function renderShips(cells, startCol, startRow, cellsWide, cellsHigh, cellW) {
 // ══════════════════════════════════════════════════
 
 let flightRAF = null;
+// Token gegen verwaiste Flüge: jede Interaktion/jeder neue Flug erhöht
+// ihn; geplante Flüge (setTimeout) und laufende Callbacks prüfen ihn.
+let flightToken = 0;
 
 function cancelFlight() {
+  flightToken++;
   if (flightRAF) { cancelAnimationFrame(flightRAF); flightRAF = null; }
 }
 
@@ -4699,8 +4703,11 @@ function readableCellsWide() {
 // der User selbst interagiert.
 let introFlightDone = false;
 
-function startIntroFlight() {
-  if (introFlightDone || userInteracted) return;
+// Der Auto-Flug läuft beim ersten Laden UND — mit force=true — bei jeder
+// Rückkehr zur Kartenansicht (User-Spec). Jede User-Interaktion bricht
+// ihn über den flightToken ab (siehe markInteracted/cancelFlight).
+function startIntroFlight(force) {
+  if (!force && (introFlightDone || userInteracted)) return;
   if (document.body.classList.contains('not-ocean')) return;
   const vs = (fleetData || []).filter(v =>
     Array.isArray(v.catches) && v.catches.length > 0 &&
@@ -4720,12 +4727,13 @@ function startIntroFlight() {
     const d = dx * dx + dy * dy;
     return (!best || d < best.d) ? { v: x, d } : best;
   }, null).v;
+  const myToken = ++flightToken;
   setTimeout(() => {
-    if (userInteracted) return;
+    if (flightToken !== myToken) return;   // abgebrochen oder ersetzt
     flyTo((v.lon + 180) / 0.1, (v.lat + 90) / 0.1, readableCellsWide(), 6500, () => {
-      if (!userInteracted) spawnVesselPopup(v, 0);
+      if (flightToken === myToken + 1) spawnVesselPopup(v, 0);
     });
-  }, 900);
+  }, force ? 500 : 900);
 }
 
 // Splash übersprungen (localStorage): fliegen, sobald die Flotte lädt.
@@ -4812,9 +4820,11 @@ let dragStartX, dragStartY;
 let dragStartCenterCol, dragStartCenterRow;
 
 function markInteracted() {
+  // Ein laufender oder geplanter Auto-Flug endet bei JEDER Interaktion —
+  // sonst kämpft die Animation gegen das Panning des Users.
+  cancelFlight();
   if (userInteracted) return;
   userInteracted = true;
-  cancelFlight();
   const hint = document.querySelector('.map-overlay-hint');
   if (hint) hint.setAttribute('data-state', 'dismissed');
   fadeAllVesselPopups();
@@ -5576,6 +5586,11 @@ function switchToView(name) {
         requestAnimationFrame(settleOcean);
       }
     })();
+    // Rückkehr zur Karte löst den Auto-Flug erneut aus (User-Spec) —
+    // force ignoriert frühere Interaktionen; jede NEUE Interaktion
+    // bricht ihn sofort wieder ab. focusVesselOnMap überschreibt den
+    // geplanten Flug über den flightToken mit seinem eigenen Ziel.
+    if (typeof startIntroFlight === 'function') startIntroFlight(true);
   } else if (name === 'fleet') {
     if (fleetData.length === 0) fleetData = generateFleet();
     const grid = document.getElementById('fleet-grid');
