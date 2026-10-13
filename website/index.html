@@ -9,30 +9,32 @@
 <style>
   :root {
     /* ════════════════════════════════════════════════════════════
-       PALETTE: "Phantom Paper" (v6, Rev 09 Jul 2026)
-       Vorbild Phantom Islands (andrewpekler.com): cremeweißes
+       PALETTE: "Phantom Paper" (v7, Rev 13 Okt 2026)
+       Vorbild Phantom Islands (andrewpekler.com): reinweißes
        Papier-Meer, mittelgraue Landmassen, korallenrote Vessels.
+       v7: alle Cremetöne (#f7f3e9 … #ede7d8) auf #ffffff gezogen —
+       Seite, Header, Ozean, Overlays sind ein einziges Weiß; Flächen
+       trennen sich nur noch über Tinten-Hairlines.
        Der Depletion-Zustand liegt NICHT mehr im Zellhintergrund,
        sondern in der Schriftfarbe der Strophen (schwarz = intakt,
        grau = angefischt, stumm = leer) — das Meer selbst bleibt
        auf jeder Zoomstufe einheitlich hell.
        ════════════════════════════════════════════════════════════ */
 
-    /* Ozean — cremeweißes Papier */
-    --ocean:          #f7f3e9;
-    --ocean-deep:     #f2eddf;
-    --ocean-abyss:    #ede7d8;
+    /* Ozean — reinweißes Papier */
+    --ocean:          #ffffff;
+    --ocean-deep:     #ffffff;
+    --ocean-abyss:    #ffffff;
 
     /* Legacy-Aliasse */
-    --abyss:          #ede7d8;
-    --deep:           #f2eddf;
-    --mid:            #f4efe2;
-    --surface:        #f7f2e6;
+    --abyss:          #ffffff;
+    --deep:           #ffffff;
+    --mid:            #ffffff;
+    --surface:        #ffffff;
 
-    /* Flotten-Karten — reines Weiß, hellste Fläche der Seite
-       (Rev 13 Okt 2026). Hover/Offen-Zustand werden per color-mix
-       ÜBER dieses Weiß gelegt, nicht als Ersatz (sonst fiele die
-       Karte beim Hover auf den Seitenton zurück und würde dunkler). */
+    /* Flotten-Karten — Weiß wie die Seite; sie trennen sich nur über
+       die Hairlines des Rasters. Hover/Offen-Zustand werden per
+       color-mix ÜBER dieses Weiß gelegt, nicht als Ersatz. */
     --card:           #ffffff;
 
     /* Land — mittelgrau, ruhig */
@@ -57,10 +59,10 @@
     --catch-glow:     rgba(217, 74, 50, 0.35);
 
     /* Depletion — Legacy-Variablen, im neuen System ungenutzt hell */
-    --depleted:       #f4efe2;
-    --depleted-edge:  #ede7d8;
-    --depleted-partial: #f4efe2;
-    --depleted-full:    #ede7d8;
+    --depleted:       #ffffff;
+    --depleted-edge:  #ffffff;
+    --depleted-partial: #ffffff;
+    --depleted-full:    #ffffff;
 
     /* Vessels — Koralle */
     --vessel:         #d94a32;
@@ -68,8 +70,8 @@
     --vessel-glow:    rgba(217, 74, 50, 0.45);
 
     /* Misc rendering */
-    --ocean-alive:     #f7f3e9;
-    --ocean-alive-hi:  #f4efe2;
+    --ocean-alive:     #ffffff;
+    --ocean-alive-hi:  #ffffff;
     --ship-active:     var(--vessel-hot);
     --stanza-alive:    #161614;
     --stanza-ghost:    rgba(22, 22, 20, 0.10);
@@ -483,7 +485,7 @@
     display: flex;
     flex-direction: column;
     border: 1px solid rgba(28, 28, 26, 0.55);
-    background: rgba(244, 238, 224, 0.92);
+    background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 3px 14px rgba(28, 28, 26, 0.12);
   }
   .map-zoom-controls button {
@@ -568,7 +570,7 @@
      (User-Spec: Menü und Schrift in der Farbe der Schiffe). */
   .vessel-popup {
     position: absolute;
-    background: rgba(244, 238, 224, 0.94);
+    background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(217, 74, 50, 0.65);
     box-shadow: 0 6px 30px rgba(28, 28, 26, 0.18), inset 0 0 0 1px rgba(217, 74, 50, 0.08);
     padding: 16px 20px 14px;
@@ -752,9 +754,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1px;
-    background: rgba(232, 220, 196, 0.04);
-    border-top: 1px solid rgba(232, 220, 196, 0.04);
-    border-left: 1px solid rgba(232, 220, 196, 0.04);
+    /* Tinten-Hairlines: auf der weißen Seite ist das Raster die einzige
+       Kante der (ebenfalls weißen) Karten. */
+    background: var(--cell-border-z);
+    border-top: 1px solid var(--cell-border-z);
+    border-left: 1px solid var(--cell-border-z);
   }
 
   .vessel-card {
@@ -1402,7 +1406,7 @@
     position: absolute;
     top: calc(100% + 4px);
     left: 0; right: 0;
-    background: #f4efe2;
+    background: #ffffff;
     border: 1px solid var(--amber);
     border-radius: 2px;
     box-shadow: 0 8px 24px rgba(28, 28, 26, 0.22);
@@ -3802,14 +3806,12 @@ const GRID_COLORS = {
   land: [163, 165, 160],              // --land #a3a5a0 — helles Grau
   landEdge: [138, 140, 133],          // --land-edge #8a8c85
   oceanAlive: function(cellIndex) {
-    // Papier-Creme mit subtiler per-Zelle-Variation (Raster-Prinzip).
+    // Reinweißes Papier mit minimaler neutraler per-Zelle-Variation
+    // (Raster-Prinzip bleibt, aber ohne jeden Cremestich).
     const hash = ((cellIndex * 2654435761) >>> 0) & 0xFF;
     const t = hash / 255;
-    return [
-      Math.round(244 + t * 6),        // 244–250
-      Math.round(240 + t * 6),        // 240–246
-      Math.round(227 + t * 7),        // 227–234
-    ];
+    const v = Math.round(252 + t * 3);  // 252–255, r = g = b
+    return [v, v, v];
   },
   ship: [217, 74, 50],                // --vessel #d94a32 — Koralle
   stanzaAlive: 'rgba(22, 22, 20, 0.95)',     // Tinte — Zelle unangetastet
@@ -4386,7 +4388,7 @@ function renderGridImageData(startCol, startRow, cellsWide, cellsHigh, cellW) {
 }
 
 function renderGridFillRect(startCol, startRow, cellsWide, cellsHigh, cellW) {
-  ctx.fillStyle = '#ede7d8';  // --ocean-abyss (Papier, Off-Grid-Rand)
+  ctx.fillStyle = '#ffffff';  // --ocean-abyss (Papier, Off-Grid-Rand)
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   const cellH = cellW;
@@ -4784,7 +4786,7 @@ function buildMinimapBase() {
       const col = Math.min(DISPLAY_COLS - 1, Math.floor((x + 0.5) / w * DISPLAY_COLS));
       const idx = (y * w + x) * 4;
       if (isLand(col, row)) { px[idx] = 163; px[idx+1] = 165; px[idx+2] = 160; }
-      else                  { px[idx] = 247; px[idx+1] = 243; px[idx+2] = 233; }
+      else                  { px[idx] = 255; px[idx+1] = 255; px[idx+2] = 255; }
       px[idx+3] = 255;
     }
   }
