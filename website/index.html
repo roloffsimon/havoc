@@ -29,6 +29,12 @@
     --mid:            #f4efe2;
     --surface:        #f7f2e6;
 
+    /* Flotten-Karten — reines Weiß, hellste Fläche der Seite
+       (Rev 13 Okt 2026). Hover/Offen-Zustand werden per color-mix
+       ÜBER dieses Weiß gelegt, nicht als Ersatz (sonst fiele die
+       Karte beim Hover auf den Seitenton zurück und würde dunkler). */
+    --card:           #ffffff;
+
     /* Land — mittelgrau, ruhig */
     --land:           #a3a5a0;
     --land-edge:      #8a8c85;
@@ -752,7 +758,7 @@
   }
 
   .vessel-card {
-    background: var(--deep);
+    background: var(--card);
     padding: 14px 16px;
     text-align: left;
     border: none;
@@ -763,7 +769,7 @@
     color: inherit;
     animation: fadein 0.3s ease-out both;
   }
-  .vessel-card:hover { background: rgba(217, 74, 50, 0.07); }
+  .vessel-card:hover { background: color-mix(in srgb, var(--amber) 7%, var(--card)); }
   /* Flaggen-Emoji statt ISO-Code (User-Spec) */
   .vessel-card .vc-flag {
     font-size: 18px;
@@ -788,7 +794,7 @@
      ausgeklappte Detail erscheint als eigenes Panel NACH dem Ende der
      visuellen Reihe (User-Spec: "wie am Ende der Reihe aufgeklappt"). */
   .vessel-card.is-open {
-    background: rgba(217, 74, 50, 0.10);
+    background: color-mix(in srgb, var(--amber) 10%, var(--card));
     box-shadow: inset 0 0 0 1px rgba(217, 74, 50, 0.55);
   }
 
